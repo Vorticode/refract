@@ -1,6 +1,6 @@
 # Refract
 
-Refract is a fast, lightweight, "reactive" JavaScript library for creating user interface components to use in regular html pages.
+Refract is a fast, lightweight, "reactive" JavaScript library for creating user interface components to use in regular html pages:
 
 ```html
 <body>
@@ -10,12 +10,12 @@ Refract is a fast, lightweight, "reactive" JavaScript library for creating user 
     class ShoppingList extends Refract {
         items = [];
 
-    	// Only inserts one div row, without recreating the whole list:
+        // Only inserts one div row, without recreating the whole list:
         addItem() {
             this.items.push({name: '', qty: 0});
         }
 
-		// Only removes one div row, without recreating the whole list:
+        // Only removes one div row, without recreating the whole list:
         removeItem(item) {
             let idx = this.items.indexOf(item);
             this.items.splice(idx, 1);
@@ -41,7 +41,12 @@ Refract is a fast, lightweight, "reactive" JavaScript library for creating user 
 
 ==TODO== Add to JSFiddle with link.
 
-### Feature Summary:
+## Download
+
+- [Refract.js](https://raw.githubusercontent.com/Vorticode/refract/master/dist/Refract.js) - 101KB
+- [Refract.min.js](https://github.com/Vorticode/refract/blob/master/dist/Refract.min.js) - 26.6KB (9KB gzipped)
+
+## Feature Summary:
 
 - React-like, Model-View-View Model (MVVM) pattern for convenient data binding.  Automatically updates DOM elements when bound properties change.
 - Fast and intelligent.  Adding a single item to a TODO list of 10,000 items won't create 10,000 virtual elements behind the scenes and compare them with the DOM to see what has changed.
@@ -51,10 +56,6 @@ Refract is a fast, lightweight, "reactive" JavaScript library for creating user 
 - Uses standard, native html and JavaScript.  No need to learn another template or markup language.
 - Supports events, shadow DOM, slots, and more.
 - MIT license.  Free for commercial use.
-
-==Words to describe Refract: Opt-in, fast, lightweight, native, "reactive", compile-less.==
-
-==Possible names: Refract, LiteElement, Shadow.js  Atlas.js, LiteComponent.js==
 
 ## Minimal Example
 
@@ -68,7 +69,7 @@ In this minimal example, we make a new class called Hello and set its html.  We 
         name = 'Refract';
         html = `<r-hello>Hello #{this.name}!</r-hello>`;
     }
-	eval(Hello.compile());
+    eval(Hello.compile());
 </script>
 
 <!-- Prints an element with textContent = "Hello Refract!" -->
@@ -85,7 +86,7 @@ Any element in the html with an `id` or `data-id` attribute is automatically bou
 
 ```javascript
 class RaceTeam extends Refract {
-	html = `
+    html = `
         <race-team>
             <input id="driver" value="Vermin Supreme">
             <div data-id="car">Lightning McQueen</div>
@@ -111,13 +112,13 @@ As with regular JavaScript, template strings can be inserted via `${...}`.  The 
 ```javascript
 class Resume extends Refract {
     this.name = 'John Smith';
-	this.resumeHtml = '<b>Jobs:</b> Tesla.<br><b>Education:</b>: Belmont';
+    this.resumeHtml = '<b>Jobs:</b> Tesla.<br><b>Education:</b>: Belmont';
 
-	html = `
+    html = `
         <r-resume>
             <h1>Resume for #{this.name}</h1>
-			<div>${this.resumeHtml}>/div>
-			
+            <div>${this.resumeHtml}>/div>
+            
         </r-resume>`;
 }
 eval(NameTag.compile());
@@ -174,11 +175,11 @@ Refract elements can also be embedded within the html of other Refract elements:
 ```javascript
 class Wheel extends Refract {
     constructor(number) {
-     	super();
+         super();
         this.number = number;
     }
     
-	html = '<car-wheel>Wheel #{this.number}</car-wheel>';
+    html = '<car-wheel>Wheel #{this.number}</car-wheel>';
 }
 
 class FastCar extends Refract  {
@@ -199,8 +200,8 @@ class FastCar extends Refract  {
     this.wheels = [1, 2, 3, 4];
     html = `
         <fast-car>
-			${this.wheels.map(wheel => 
-            	`<car-wheel number="${wheel}"></car-wheel>`
+            ${this.wheels.map(wheel => 
+                `<car-wheel number="${wheel}"></car-wheel>`
             )}
         </fast-car>`;
 }
@@ -283,7 +284,7 @@ Imagine the following Refract element:
 
 ```javascript
 class RefractElement extends Refract {
-	html = `<refract-element>Hi!</refract-element>`;
+    html = `<refract-element>Hi!</refract-element>`;
 }
 eval(RefractElement.compile());
 ```
@@ -318,14 +319,14 @@ Imagine the following code:
 class RefractElement extends Refract {
     count = 2;    
     getCount() {
-    	return this.count;   
+        return this.count;   
     }
     
-	html = `
-		<refract-element>
-			Count1: ${this.count}
-			Count2: ${this.getCount()}
-		</refract-element>`;
+    html = `
+        <refract-element>
+            Count1: ${this.count}
+            Count2: ${this.getCount()}
+        </refract-element>`;
 }
 eval(RefractElement.compile());
 
@@ -341,14 +342,14 @@ This can be remedied with the following code:
 class RefractElement extends Refract {
     count = 2;    
     getVar(variable) {
-    	return variable;   
+        return variable;   
     }
     
-	html = `
-		<refract-element>
-			Count1: ${this.count}
-			Count2: ${this.getVar(this.count)}
-		</refract-element>`;
+    html = `
+        <refract-element>
+            Count1: ${this.count}
+            Count2: ${this.getVar(this.count)}
+        </refract-element>`;
 }
 eval(RefractElement.compile());
 

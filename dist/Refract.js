@@ -2058,7 +2058,7 @@ class VExpression {
 
 
 		// if (window.debug) // This happens when a path on an element is watched, but the path doesn't exist?
-		// 	debugger;
+		// debugger;
 
 		// Path 1:  If modifying a property within an array.
 		// TODO: watchPaths besides 0?
@@ -2370,6 +2370,8 @@ class VExpression {
 			// We call replacehashExpr() b/c we're valuating a whole string of code all at once, and the nested #{} aren't
 			// understood by the vanilla JavaScript that executes the template string.
 			tokens = Parse.replaceHashExpr(tokens, null, Class.name);
+
+			// joining on line return req'd for // comments and lines not ending in semicolon.
 			result.exec = Class.createFunction(...scope, 'return ' + tokens.join(''));
 		}
 
@@ -2729,7 +2731,7 @@ class VElement {
 				result.push(val);
 			}
 			else
-				result.push(attrPart); // string
+				result.push(Refract.htmlDecode(attrPart)); // decode because this will be passed to setAttribute()
 		}
 		return result;
 	}
@@ -2784,7 +2786,7 @@ class VElement {
 
 			// Text node
 			if (token.type === 'text') {
-				let vtext = new VText(Html.decode(token));
+				let vtext = new VText(Refract.htmlDecode(token));
 				result.push(vtext);
 			}
 
@@ -3174,15 +3176,16 @@ class Refract extends HTMLElement {
 			for (let token of tokens) {
 				if (token.type !== 'comment')
 					result.push(token);
-				else if (token.tokens)
-					token.tokens = removeComments(tokens);
+				if (token.tokens)
+					token.tokens = removeComments(token.tokens);
 			}
 			return result;
 		}
 
 		// 1. Parse into tokens
 		let code = self.toString();
-		let tokens = removeComments(lex(lexHtmlJs, code));
+		code = lex(lexHtmlJs, code);
+		let tokens = removeComments(code);
 
 		// 2. Build the virtual element tree.
 		{
@@ -3235,8 +3238,10 @@ class Refract extends HTMLElement {
 						`   try { ${argName} = JSON.parse(${argName}) } catch(e) {};`,
 						'}'] // [above] Parse attrib as json if it's valid json.
 					).flat(),
-					`this.virtualElement = this.constructor.virtualElement.clone(this);`,
-					`this.virtualElement.apply(this, this);`,
+					`if (!this.virtualElement) {`, // If not already created by a super-class
+					`\tthis.virtualElement = this.constructor.virtualElement.clone(this);`,
+					`\tthis.virtualElement.apply(this, this);`,
+					`}`,
 					'//End Refract injected code.'
 				].join('\r\n\t\t\t');
 
@@ -3249,8 +3254,10 @@ class Refract extends HTMLElement {
 					'//Begin Refract injected code.',
 					`constructor() {`,
 					`\tsuper();`,
-					`this.virtualElement = this.constructor.virtualElement.clone(this);`,
-					`this.virtualElement.apply(this, this);`,
+					`\tif (!this.virtualElement) {`, // If not already created by a super-class
+					`\t\tthis.virtualElement = this.constructor.virtualElement.clone(this);`,
+					`\t\tthis.virtualElement.apply(this, this);`,
+					'\t}',
 					'}',
 					'//End Refract injected code.'
 				].join('\r\n\t\t');
@@ -3284,9 +3291,9 @@ class Refract extends HTMLElement {
 
 	static htmlEncode(text, quotes='') {
 		text = text
+			.replace(/&/g, '&amp;')
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;')
-			.replace(/&/g, '&amp;')
 			.replace(/\a0/g, '&nbsp;');
 		if (quotes.includes("'"))
 			text = text.replace(/'/g, '&apos;');
