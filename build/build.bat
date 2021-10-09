@@ -1,0 +1,1 @@
+node build ../src/Refract.js ../dist/Refract.js

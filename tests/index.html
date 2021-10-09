@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title></title>
+	<style>
+		body { font: 14px Consolas; margin: 0; padding: 10px; box-sizing: border-box; min-height: 100vh }
+		table { border-collapse: collapse }
+		td { vertical-align: top; padding: 0; white-space: normal }
+		td:first-child { white-space: nowrap }
+		label { user-select: none }
+		button { border-radius: 10px; border: 2px solid gray; padding: 2px 15px; outline: 0; cursor: pointer }
+
+		@media (prefers-color-scheme: dark) {
+			body { background: #000; color: #ddd }
+			button { background: #333; color: white }
+		}
+	</style>
+</head>
+
+<body>
+<script type="module">
+	import {Testimony} from './lib/Testimony.js';
+	import './ArrayDiff.test.js';
+	import './lex.test.js';
+	import './fregex.test.js';
+	import './Parse.test.js';
+	import './watchProxy.test.js';
+	import './Watch.test.js';
+	import './Refract.test.js';
+
+	Testimony.throwOnFail = true;
+	Testimony.runTests(document.getElementById('tests'));
+</script>
+	<form>
+		<button>Run Tests</button>
+		<table id="tests"></table>
+		<br>
+		<button>Run Tests</button>
+	</form>
+</body>
+
+</html>
+

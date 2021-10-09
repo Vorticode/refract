@@ -1,0 +1,19 @@
+<head>
+	<style>
+		body { background: black; color: white }
+	</style>
+</head>
+
+<script type="module">
+	import Spreadsheet from './Spreadsheet.js';
+
+	let s = new Spreadsheet();
+	
+	let rows = [];
+	for (let i=0; i<10; i++)
+		s.rows.push([1, 2, 3, 4]);
+
+	console.log(window.count);
+
+	document.body.append(s);
+</script>
