@@ -3,19 +3,18 @@
 Refract is a fast, lightweight, "reactive" JavaScript library for creating user interface components to use in regular html pages:
 
 ```html
-<body>
-<script>
-    import Refract from 'Refract.js';
+<script type="module">
+    import Refract from 'Refract.js'
     
     class ShoppingList extends Refract {
         items = [];
 
-        // Only inserts one div row, without recreating the whole list:
+        // Inserts only one div row, without recreating whole list:
         addItem() {
             this.items.push({name: '', qty: 0});
         }
 
-        // Only removes one div row, without recreating the whole list:
+        // Inserts only one div row, without recreating whole list:
         removeItem(item) {
             let idx = this.items.indexOf(item);
             this.items.splice(idx, 1);
@@ -26,20 +25,22 @@ Refract is a fast, lightweight, "reactive" JavaScript library for creating user 
                 <button onclick="this.addItem()">Add Item</button>
                 ${this.items.map(item => // Loop
                    `<div style="display: flex; flex-direction: row">
-                        <input value="${item.name}">
+                        <input value="${item.name}" placeholder="Name">
                         <input type="number" value="${item.qty}">
                         <div onclick="this.removeItem(item)">x</div>
                     </div>`
                 )}
+                <pre>${JSON.stringify(this.items, null, 4)}</pre>
             </shopping-list>`;
     }
     eval(ShoppingList.compile()); // Creates a Web Component from the class.
 </script>
 <shopping-list></shopping-list>
-</body>
 ```
 
-==TODO== Add to JSFiddle with link.
+Run [this example](https://jsfiddle.net/pdg4s589/) on JSFiddle.net.
+
+Refract is still **in development** and has several known bugs.  Exercise caution if using in a production environment.
 
 ## Download
 
@@ -48,14 +49,14 @@ Refract is a fast, lightweight, "reactive" JavaScript library for creating user 
 
 ## Feature Summary:
 
-- React-like, Model-View-View Model (MVVM) pattern for convenient data binding.  Automatically updates DOM elements when bound properties change.
+- Automatically updates DOM elements when properties change.
 - Fast and intelligent.  Adding a single item to a TODO list of 10,000 items won't create 10,000 virtual elements behind the scenes and compare them with the DOM to see what has changed.
 - Lightweight.  Less than **30KB** minified, **9KB** gzipped.
 - No custom build steps and no dependencies.  Not even Node.js.  Just include Refract.js or Refract.min.js.
 - Doesn't take over your whole project.  Place it within standard DOM nodes only where you need it.
 - Uses standard, native html and JavaScript.  No need to learn another template or markup language.
 - Supports events, shadow DOM, slots, and more.
-- MIT license.  Free for commercial use.
+- The whole library is MIT licensed.  Free for commercial use.
 
 ## Minimal Example
 
@@ -77,6 +78,8 @@ In this minimal example, we make a new class called Hello and set its html.  We 
 ```
 
 Subsequent examples omit the  `import` statement for brevity.
+
+An IDE like JetBrains [WebStorm](https://www.jetbrains.com/webstorm/), [PhpStorm](https://www.jetbrains.com/phpstorm/), or [IDEA](https://www.jetbrains.com/phpstorm/) will syntax highlight the html template strings.
 
 ## Features
 
