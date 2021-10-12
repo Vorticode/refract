@@ -175,11 +175,11 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 			comment: descendIf('<!--', 'htmlComment'),
 			closeTag,
 			openTag: descendIf(tagStart, 'tag', match => lastTag = match[1]),
-			text: /^[\s\S]*?(?=<|$)/,
+			text: /^[\s\S]+?(?=<|$)/,
 		},
 		htmlComment: {
 			commentEnd: ascendIf('-->'),
-			commentBody: /^[\s\S]*?(?=-->|$)/,
+			commentBody: /^[\s\S]+?(?=-->|$)/,
 		},
 
 		template: { // template within javascript

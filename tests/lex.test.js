@@ -296,3 +296,12 @@ Deno.test('lex.badHtml3', () => {
 	console.log(tokens); // TODO
 });
 
+Deno.test('lex.php', () => {
+	var code = `<?php print 1?-->`;
+	let tokens = lex(htmljs, code, 'html');
+	assertEquals(tokens, ['<?php print 1?-->']);
+	assertEquals(tokens[0].type, 'text');
+
+
+});
+

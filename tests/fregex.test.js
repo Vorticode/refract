@@ -137,6 +137,38 @@ Deno.test('fregex.oneOrMore', () => {
 	assertEquals(isMatch(['a', 'b1', 'b1', 'c']), 4);
 });
 
+Deno.test('fregex.oneOrMoreOr', () => {
+	let isMatch = fregex(
+		'a',
+		fregex.oneOrMore(fregex.or('b1', 'b2', 'b3')),
+		'c',
+	);
+
+	assertEquals(isMatch(['a', 'c']), false);
+	assertEquals(isMatch(['a', 'b1', 'c']), 3);
+	assertEquals(isMatch(['a', 'b1', 'b2', 'b3', 'b1', 'c']), 6);
+
+	assertEquals(isMatch(['a', 'b1', 'b4', 'b3', 'c']), false);
+});
+
+
+
+Deno.test('fregex._oneOrMoreOrZeroOrMore', () => {
+	let isMatch = fregex(
+		'a',
+		fregex.oneOrMore(
+			fregex.or('b1', 'b2', fregex.zeroOrMore('b3'))
+		),
+		'c',
+	);
+
+	assertEquals(isMatch(['a', 'c']), false);
+	assertEquals(isMatch(['a', 'b1', 'c']), 3);
+	assertEquals(isMatch(['a', 'b1', 'b2', 'b3', 'b1', 'c']), 6);
+
+	assertEquals(isMatch(['a', 'b1', 'b4', 'b3', 'c']), false);
+});
+
 Deno.test('fregex.oneOrMoreNot', () => {
 	let isMatch = fregex.oneOrMore(
 		fregex.not(';')
