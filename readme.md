@@ -98,8 +98,8 @@ class RaceTeam extends Refract {
 eval(RaceTeam.compile());
 
 var team = new RaceTeam();
-console.log(team.driver.value);     // "Vermin Supreme"
-console.log(team.car.textContent);  // "Lightning McQueen"
+console.log(team.driver.value);    // "Vermin Supreme"
+console.log(team.car.textContent); // "Lightning McQueen"
 car.driver.value = 'Chuck Norris'; // Replaces text in input box.
 car.driver = 3; // Error, property is read-only.
 
@@ -176,7 +176,7 @@ In the example above, clicking the button will print `click happened on BUTTON.`
 Refract elements can also be embedded within the html of other Refract elements:
 
 ```javascript
-class Wheel extends Refract {
+class CarWheel extends Refract {
     constructor(number) {
          super();
         this.number = number;
@@ -185,28 +185,28 @@ class Wheel extends Refract {
     html = '<car-wheel>Wheel #{this.number}</car-wheel>';
 }
 
-class FastCar extends Refract  {
+class CarBody extends Refract  {
     html = `
-        <fast-car>
+        <car-body>
             <car-wheel number="1"></car-wheel>
             <car-wheel number="2"></car-wheel>
             <car-wheel number="3"></car-wheel>
             <car-wheel number="4"></car-wheel>
-        </fast-car>`;
+        </car-body>`;
 }
 ```
 
 And as seen above, attributes can be used to pass arguments to the nested element constructors.  Alternatively, we could write the FastCar class to use a loop and pass the number argument dynamically:
 
 ```javascript
-class FastCar extends Refract  {
+class CarBody extends Refract  {
     this.wheels = [1, 2, 3, 4];
     html = `
-        <fast-car>
+        <car-wheel>
             ${this.wheels.map(wheel => 
                 `<car-wheel number="${wheel}"></car-wheel>`
             )}
-        </fast-car>`;
+        </car-wheel>`;
 }
 ```
 
@@ -327,8 +327,8 @@ class RefractElement extends Refract {
     
     html = `
         <refract-element>
-            Count1: ${this.count}
-            Count2: ${this.getCount()}
+            Count1: ${this.count}      <!-- will update -->
+            Count2: ${this.getCount()} <!-- won't update -->
         </refract-element>`;
 }
 eval(RefractElement.compile());

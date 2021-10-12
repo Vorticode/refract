@@ -6,6 +6,7 @@ import Parse from './Parse.js';
 import VElement from './VElement.js';
 import VExpression from "./VExpression.js";
 import createEl from './createEl.js'; // TODO: This is erroneously still included when minified b/c rollup includes the //#IFDEV blocks.
+import Html from "./Html.js";
 
 /**
  * @property createFunction {function} Created temporarily during compilation. */
@@ -233,8 +234,8 @@ export default class Refract extends HTMLElement {
 
 		// 1. Parse into tokens
 		let code = self.toString();
-		code = lex(htmljs, code);
-		let tokens = removeComments(code);
+		let tokens = lex(htmljs, code);
+		tokens = removeComments(tokens);
 
 		// 2. Build the virtual element tree.
 		{
@@ -338,27 +339,7 @@ export default class Refract extends HTMLElement {
 		customElements.define(NewClass.virtualElement.tagName.toLowerCase(), NewClass);
 	}
 
-	static htmlEncode(text, quotes='') {
-		text = text
-			.replace(/&/g, '&amp;')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;')
-			.replace(/\a0/g, '&nbsp;')
-		if (quotes.includes("'"))
-			text = text.replace(/'/g, '&apos;');
-		if (quotes.includes('"'))
-			text = text.replace(/"/g, '&quot;');
-		return text;
-	}
 
-	/**
-	 * Convert html entities like &lt; to their literal values like <.
-	 * @param {string} html
-	 * @returns {string} */
-	static htmlDecode(html) {
-		txt.innerHTML = html;
-		return txt.value;
-	}
 
 	/**
 	 * Create string code that creates a new class with with a modified constructor and the html property removed.
@@ -394,9 +375,5 @@ export default class Refract extends HTMLElement {
 	}
 }
 
-Object.defineProperty(Refract, 'h', {
-	set: (code) => { return Refract.htmlEncode(code)}
-});
-
-// Used by htmlEncode()/htmlDecode()
-var txt = document.createElement('textarea');
+Refract.htmlDecode = Html.decode;
+Refract.htmlEncode = Html.encode;

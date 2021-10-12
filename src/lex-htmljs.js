@@ -77,7 +77,7 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 	// https://stackoverflow.com/a/27120110
 	let regexBefore =
 		`{ ( [ . ; , < > <= >= == != === !== + - * % << >> >>> & | ^ ! ~ && || ? : = += -= *= %= <<= >>= >>>= &= |= ^= /=`
-		.split(/ /g);
+			.split(/ /g);
 
 	/**
 	 * A grammar for parsing js and html within js templates, for use with lex.js. */

@@ -6,8 +6,6 @@ import VElement from './VElement.js';
 import VText from "./VText.js";
 import Html from "./Html.js";
 
-import Refract from "./Refract.js";
-
 
 /**
  * A parsed ${} or #{} expression embedded in an html template ``  */

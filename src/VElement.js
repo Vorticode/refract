@@ -159,7 +159,7 @@ export default class VElement {
 			}
 
 			// Shadow DOM
-			if (name==='shadow')
+			if (name==='shadow' && !this.el.shadowRoot)
 				this.el.attachShadow({mode: this.el.getAttribute('shadow') || 'open'});
 		}
 
@@ -205,7 +205,6 @@ export default class VElement {
 				}
 				else /*if (this.tagName === 'select' || this.tagName==='input')*/ {
 					this.el.addEventListener('change', () => {
-
 						// TODO: Convert value to boolean for checkbox.  File input type.
 						let val;
 						if (this.tagName === 'select' && this.el.hasAttribute('multiple')) {
@@ -516,6 +515,6 @@ function setInputValue(ref, el, value, scope, isText) {
 function setSelectValue(select, values) {
 	for (let opt of select.children) {
 		//let optVal = opt.hasAttribute('value') ? opt.getAttribute('value') : opt.textContent;
-		opt.selected = values.includes(opt.value);
+		opt.selected = Array.isArray(values) ? values.includes(opt.value) : values === opt.value;
 	}
 }
