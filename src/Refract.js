@@ -236,12 +236,30 @@ export default class Refract extends HTMLElement {
 		let code = self.toString();
 		let tokens = lex(htmljs, code);
 		tokens = removeComments(tokens);
+		let htmlIdx = 0, constructorIdx=0;
 
 		// 2. Build the virtual element tree.
 		{
 			// A. Find html template token
-			// TODO: Make sure we're finding html = ` at the top level, and not inside a function.
-			let htmlMatch = fregex.matchFirst(['html', Parse.ws, '=', Parse.ws, {type: 'template'}], tokens);
+			// Make sure we're finding html = ` and the constructor at the top level, and not inside a function.
+			// This search is also faster than if we use matchFirst() from the first token.
+			let braceDepth = 0;
+			for (let i=0, token; token = tokens[i]; i++) {
+				if (token == '{')
+					braceDepth++;
+				else if (token == '}')
+					braceDepth--;
+				else if (braceDepth === 1) {
+					if (!htmlIdx && token == 'html')
+						htmlIdx = i;
+					else if (!constructorIdx && token == 'constructor')
+						constructorIdx = i;
+				}
+				if (htmlIdx && constructorIdx)
+					break;
+			}
+
+			let htmlMatch = fregex.matchFirst(['html', Parse.ws, '=', Parse.ws, {type: 'template'}], tokens, htmlIdx);
 			//#IFDEV
 			if (!htmlMatch)
 				throw new Error('Class is missing an html property');
@@ -263,7 +281,7 @@ export default class Refract extends HTMLElement {
 		{
 			let tokens2 = tokens.slice();
 
-			let constr = fregex.matchFirst(['constructor', Parse.ws, '('], tokens2);
+			let constr = fregex.matchFirst(['constructor', Parse.ws, '('], tokens2, constructorIdx);
 			let injectIndex, injectCode;
 
 			// Modify existing constructor

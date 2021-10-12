@@ -10,9 +10,10 @@
  * or false if it doesn't match.
  */
 export default function fregex(...rules) {
+	rules = prepare(rules);
 	return tokens => {
 		let i = 0;
-		for (let rule of prepare(rules)) {
+		for (let rule of rules) {
 			let used = rule(tokens.slice(i));
 			if (used === false) // 0, false, null, or undefined
 				return false;
@@ -27,15 +28,17 @@ export default function fregex(...rules) {
 /**
  * Advance the number of tokens used by the first child that matches true.
  * TODO: Automatically treat an array given to an and() as an or() ? */
-fregex.or = (...rules) =>
-	tokens => {
-		for (let rule of prepare(rules)) {
+fregex.or = (...rules) => {
+	rules = prepare(rules);
+	return tokens => {
+		for (let rule of rules) {
 			let used = rule(tokens);
 			if (used !== false)
 				return used;
 		}
 		return false;
 	}
+}
 
 
 /**
@@ -49,13 +52,15 @@ fregex.not = (...rules) => {
 /**
  * Advance one token if none of the children match.  A "nor"
  * Equivalent to /[^abc]/ */
-fregex.nor = (...rules) =>
-	tokens => {
-		for (let rule of prepare(rules))
+fregex.nor = (...rules) => {
+	rules = prepare(rules);
+	return tokens => {
+		for (let rule of rules)
 			if (rule(tokens) > 0) // rule(tokens) returns the number used.
 				return false;
 		return 1;
 	};
+}
 
 
 /**
@@ -104,7 +109,7 @@ fregex.matchFirst = (pattern, haystack, startIndex=0) => {
 
 fregex.matchAll = (pattern, haystack, limit=Infinity, startIndex=0) => {
 	if (Array.isArray(pattern))
-		pattern = fregex(pattern);// same as prepare?
+		pattern = fregex(pattern);
 	let result = [];
 
 	// Iterate through each offset in haystack looking for strings of tokens that match pattern.
@@ -118,15 +123,17 @@ fregex.matchAll = (pattern, haystack, limit=Infinity, startIndex=0) => {
 
 
 // Experimental
-fregex.lookAhead = (...rules) =>
-	tokens => {
-		for (let rule of prepare(rules)) {
+fregex.lookAhead = (...rules) => {
+	rules = prepare(rules);
+	return tokens => {
+		for (let rule of rules) {
 			let used = rule(tokens);
 			if (used === false)
 				return false;
 		}
 		return 0;
 	}
+}
 
 /**
  * Experimental
@@ -144,6 +151,7 @@ fregex.end = tokens => {
  * Allow matching on functions, object properties, and strings.
  * @param rules
  * @returns {function[]} */
+let count = 0;
 var prepare = rules => {
 	if (Array.isArray(rules[0]) && rules.length === 1)
 		rules = rules[0];

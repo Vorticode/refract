@@ -49,8 +49,10 @@ export default function lex(grammar, code, mode=null, result=[], line=1, col=1, 
 					[token, matchType] = pattern(current, code.slice(0, index), result) || [];
 				else if (current.startsWith(pattern))
 					token = pattern;
-				if (token !== undefined)
+				if (token !== undefined) {
+					types[mode + '.' + type] = types[mode + '.' + type]+1 || 1;
 					break Token; // escape double loop.
+				}
 		} 	}
 		//#IFDEV
 		if (token === undefined) {
@@ -88,3 +90,8 @@ export default function lex(grammar, code, mode=null, result=[], line=1, col=1, 
 
 	return result;
 }
+
+var types = {};
+export {types};
+
+setTimeout(() => console.log(types), 500);

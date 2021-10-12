@@ -14,13 +14,20 @@ let property = fregex(
 	terminator
 );
 
+let varExpressionCache = {};
+
 var Parse = {
 	/**
 	 * Create a fregex to find expressions that start with "this" or with local variables.
 	 * @param vars
 	 * @returns {function(*): (boolean|number)} */
 	createVarExpression_(vars=[]) {
-		return fregex(
+		let key = vars.join(','); // Benchmarking shows this cache does speed things up a little.
+		let result = varExpressionCache[key];
+		if (result)
+			return result;
+
+		return varExpressionCache[key] = fregex(
 			fregex.or(
 				fregex('this', fregex.oneOrMore(property)),
 				...vars.map(v => fregex(v, fregex.zeroOrMore(property)))

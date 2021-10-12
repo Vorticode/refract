@@ -2,6 +2,13 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 
 /**
  * Grammar for html/js code, including js templates.
+ * TODO: This could potentially be made much faster if we indexed by the first char.
+ * E.g.:
+ * start = {
+ *     '<'
+ *
+ * }
+ * nextToken = start[fisrtChar](current);
  *
  * Known bugs
  * 1. Javascript regex to match regex tokens might not be perfect.  Since no regex can match all regexes?
@@ -38,6 +45,7 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 	};
 
 	let tag = { // html open tag
+		whitespace: [whitespace, ln],
 		attribute: /^[\-_$\w\xA0-\uFFFF]+/i,
 		string: [
 			descendIf("'", 'squote'),
@@ -52,7 +60,6 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 			if (code.startsWith('/>'))
 				return ['/>', -1];
 		},
-		whitespace: [whitespace, ln],
 
 		unknown: code => lexHtmlJs.allowUnknownTagTokens
 			? [code.match(/^\w+|\S/) || []][0] // Don't fail on unknown stuff in html tags.
@@ -86,32 +93,7 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 		js: {
 			whitespace,
 			ln, // Separate from whitespace because \n can be used instead of semicolon to separate js statements.
-			semicolon: ';',
 			comment: [/^\/\/.*(?=\r?\n)/, /^\/\*[\s\S]*?\*\//],
-			template: code => {
-				if (code[0] === '`') {
-					++templateDepth;
-					braceDepth = 0;
-					return ['`', 'template'];
-				}
-			},
-			brace1: code => {
-				if (code[0] === '{') {
-					braceDepth++;
-					return ['{']
-				}
-			},
-			brace2: code => {
-				if (code[0] === '}') {
-					if (braceDepth === 0 && templateDepth)
-						return ['}', -1] // pop out of js mode, back to tempate mode.
-					braceDepth--;
-					return ['}']; // just match
-				}
-			},
-			hex: /^0x[0-9a-f]+/i, // Must occur before number.
-			number: /^\d*\.?\d+(e\d+)?/, // Must occur before . operator.
-
 			end: code => code.startsWith('</script>') ? ['', -1] : undefined,
 
 			// Can't use a regex to parse a regex, so instead we look for pairs of matching / and see if
@@ -150,6 +132,8 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 				}
 
 			},
+			hex: /^0x[0-9a-f]+/i, // Must occur before number.
+			number: /^\d*\.?\d+(e\d+)?/, // Must occur before . operator.
 
 			operator: (
 				'&& || ! => ' +                 // Logic / misc operators
@@ -166,6 +150,28 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 				if (!keyword.includes(result) && !value.includes(result))
 					return [result];
 			},
+			template: code => {
+				if (code[0] === '`') {
+					++templateDepth;
+					braceDepth = 0;
+					return ['`', 'template'];
+				}
+			},
+			brace1: code => {
+				if (code[0] === '{') {
+					braceDepth++;
+					return ['{']
+				}
+			},
+			brace2: code => {
+				if (code[0] === '}') {
+					if (braceDepth === 0 && templateDepth)
+						return ['}', -1] // pop out of js mode, back to tempate mode.
+					braceDepth--;
+					return ['}']; // just match
+				}
+			},
+			semicolon: ';',
 			value,
 			keyword,
 			string: [/^"(\\\\|\\"|[^"])*"/, /^'(\\\\|\\'|[^'])*'/],
