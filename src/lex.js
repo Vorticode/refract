@@ -50,7 +50,7 @@ export default function lex(grammar, code, mode=null, result=[], line=1, col=1, 
 				else if (current.startsWith(pattern))
 					token = pattern;
 				if (token !== undefined) {
-					types[mode + '.' + type] = types[mode + '.' + type]+1 || 1;
+					//types[mode + '.' + type] = types[mode + '.' + type]+1 || 1;
 					break Token; // escape double loop.
 				}
 		} 	}
@@ -91,7 +91,5 @@ export default function lex(grammar, code, mode=null, result=[], line=1, col=1, 
 	return result;
 }
 
-var types = {};
-export {types};
-
-setTimeout(() => console.log(types), 500);
+// var types = {};
+// setTimeout(() => console.log(types), 500);

@@ -52,6 +52,9 @@ export default class VElement {
 	 * @param el {HTMLElement} */
 	apply(parent=null, el=null) {
 
+		if (this.tagName === 'svg')
+			Refract.inSvg = true;
+
 		// 1. Create Element
 		if (el) { // Binding to existing element.
 			this.el = el;
@@ -98,9 +101,11 @@ export default class VElement {
 
 				newEl = new Class(...args);
 			}
+			else if (Refract.inSvg) {
+				newEl = document.createElementNS('http://www.w3.org/2000/svg', this.tagName);
+			}
 			else
 				newEl = document.createElement(this.tagName);
-
 
 			if (this.el) {  // Replacing existing element
 				this.el.parentNode.insertBefore(newEl, this.el);
@@ -237,6 +242,7 @@ export default class VElement {
 		}
 
 
+
 		// 4. Recurse through children
 		for (let vChild of this.vChildren) {
 			vChild.scope = {...this.scope}
@@ -249,6 +255,10 @@ export default class VElement {
 	    if ('value' in this.attributes) { // This should happen after the children are added, e.g. for select <options>
 		    setInputValue(this.xel, this.el, this.attributes.value, this.scope, isTextArea || isContentEditable);
 	    }
+
+
+		if (this.tagName === 'svg')
+			Refract.inSvg = false;
 
 		return 1; // 1 element created, not counting children.
 	}
@@ -468,6 +478,7 @@ export default class VElement {
 				let isSelfClosing = tagTokens[tagTokens.length-1] == '/>' ||
 					['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source',
 						'track', 'wbr', 'command', 'keygen', 'menuitem'].includes(vel.tagName);
+					// TODO: What svg elements are self-closing?
 
 				// Process children if not a self-closing tag.
 				if (!isSelfClosing) {

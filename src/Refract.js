@@ -27,6 +27,11 @@ export default class Refract extends HTMLElement {
 	 * @type {boolean|(Node|HTMLElement)[]} */
 	static elsCreated = false;
 
+	/**
+	 * Used by VElement.apply() to keep track of whether we're within an svg tag.
+	 * @type {boolean} */
+	static inSvg = false;
+
 
 
 	/** @type {string} */

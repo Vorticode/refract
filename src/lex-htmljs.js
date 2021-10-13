@@ -3,10 +3,16 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 /**
  * Grammar for html/js code, including js templates.
  * TODO: This could potentially be made much faster if we indexed by the first char.
+ * Then we wouldn't have to iterate through each rule, trying one at a time.
  * E.g.:
  * start = {
- *     '<'
- *
+ *     '<': code => {
+ *         if (isTag) ...
+ *         if (isOperator) ...
+ *     },
+ *     whitespace, // The regular rules
+ *     ln,
+ *     ...
  * }
  * nextToken = start[fisrtChar](current);
  *
@@ -21,8 +27,9 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 	let templateDepth = 0;
 	let whitespace = /^[ \t\v\f\xa0]+/;
 	let ln = /^\r?\n/
-	let tagStart = /^<!?([\-_\w\xA0-\uFFFF]+)/i;
-	let closeTag = /^<\/[\-_$\w\xA0-\uFFFF]+\s*>/i;
+	let tagStart = /^<!?([\-_\w\xA0-\uFFFF:]+)/i;
+	let closeTag = /^<\/[\-_$\w\xA0-\uFFFF:]+\s*>/i;
+	//let svg = /^<svg[\S\s]*?<\/svg>/;
 
 	// Functions re-used below:
 	let expr = code => {
@@ -46,7 +53,7 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 
 	let tag = { // html open tag
 		whitespace: [whitespace, ln],
-		attribute: /^[\-_$\w\xA0-\uFFFF]+/i,
+		attribute: /^[\-_$\w\xA0-\uFFFF:]+/i,
 		string: [
 			descendIf("'", 'squote'),
 			descendIf( '"', 'dquote')
@@ -65,6 +72,8 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 			? [code.match(/^\w+|\S/) || []][0] // Don't fail on unknown stuff in html tags.
 			: undefined,
 	};
+
+
 
 	// Check previous token to see if we've just entered a script tag.
 	let script = (code, prev, tokens) => {
@@ -180,6 +189,7 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 			script,
 			comment: descendIf('<!--', 'htmlComment'),
 			closeTag,
+			//svg,
 			openTag: descendIf(tagStart, 'tag', match => lastTag = match[1]),
 			text: /^[\s\S]+?(?=<|$)/,
 		},
@@ -193,6 +203,7 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 			expr,
 			comment: descendIf('<!--', 'templateComment'),
 			closeTag,
+			//svg,
 			openTag: descendIf(tagStart, 'templateTag', match => lastTag = match[1]),
 			template,
 
