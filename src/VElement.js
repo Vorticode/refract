@@ -101,9 +101,8 @@ export default class VElement {
 
 				newEl = new Class(...args);
 			}
-			else if (Refract.inSvg) {
+			else if (Refract.inSvg) // SVG's won't render w/o this path.
 				newEl = document.createElementNS('http://www.w3.org/2000/svg', this.tagName);
-			}
 			else
 				newEl = document.createElement(this.tagName);
 
@@ -168,16 +167,12 @@ export default class VElement {
 				this.el.attachShadow({mode: this.el.getAttribute('shadow') || 'open'});
 		}
 
-
 		// List of input types:
 		// https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#input_types
 		//let hasTextEvents = Object.keys(this.attributes).some(attr =>
 		//	['onchange','oninput',  'onkeydown', 'onkeyup', 'onkeypress', 'oncut', 'onpaste'].includes(attr));
 		let isContentEditable =this.el.hasAttribute('contenteditable') && this.el.getAttribute('contenteditable') !== 'false';
 		let isTextArea = this.tagName==='textarea';
-		let isTypableInput = this.tagName === 'input' &&
-			!['button', 'checkbox', 'color', 'file', 'hidden', 'image', 'radio', 'reset', 'submit'].includes(this.el.getAttribute('type'));
-		let isTypable = isTextArea || isContentEditable || isTypableInput;
 
 
 
@@ -189,6 +184,10 @@ export default class VElement {
 
 			// Don't grab value from input if we can't reverse the expression.
 			if (isSimpleExpr) {
+
+				let isTypableInput = this.tagName === 'input' &&
+					!['button', 'checkbox', 'color', 'file', 'hidden', 'image', 'radio', 'reset', 'submit'].includes(this.el.getAttribute('type'));
+				let isTypable = isTextArea || isContentEditable || isTypableInput;
 
 				let scope = {'this': this.xel, ...this.scope};
 				if (isTypable) { // TODO: Input type="number" is typable but also dispatches change event on up/down click.
@@ -241,8 +240,6 @@ export default class VElement {
 			}
 		}
 
-
-
 		// 4. Recurse through children
 		for (let vChild of this.vChildren) {
 			vChild.scope = {...this.scope}
@@ -252,9 +249,8 @@ export default class VElement {
 
 
 		// 5. Set initial value for select from value="" attribute.    
-	    if ('value' in this.attributes) { // This should happen after the children are added, e.g. for select <options>
+	    if ('value' in this.attributes) // This should happen after the children are added, e.g. for select <options>
 		    setInputValue(this.xel, this.el, this.attributes.value, this.scope, isTextArea || isContentEditable);
-	    }
 
 
 		if (this.tagName === 'svg')
@@ -412,7 +408,7 @@ export default class VElement {
 
 			// Text node
 			if (token.type === 'text') {
-				let vtext = new VText(Refract.htmlDecode(token));
+				let vtext = new VText(token);
 				result.push(vtext);
 			}
 

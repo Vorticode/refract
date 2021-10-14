@@ -249,7 +249,7 @@ export default class Refract extends HTMLElement {
 			// Make sure we're finding html = ` and the constructor at the top level, and not inside a function.
 			// This search is also faster than if we use matchFirst() from the first token.
 			let braceDepth = 0;
-			for (let i=0, token; token = tokens[i]; i++) {
+			for (let i = 0, token; token = tokens[i]; i++) {
 				if (token == '{')
 					braceDepth++;
 				else if (token == '}')
@@ -264,13 +264,15 @@ export default class Refract extends HTMLElement {
 					break;
 			}
 
-			let htmlMatch = fregex.matchFirst(['html', Parse.ws, '=', Parse.ws, {type: 'template'}], tokens, htmlIdx);
+			let htmlMatch = fregex.matchFirst(['html', Parse.ws, '=', Parse.ws, {type: 'template'}, Parse.ws, fregex.zeroOrOne(';')], tokens, htmlIdx);
 			//#IFDEV
 			if (!htmlMatch)
-				throw new Error('Class is missing an html property');
+				throw new Error(`Class ${self.name} is missing an html property with a template value.`);
 			//#ENDIF
-			let template = tokens[htmlMatch.index + htmlMatch.length - 1]; // a single token for the string value.
-			//	NewClass.html = template.slice(1, -1).trim();
+
+			// Remove the html property, so that when classes are constructed it's not evaluated as a regular template string.
+			let htmlAssign = tokens.splice(htmlMatch.index, htmlMatch.length);
+			let template = htmlAssign.filter(t=>t.tokens)[0]; // only the template token has sub-tokens.
 
 			// B. Parse html
 			let innerTokens = template.tokens.slice(1, -1); // skip open and close quotes.
@@ -280,27 +282,30 @@ export default class Refract extends HTMLElement {
 		}
 
 
-
-
 		// 3. Get the constructorArgs and inject new code.
 		{
-			let tokens2 = tokens.slice();
 
-			let constr = fregex.matchFirst(['constructor', Parse.ws, '('], tokens2, constructorIdx);
+			let constr = fregex.matchFirst(['constructor', Parse.ws, '('], tokens, constructorIdx);
 			let injectIndex, injectCode;
 
 			// Modify existing constructor
 			if (constr) { // is null if no match found.
 
 				// Find arguments
-				let argTokens = fregex.matchFirst(Parse.argList, tokens2, constr.index+constr.length);
+				let argTokens = fregex.matchFirst(Parse.argList, tokens, constr.index+constr.length);
 				result.constructorArgs = Parse.filterArgNames(argTokens);
 
 				// Find super call in constructor  body
 				let sup = fregex.matchFirst(
-					['super', Parse.ws, '(', Parse.argList, ')', Parse.ws, ';'],
-					tokens2,
+					// TODO: Below I need to account for super calls that contain ; in an inline anonymous founction.
+					// Instead count the ( and ) and end on the last )
+					['super', Parse.ws, '(', fregex.zeroOrMore(fregex.not(';')), ';'],
+					tokens,
 					argTokens.index+argTokens.length);
+				//#IFDEV
+				if (!sup)
+					throw new Error(`Class ${self.name} constructor() { ... } is missing call to super().`);
+				//#ENDIF
 
 				injectIndex = sup.index + sup.length;
 				injectCode = [
@@ -322,7 +327,7 @@ export default class Refract extends HTMLElement {
 
 			// Create new constructor
 			else {
-				injectIndex = fregex.matchFirst(['{'], tokens2).index+1;
+				injectIndex = fregex.matchFirst(['{'], tokens).index+1;
 				injectCode = [
 					'//Begin Refract injected code.',
 					`constructor() {`,
@@ -336,8 +341,8 @@ export default class Refract extends HTMLElement {
 				].join('\r\n\t\t');
 			}
 
-			tokens2.splice(injectIndex, 0, '\r\n\t\t\t' + injectCode);
-			result.code = tokens2.join('');
+			tokens.splice(injectIndex, 0, '\r\n\t\t\t' + injectCode);
+			result.code = tokens.join('');
 		}
 
 		return result;
@@ -388,7 +393,7 @@ export default class Refract extends HTMLElement {
 				window.RefractCurrentClass = ${this.name};
 				${this.name}.createFunction = (...args) => eval(\`(function(\${args.slice(0, -1).join(',')}) {\${args[args.length-1]}})\`);
 				let compiled = ${this.name}.preCompile(${this.name});
-				${this.name} = eval('('+compiled.code+')');				
+				${this.name} = eval('('+compiled.code+')');		
 				${this.name}.decorate(${this.name}, compiled);
 				delete window.RefractCurrentClass;
 				return ${this.name};	

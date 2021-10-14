@@ -249,15 +249,28 @@ Deno.test('Refract.expr.Complex', () => {
 Deno.test('Refract.expr.HashVar', () => {
 	class A extends Refract {
 		value = '<hi>';
-		html = `<x-19>#{this.value.toUpperCase()}</x-19>`;
+		html = `<a-190>#{this.value.toUpperCase()}</a-190>`;
 	}
 	eval(A.compile());
 	let a = new A();
 
-	assertEquals(a.outerHTML, '<x-19>&lt;HI&gt;</x-19>');
+	assertEquals(a.outerHTML, '<a-190>&lt;HI&gt;</a-190>');
 });
 
-// Subscribe to an inherited property, then create the same property on the sub-class.
+Deno.test('Refract.expr.HashVarAttribute', () => {
+	class A extends Refract {
+		value = 'User';
+		html = `<a-195><div title="Hello #{this.value}"></div></a-195>`;
+	}
+	eval(A.compile());
+	let a = new A();
+
+	assertEquals(a.outerHTML, '<a-195><div title="Hello User"></div></a-195>');
+});
+
+
+/**
+ * Subscribe to an inherited property, then create the same property on the sub-class. */
 Deno.test('Refract.expr.Inherited', () => {
 	class A extends Refract {
 		count = 2;
@@ -269,6 +282,7 @@ Deno.test('Refract.expr.Inherited', () => {
 	class B extends A {
 		constructor() {
 			super();
+			// noinspection JSPotentiallyInvalidUsageOfThis
 			this.count = 3;
 		}
 

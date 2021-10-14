@@ -221,7 +221,7 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 			commentEnd: ascendIf('-->'),
 			commentBody: code => [code.match(
 				lexHtmlJs.allowHashTemplates
-					? /^[\s\S]+?(?=-->|\${|#{|$)/
+					? /^[\s\S]+?(?=-->|[$#]{|$)/
 					: /^[\s\S]+?(?=-->|\${|$)/) || []][0],
 		},
 		tag,
@@ -236,13 +236,19 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 		squote: { // single quote string within tag
 			expr,
 			quote: ascendIf("'"),
-			text: /^[\s\S]+?(?=(?<!\\)\${|(?<!\\\$?){|<|`|')/,
+			text: code => [code.match(
+				lexHtmlJs.allowHashTemplates
+				? /^[\s\S]+?(?=(?<!\\)[$#]{|(?<!\\[$#]?){|<|`|')/
+				: /^[\s\S]+?(?=(?<!\\)\${|(?<!\\\$?){|<|`|')/) || []][0]
 		},
 
 		dquote: { // double quote string within tag.
 			expr,
 			quote: ascendIf('"'),
-			text: /^[\s\S]+?(?=(?<!\\)\${|(?<!\\\$?){|<|`|")/,
+			text: code => [code.match(
+				lexHtmlJs.allowHashTemplates
+				? /^[\s\S]+?(?=(?<!\\)[$#]{|(?<!\\[$#]?){|<|`|")/
+				: /^[\s\S]+?(?=(?<!\\)\${|(?<!\\\$?){|<|`|")/) || []][0]
 		},
 
 		// TODO: css?

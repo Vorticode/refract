@@ -219,7 +219,7 @@ export default class VExpression {
 				.flat().map(h=>h===undefined?'':h); // undefined becomes empty string
 
 			if (this.isHash) // #{...} template.  TODO: Why is decode needed here?
-				result = [htmls.map(html => new VText(Html.decode(html)))]; // TODO: Don't join all the text nodes.  It creates index issues.
+				result = [htmls.map(html => new VText(html))]; // TODO: Don't join all the text nodes.  It creates index issues.
 			else
 				for (let html of htmls) {
 					html += ''; // can be a number.
@@ -317,7 +317,7 @@ export default class VExpression {
 						this.vChildren.splice(index, 0, []);
 
 					if (this.type === 'simple')
-						this.vChildren[index] = [new VText(Html.decode(array[index]))] // TODO: Need to evaluate this expression instead of just using the value from the array.
+						this.vChildren[index] = [new VText(array[index])] // TODO: Need to evaluate this expression instead of just using the value from the array.
 					else  // loop
 						this.vChildren[index] = this.loopItemEls.map(vel => vel.clone(this.xel, this));
 
