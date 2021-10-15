@@ -6,6 +6,7 @@ import htmljs from "./lex-htmljs.js";
 htmljs.allowHashTemplates = true;
 import delve from "./delve.js";
 
+
 /**
  * A virtual representation of an Element.
  * Supports expressions (VExpression) as attributes and children that can be evaluated later. */
@@ -32,6 +33,19 @@ export default class VElement {
 	/** @type {(VElement|VExpression|VText)[]} */
 	vChildren = [];
 
+	/**
+	 * TODO: We can speed things up if a VElement has no expressions within it.
+	 * And no ids, no svg's, no events, no shadowdom, and no slots.
+	 *
+	 * We should just store the html, and create it as needed.
+	 * Instead of recursing through all of the VElements attributes and children.
+	 *
+	 * I can add an getStaticCode() function that calculates and caches static code if it's static.
+	 *
+	 * Or we can apply id's, events, shadowdom, and slots manually after creating it?
+	 * @type {string|null} */
+	//staticCode = null;
+
 	/** @type {object<string, string>} */
 	scope = {};
 
@@ -51,12 +65,13 @@ export default class VElement {
 	 * @param parent {HTMLElement}
 	 * @param el {HTMLElement} */
 	apply(parent=null, el=null) {
+		let tagName = this.tagName;
 
-		if (this.tagName === 'svg')
+		if (tagName === 'svg')
 			Refract.inSvg = true;
 
-		// 1. Create Element
-		if (el) { // Binding to existing element.
+		// 1A. Binding to existing element.
+		if (el) {
 			this.el = el;
 
 			// This will cause trouble when we call cloneNode() on an element with a slot.
@@ -66,15 +81,15 @@ export default class VElement {
 				this.xel.slotHtml = el.innerHTML;
 			el.innerHTML = '';
 		}
-
+		// 1B. Create Element
 		else {
 			let newEl;
 
 			// Special path, because we can't use document.createElement() to create an element whose constructor
 			//     adds attributes and child nodes.
 			// https://stackoverflow.com/questions/43836886
-			if (this.tagName.includes('-') && customElements.get(this.tagName)) {
-				let Class = customElements.get(this.tagName);
+			if (tagName.includes('-') && customElements.get(tagName)) {
+				let Class = customElements.get(tagName);
 
 				let args = []
 				if (Class.constructorArgs)
@@ -102,9 +117,9 @@ export default class VElement {
 				newEl = new Class(...args);
 			}
 			else if (Refract.inSvg) // SVG's won't render w/o this path.
-				newEl = document.createElementNS('http://www.w3.org/2000/svg', this.tagName);
+				newEl = document.createElementNS('http://www.w3.org/2000/svg', tagName);
 			else
-				newEl = document.createElement(this.tagName);
+				newEl = document.createElement(tagName);
 
 			if (this.el) {  // Replacing existing element
 				this.el.parentNode.insertBefore(newEl, this.el);
@@ -119,7 +134,7 @@ export default class VElement {
 			this.el = newEl;
 
 			if (Refract.elsCreated)
-				Refract.elsCreated.push('<'+this.tagName + '>');
+				Refract.elsCreated.push('<'+tagName + '>');
 		}
 
 
@@ -144,11 +159,11 @@ export default class VElement {
 			// Id
 			if (name === 'id')
 				this.xel[this.el.getAttribute('id')] = this.el;
-			if (name === 'data-id')
+			else if (name === 'data-id')
 				this.xel[this.el.getAttribute('data-id')] = this.el;
 
 			// Events
-			if (name.startsWith('on')) {
+			else if (name.startsWith('on')) {
 
 				// Get the createFunction() from the class if it's already been instantiated.  Else use Refract's temporary createfunction().
 				// This lets us use other variabls defiend in the same scope as the class that extends Refract.
@@ -163,7 +178,7 @@ export default class VElement {
 			}
 
 			// Shadow DOM
-			if (name==='shadow' && !this.el.shadowRoot)
+			else if (name==='shadow' && !this.el.shadowRoot)
 				this.el.attachShadow({mode: this.el.getAttribute('shadow') || 'open'});
 		}
 
@@ -172,20 +187,19 @@ export default class VElement {
 		//let hasTextEvents = Object.keys(this.attributes).some(attr =>
 		//	['onchange','oninput',  'onkeydown', 'onkeyup', 'onkeypress', 'oncut', 'onpaste'].includes(attr));
 		let isContentEditable =this.el.hasAttribute('contenteditable') && this.el.getAttribute('contenteditable') !== 'false';
-		let isTextArea = this.tagName==='textarea';
-
-
+		let isTextArea = tagName==='textarea';
+		let hasValue = 'value' in this.attributes;
 
 		// 2B. Form field two way binding.
 		// Listening for user to type in form field.
-		if ('value' in this.attributes) {
+		if (hasValue) {
 			let value = this.attributes.value;
 			let isSimpleExpr = value.length === 1 && value[0] && value[0].type === 'simple';
 
 			// Don't grab value from input if we can't reverse the expression.
 			if (isSimpleExpr) {
 
-				let isTypableInput = this.tagName === 'input' &&
+				let isTypableInput = tagName === 'input' &&
 					!['button', 'checkbox', 'color', 'file', 'hidden', 'image', 'radio', 'reset', 'submit'].includes(this.el.getAttribute('type'));
 				let isTypable = isTextArea || isContentEditable || isTypableInput;
 
@@ -207,11 +221,11 @@ export default class VElement {
 						}
 					}, true); // We bind to the event capture phase so we can update values before it calls onchange and other event listeners added by the user.
 				}
-				else /*if (this.tagName === 'select' || this.tagName==='input')*/ {
+				else /*if (tagName === 'select' || tagName==='input')*/ {
 					this.el.addEventListener('change', () => {
 						// TODO: Convert value to boolean for checkbox.  File input type.
 						let val;
-						if (this.tagName === 'select' && this.el.hasAttribute('multiple')) {
+						if (tagName === 'select' && this.el.hasAttribute('multiple')) {
 							let val = Array.from(this.el.children).filter(el => el.selected).map(opt => opt.value);
 							// if (!Array.isArray(delve(scope, value[0].watchPaths[0])))
 							// 	val = val[0];
@@ -229,7 +243,7 @@ export default class VElement {
 
 		// 3. Slot content
 		let count = 0;
-		if (this.tagName === 'slot') {
+		if (tagName === 'slot') {
 			let slotChildren = VElement.fromHtml(this.xel.slotHtml, Object.keys(this.scope), this);
 			for (let vChild of slotChildren) {
 				vChild.scope = {...this.scope}
@@ -242,18 +256,18 @@ export default class VElement {
 
 		// 4. Recurse through children
 		for (let vChild of this.vChildren) {
-			vChild.scope = {...this.scope}
+			vChild.scope = {...this.scope} // copy
 			vChild.startIndex = count;
 			count += vChild.apply(this.el);
 		}
 
 
 		// 5. Set initial value for select from value="" attribute.    
-	    if ('value' in this.attributes) // This should happen after the children are added, e.g. for select <options>
+	    if (hasValue) // This should happen after the children are added, e.g. for select <options>
 		    setInputValue(this.xel, this.el, this.attributes.value, this.scope, isTextArea || isContentEditable);
 
 
-		if (this.tagName === 'svg')
+		if (tagName === 'svg')
 			Refract.inSvg = false;
 
 		return 1; // 1 element created, not counting children.
