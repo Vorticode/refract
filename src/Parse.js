@@ -9,7 +9,7 @@ let terminator = fregex.lookAhead(
 let property = fregex(
 	fregex.or(
 		fregex('.', {type: 'identifier'}), //.item
-		fregex('[', fregex.or({type: 'string'}, {type: 'number'}), ']') // ['item']
+		fregex('[', fregex.or({type: 'string'}, {type: 'number'}, {type: 'template'}), ']') // ['item']
 	),
 	terminator
 );
@@ -130,7 +130,8 @@ var Parse = {
 		let loopBody = [];
 		let braceDepth=0, bracketDepth=0, parenDepth=0;
 		let bodyTokens = tokens.slice(mapExpr.length + paramExpr.length);
-		for (let i=0, token; token=bodyTokens[i]; i++) {
+		// noinspection JSAssignmentUsedAsCondition
+		for (let i=0, token; token = bodyTokens[i]; i++) {
 
 			braceDepth   += {'{':1, '}':-1}[token] | 0; // Single | gives the same result as double ||, yields smaller minified size.
 			bracketDepth += {'[':1, ']':-1}[token] | 0;
@@ -143,8 +144,7 @@ var Parse = {
 				else // Has extra tokens at the end.  Therefore this isn't a simple map expr.
 					break; // e.g. this.array.map(...).reduce(...)
 			} else
-				loopBody.push(token)
-
+				loopBody.push(token);
 		}
 
 		return [null, null];
@@ -191,8 +191,9 @@ var Parse = {
 		for (let piece of expr)
 			if (piece == 'this' || piece.type === 'identifier' || piece.type === 'number')
 				result.push(piece + '');
-			else if (piece.type === 'string') // part of this['that']['somethingElse']
-				result.push(JSON.parse(piece)); // Evaluate string.
+			else if (piece.type === 'string' || piece.type === 'template') // part of this['that']['somethingElse']
+				result.push(eval(piece + '')); // Evaluate string.  Unlike JSON.parse(), eval() handles "string", 'string', and `string`
+
 		return result;
 	}
 };

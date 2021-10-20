@@ -246,6 +246,35 @@ Deno.test('Refract.expr.Complex', () => {
 	assertEquals(a.outerHTML, `<x-180>[{"name":"Apple"},{"name":"Cherry"}]</x-180>`);
 });
 
+Deno.test('Refract.expr.strings', () => {
+	class A extends Refract {
+		a = {b: {c: {d: 1}}}
+		html = `<x-185>${this.a['b']["c"][`d`]}</x-185>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	assertEquals(a.outerHTML, `<x-185>1</x-185>`);
+
+	a.a.b.c.d = 2
+	assertEquals(a.outerHTML, `<x-185>2</x-185>`);
+});
+
+Deno.test('Refract.expr.strings2', () => {
+	class A extends Refract {
+		a = {b: {c: {d: {e12: 1}}}}
+		html = `<x-187>${this.a['b']["c"][`d`][`e${1}2`]}</x-187>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	assertEquals(a.outerHTML, `<x-187>1</x-187>`);
+
+	a.a.b.c.d.e12 = 2
+	assertEquals(a.outerHTML, `<x-187>2</x-187>`);
+});
+
+
 Deno.test('Refract.expr.HashVar', () => {
 	class A extends Refract {
 		value = '<hi>';

@@ -65,7 +65,10 @@ let handler = {
 		// Make sure to call functions on the unproxied version
 		if (typeof result === 'function') {
 			let obj2 = obj.$removeProxy || obj;
-			return obj2[field].bind(obj2);
+			let result = obj2[field];
+			if (result.prototype) // If it's a class and not a regular function, don't bind it to the object:
+				return result;
+			return result.bind(obj2);
 		}
 
 		// We only wrap objects and arrays in proxies.

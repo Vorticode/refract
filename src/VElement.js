@@ -106,7 +106,7 @@ export default class VElement {
 								return true;
 
 							// Else evaluate as JSON, or as a string.
-							let result = VElement.evalVAttribute(this, (val || []), this.scope).join('');
+							let result = VElement.evalVAttributeAsString(this, (val || []), this.scope);
 							try {
 								result = JSON.parse(result);
 							} catch (e) {}
@@ -139,6 +139,7 @@ export default class VElement {
 
 
 		// 2. Set Attributes
+		let hasValue = ('value' in this.attributes && tagName !== 'option');
 		for (let name in this.attributes) {
 			let value = this.attributes[name];
 			for (let attrPart of value)
@@ -148,19 +149,21 @@ export default class VElement {
 					expr.watch(() => {
 						if (name === 'value')
 							setInputValue(this.xel, this.el, value, this.scope, isTextArea || isContentEditable);
-						else
-							this.el.setAttribute(name, VElement.evalVAttribute(this.xel, value, this.scope).join(''));
+
+						else {
+							let value2 = VElement.evalVAttributeAsString(this.xel, value, this.scope);
+							this.el.setAttribute(name, value2);
+						}
 					});
 				}
 
+			// TODO: This happens again for inputs in step 5 below:
 			VElement.setVAttribute(this.xel, this.el, name, value, this.scope);
 
 
 			// Id
-			if (name === 'id')
-				this.xel[this.el.getAttribute('id')] = this.el;
-			else if (name === 'data-id')
-				this.xel[this.el.getAttribute('data-id')] = this.el;
+			if (name === 'id' || name === 'data-id')
+				this.xel[this.el.getAttribute(name)] = this.el;
 
 			// Events
 			else if (name.startsWith('on')) {
@@ -172,7 +175,7 @@ export default class VElement {
 				this.el[name] = event => { // e.g. el.onclick = ...
 					let args = ['event', 'el', ...Object.keys(this.scope)];
 					let code = this.el.getAttribute(name);
-					let func = createFunction(...args, code).bind(this.xel);
+					let func = createFunction(...args, code).bind(this.xel); // Create in same scope as parent class.
 					func(event, this.el, ...Object.values(this.scope));
 				}
 			}
@@ -188,7 +191,6 @@ export default class VElement {
 		//	['onchange','oninput',  'onkeydown', 'onkeyup', 'onkeypress', 'oncut', 'onpaste'].includes(attr));
 		let isContentEditable =this.el.hasAttribute('contenteditable') && this.el.getAttribute('contenteditable') !== 'false';
 		let isTextArea = tagName==='textarea';
-		let hasValue = 'value' in this.attributes;
 
 		// 2B. Form field two way binding.
 		// Listening for user to type in form field.
@@ -261,9 +263,9 @@ export default class VElement {
 			count += vChild.apply(this.el);
 		}
 
-
 		// 5. Set initial value for select from value="" attribute.    
 	    if (hasValue) // This should happen after the children are added, e.g. for select <options>
+	    	// TODO: Do we only need to do this for select boxes b/c we're waiting for their children?  Other input types are handled above in step 2.
 		    setInputValue(this.xel, this.el, this.attributes.value, this.scope, isTextArea || isContentEditable);
 
 
@@ -321,7 +323,7 @@ export default class VElement {
 
 
 	/**
-	 * TODO: Merge this with evalVAttribute
+	 * TODO: Reduce shared logic between this and evalVAttribute
 	 * If a solitary VExpression, return whatevr object it evaluates to.
 	 * Otherwise merge all pieces into a string and return that.
 	 * value="${'one'}" becomes 'one'
@@ -330,14 +332,13 @@ export default class VElement {
 	 * @param ref {Refract}
 	 * @param attrParts {(VExpression|string)[]}
 	 * @param scope {object}
-	 * @returns {*[]|string} */
-	static evalVAttribute2(ref, attrParts, scope={}) {
+	 * @returns {*|string} */
+	static evalVAttribute(ref, attrParts, scope={}) {
 		let result = attrParts.map(expr =>
 			expr instanceof VExpression ? expr.exec.apply(ref, Object.values(scope)) : expr
 		);
 
 		// If it's a single value, return that.
-		// This lets'
 		if (result.length === 1)
 			return result[0];
 
@@ -348,38 +349,34 @@ export default class VElement {
 	 * @param ref {Refract}
 	 * @param attrParts {(VExpression|string)[]}
 	 * @param scope {object}
-	 * @return {string[]} */
-	static evalVAttribute(ref, attrParts, scope={}) {
+	 * @return {string} */
+	static evalVAttributeAsString(ref, attrParts, scope={}) {
 		let result = [];
 		for (let attrPart of attrParts) {
 			if (attrPart instanceof VExpression) {
-
-				// TODO: What about scope?
 				let val = attrPart.exec.apply(ref, Object.values(scope));
 				if (Array.isArray(val) || (val instanceof Set))
 					val = Array.from(val).join(' '); // Useful for classes.
-				else if (typeof val === 'object') { // style attribute
-					let val2 = [];
-					for (let name in val)
-						val2.push(name + ': ' + val[name] + '; ');
-					val = val2.join('');
-				}
+				else if (val && typeof val === 'object') // style attribute
+					val = Object.entries(val).map(([name, value]) => `${name}: ${val[name]}; `).join('');
 				result.push(val)
 			}
 			else
 				result.push(Refract.htmlDecode(attrPart)); // decode because this will be passed to setAttribute()
 		}
-		return result;
+		return result.join('');
 	}
 
 	/**
+	 * @deprecated.  Just call setAttribute with evalVAttributeAsString()
 	 * @param xel {Refract}
 	 * @param el {HTMLElement}
 	 * @param attrName {string}
 	 * @param scope {object}
 	 * @param attrParts {(VExpression|string)[]} */
 	static setVAttribute(xel, el, attrName, attrParts, scope={}) {
-		el.setAttribute(attrName, VElement.evalVAttribute(xel, attrParts, scope).join(''));
+		let value = VElement.evalVAttributeAsString(xel, attrParts, scope);
+		el.setAttribute(attrName, value);
 	}
 
 	/**
@@ -520,22 +517,19 @@ export default class VElement {
 
 
 function setInputValue(ref, el, value, scope, isText) {
-	// if (el.tagName === 'X-SELECT2')
-	// 	debugger;
-	if (el.tagName === 'SELECT')
-		setSelectValue(el, VElement.evalVAttribute2(ref, value, scope));
-	else if (isText)
-		el.innerHTML = VElement.evalVAttribute(ref, value, scope).join('');
-	else // Some custom elements can accept object or array for the value property:
-		el.value = VElement.evalVAttribute2(ref, value, scope)
-}
-
-/**
- * @param select {HTMLElement}
- * @param values {string[]} */
-function setSelectValue(select, values) {
-	for (let opt of select.children) {
-		//let optVal = opt.hasAttribute('value') ? opt.getAttribute('value') : opt.textContent;
-		opt.selected = Array.isArray(values) ? values.includes(opt.value) : values === opt.value;
+	if (isText || el.tagName === 'INPUT') {
+		let val = VElement.evalVAttributeAsString(ref, value, scope);
+		if (isText)
+			el.innerHTML = val;
+		else
+			el.value = val;
+	}
+	else {
+		let values = VElement.evalVAttribute(ref, value, scope);
+		if (el.tagName === 'SELECT')
+			for (let opt of el.children)
+				opt.selected = Array.isArray(values) ? values.includes(opt.value) : values === opt.value;
+		else // Some custom elements can accept object or array for the value property:
+			el.value = values;
 	}
 }

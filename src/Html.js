@@ -25,7 +25,7 @@ export default {
 	},
 
 	encode(text, quotes='') {
-		text = text
+		text = ((text || '') + '')
 			.replace(/&/g, '&amp;')
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;')
