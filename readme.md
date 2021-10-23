@@ -42,10 +42,10 @@ Run [this example](https://jsfiddle.net/pdg4s589/) on JSFiddle.net.
 
 Refract is still **in development** and has several known bugs.  Exercise caution if using in a production environment.
 
-## Download
+## CDN / Download
 
-- [Refract.js](https://raw.githubusercontent.com/Vorticode/refract/master/dist/Refract.js) - 101KB
-- [Refract.min.js](https://github.com/Vorticode/refract/blob/master/dist/Refract.min.js) - 26.6KB (9KB gzipped)
+- [Refract.js](https://cdn.jsdelivr.net/gh/Vorticode/refract/dist/Refract.js) - 101KB
+- [Refract.min.js](https://cdn.jsdelivr.net/gh/Vorticode/refract/dist/Refract.min.js) - 26.6KB (9KB gzipped)
 
 ## Feature Summary:
 
@@ -56,7 +56,7 @@ Refract is still **in development** and has several known bugs.  Exercise cautio
 - Doesn't take over your whole project.  Place it within standard DOM nodes only where you need it.
 - Uses standard, native html and JavaScript.  No need to learn another template or markup language.
 - Supports events, shadow DOM, slots, and more.
-- The whole library is MIT licensed.  Free for commercial use.
+- The whole library is MIT licensed.  Free for commercial use.  No attribution needed.
 
 ## Minimal Example
 
@@ -214,17 +214,17 @@ Any valid JavaScript variable can be passed to the embedded class this way, incl
 
 ### Shadow DOM
 
-If the `shadow` attribute is present on a Refract element or any of its children, any child nodes will be created as as [ShadowDOM](https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_shadow_DOM).  This allows styles to be embedded that **only** apply to the children of the Element with teh `shadow` attribute.  The `:host` selector is used to style the element itself, per the ShadowDOM specification:
+Any element with the `shadow` attribute will have its child nodes attached within a [ShadowDOM](https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_shadow_DOM) element.  This allows styles to be embedded that **only** apply to the children of the Element with the `shadow` attribute.  The `:host` selector is used to style the element itself, per the ShadowDOM specification:
 
 ```javascript
 class FancyText extends Refract {
     html = `
         <fancy-text shadow>
             <style>
-                :host { border: 10px dashed red }
-                p { text-shadow: 0 0 5px orange }
+                :host { border: 10px dashed red } /* style for <fancy-text> */
+                p { text-shadow: 0 0 5px orange } 
             </style>
-            <p>Fancy text!</p>
+            <p>I have a red border and shadow!</p>
         </fancy-text>`;
 }
 eval(FancyText.compile());
@@ -322,12 +322,12 @@ Imagine the following code:
 class RefractElement extends Refract {
     count = 2;    
     getCount() {
-        return this.count;   
+        return this.count+1;   
     }
     
     html = `
         <refract-element>
-            Count1: ${this.count}      <!-- will update -->
+            Count1: ${this.count+1}    <!-- will update -->
             Count2: ${this.getCount()} <!-- won't update -->
         </refract-element>`;
 }
@@ -337,7 +337,7 @@ let r = new RefractElement();
 r.count = 3;
 ```
 
-Only `Count1:` will be set to `3`, while `Count2:` will remain at `2`.  This happens because in the second instance, Refract cannot see the `this.count` variable and therefore cannot watch it to know when it has changed.
+Only `Count1:` will be set to `3`, while `Count2:` will remain at `2`.  This happens because in the second instance, the `this.count` variable does not occur within the `${...}` expression and therefore Refract does not know to watch to see when it changes.
 
 This can be remedied with the following code:
 
@@ -345,12 +345,12 @@ This can be remedied with the following code:
 class RefractElement extends Refract {
     count = 2;    
     getVar(variable) {
-        return variable;   
+        return variable+1;   
     }
     
     html = `
         <refract-element>
-            Count1: ${this.count}
+            Count1: ${this.count+1}
             Count2: ${this.getVar(this.count)}
         </refract-element>`;
 }

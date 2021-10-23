@@ -32,8 +32,6 @@ export default class Refract extends HTMLElement {
 	 * @type {boolean} */
 	static inSvg = false;
 
-
-
 	/** @type {string} */
 	slotHtml = '';
 
@@ -311,7 +309,7 @@ export default class Refract extends HTMLElement {
 				injectCode = [
 					'//Begin Refract injected code.',
 					...result.constructorArgs.map(argName=>
-						[`if (${argName}===undefined && this.hasAttribute('${argName}')) {`,
+						[`if (this.hasAttribute('${argName}')) {`,
 						`   ${argName} = this.getAttribute('${argName}');`,
 						`   try { ${argName} = JSON.parse(${argName}) } catch(e) {};`,
 						'}'] // [above] Parse attrib as json if it's valid json.

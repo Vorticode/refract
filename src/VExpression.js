@@ -218,7 +218,7 @@ export default class VExpression {
 			let htmls = [this.exec.apply(this.xel, Object.values(this.scope))]
 				.flat().map(h=>h===undefined?'':h); // undefined becomes empty string
 
-			if (this.isHash) // #{...} template.  TODO: Why is decode needed here?
+			if (this.isHash) // #{...} template
 				result = [htmls.map(html => new VText(html))]; // TODO: Don't join all the text nodes.  It creates index issues.
 			else
 				for (let html of htmls) {
@@ -266,7 +266,7 @@ export default class VExpression {
 	 * @param oldVal {string} not used.
 	 * @param root {object|array} The unproxied root object that the path originates form. */
 	receiveNotification_(action, path, value, oldVal, root) {
-
+		//window.requestAnimationFrame(() => {
 
 		// if (window.debug) // This happens when a path on an element is watched, but the path doesn't exist?
 		// debugger;
@@ -347,6 +347,7 @@ export default class VExpression {
 		this.updateSubsequentIndices_();
 
 		// TODO: Should we have a path that generates the new children and compares them with the existing children and only change what's changed?
+		//});
 	}
 
 

@@ -20,7 +20,7 @@
  *    that returns [match] for a match, [match, mode] to enter a new mode, or [match, -1] to pop the mode.
  *    Or undefined if there's no match.
  *    Where match is the string that matches.
- * 4. An array containing any mix of the above.
+ * 4. An array containing a list of strings to match
  *
  * @param code {string} String to parse.
  * @param mode {?string}
@@ -30,28 +30,58 @@
  * @param index {int} Used internally.
  *
  * @return Token[] */
-function lex(grammar, code, mode=null, result=[], line=1, col=1, index=0) {
+var lexCache = {};
+
+function lex(grammar, code, mode=null, line=1, col=1, index=0) {
+	//let start = performance.now();
+
 	mode = mode || Object.keys(grammar)[0]; // start in first mode.
 	code = code+'';
+
+	let result;
+
+	// Cache small results
+	let cacheLen = 256;
+	if (code.length < cacheLen) {
+		var key = mode + '|' + code;
+		result = lexCache[key];
+		if (result) {
+			//callTime += performance.now() - start;
+			return result.slice();
+		}
+	}
+
+
+	result = [];
+
 	while (index < code.length) {
 		let current = code.slice(index);
 
 		// 1. Identify token
 		let matchType = undefined, token = undefined;
-		Token:
-		for (var type in grammar[mode]) {
-			let value = grammar[mode][type];
-			value = Array.isArray(value) ? value : [value]; // Convert single items to array
-			for (let pattern of value) { // iterate over array and handle every item type
-				if (pattern instanceof RegExp)
-					token = (current.match(pattern) || [])[0];
-				else if (typeof pattern === 'function')
-					[token, matchType] = pattern(current, code.slice(0, index), result) || [];
-				else if (current.startsWith(pattern))
-					token = pattern;
-				if (token !== undefined)
-					break Token; // escape double loop.
-		} 	}
+		for (var [type, pattern] of Object.entries(grammar[mode])) {
+			//let start = performance.now();
+			if (pattern instanceof RegExp)
+				token = (current.match(pattern) || [])[0];
+			else if (typeof pattern === 'function')
+				[token, matchType] = pattern(current, code.slice(0, index), result) || [];
+
+
+			else if (Array.isArray(pattern)) {
+				for (let item of pattern)
+					if (current.startsWith(item)) {
+						token = item;
+						break;
+					}
+			}
+			else if (current.startsWith(pattern))
+				token = pattern;
+			if (token !== undefined)
+				break;
+
+			// let time = performance.now() - start;
+			// types[mode + '.' + type] = types[mode + '.' + type] + time || time;
+		}
 		//#IFDEV
 		if (token === undefined) {
 			let before = code.slice(Math.max(index - 10, 0), index);
@@ -68,7 +98,7 @@ function lex(grammar, code, mode=null, result=[], line=1, col=1, index=0) {
 			return [...result, token];
 
 		else if (matchType) { // Descend into new mode
-			let tokens = [token, ...lex(grammar, code, matchType, [], line, col+token.length, index+token.length)].filter(t=>t.length);
+			let tokens = [token, ...lex(grammar, code, matchType, line, col+token.length, index+token.length)].filter(t=>t.length);
 			token = Object.assign(tokens.join(''), {type, tokens, mode, line, col});
 		}
 
@@ -86,8 +116,15 @@ function lex(grammar, code, mode=null, result=[], line=1, col=1, index=0) {
 		}
 	}
 
+	//callTime += performance.now() - start;
+	if (code.length < cacheLen)
+		lexCache[key] = result;
 	return result;
 }
+
+// var types = {};
+// setTimeout(() => console.log(types), 1800);
+//setTimeout(() => console.log(callTime), 1800);
 
 /**
  * Go into the mode if the string starts with the given regex.
@@ -128,6 +165,19 @@ var ascendIf = regex => code => {
 
 /**
  * Grammar for html/js code, including js templates.
+ * TODO: This could potentially be made much faster if we indexed by the first char.
+ * Then we wouldn't have to iterate through each rule, trying one at a time.
+ * E.g.:
+ * start = {
+ *     '<': code => {
+ *         if (isTag) ...
+ *         if (isOperator) ...
+ *     },
+ *     whitespace, // The regular rules
+ *     ln,
+ *     ...
+ * }
+ * nextToken = start[fisrtChar](current);
  *
  * Known bugs
  * 1. Javascript regex to match regex tokens might not be perfect.  Since no regex can match all regexes?
@@ -140,11 +190,27 @@ var ascendIf = regex => code => {
 	let templateDepth = 0;
 	let whitespace = /^[ \t\v\f\xa0]+/;
 	let ln = /^\r?\n/;
-	let tagStart = /^<!?([\-_\w\xA0-\uFFFF]+)/i;
-	let closeTag = /^<\/[\-_$\w\xA0-\uFFFF]+\s*>/i;
+	let tagStart = /^<!?([\-_\w\xA0-\uFFFF:]+)/i;
+	let closeTag = /^<\/[\-_$\w\xA0-\uFFFF:]+\s*>/i;
+
+	let operators = (
+		'&& || ! => ' +                 // Logic / misc operators
+		'<<= >>= &= ^= |= &&= ||= ' +   // Assignment operators
+		'& | ^ ~ >>> << >> ' +          // Bitwise operators
+		'=== !=== == != >= > <= < ' +   // Comparison operators
+		'= **= += -= *= /= %= ??= ' +   // Assignment operators 2
+		'++ -- ** + - * / % ' +         // Arithmetic operators
+		', ... . ( ) [ ] ? :'			// Other operators
+	).split(/ /g);
+
+
+	//let svg = /^<svg[\S\s]*?<\/svg>/;
 
 	// Functions re-used below:
 	let expr = code => {
+		if (code[1] !== '{') // Fast reject
+			return;
+
 		if ((lexHtmlJs.allowHashTemplates && code.startsWith('#{')) || code.startsWith('${')) {
 			if (templateDepth <= 0)
 				templateDepth = 1;
@@ -164,11 +230,12 @@ var ascendIf = regex => code => {
 	};
 
 	let tag = { // html open tag
-		attribute: /^[\-_$\w\xA0-\uFFFF]+/i,
-		string: [
-			descendIf("'", 'squote'),
-			descendIf( '"', 'dquote')
-		],
+		whitespace: /^[ \r\n\t\v\f\xa0]+/,
+		attribute: /^[\-_$\w\xA0-\uFFFF:]+/i,
+		string: code =>
+			descendIf("'", 'squote')(code) ||
+			descendIf('"', 'dquote')(code)
+		,
 		equals: '=',
 		tagEnd: code => {
 			//let ret = lastTag === 'script' ? 'js' : -1;
@@ -178,12 +245,13 @@ var ascendIf = regex => code => {
 			if (code.startsWith('/>'))
 				return ['/>', -1];
 		},
-		whitespace: [whitespace, ln],
 
 		unknown: code => lexHtmlJs.allowUnknownTagTokens
 			? [code.match(/^\w+|\S/) || []][0] // Don't fail on unknown stuff in html tags.
 			: undefined,
 	};
+
+
 
 	// Check previous token to see if we've just entered a script tag.
 	let script = (code, prev, tokens) => {
@@ -192,8 +260,7 @@ var ascendIf = regex => code => {
 			return ['', 'js'];
 	};
 
-	let value = 'null true false Infinity NaN undefined globalThis'.split(/ /g);
-	let keyword = `
+	let keyword = `null true false Infinity NaN undefined globalThis
 				await break case catch class constructor const continue debugger default delete do enum else export extends
 				finally for function if implements import in instanceof interface let new package private protected public
 				return static super switch this throw try typeof var void while with yield`.trim().split(/\s+/g);
@@ -203,7 +270,7 @@ var ascendIf = regex => code => {
 	// https://stackoverflow.com/a/27120110
 	let regexBefore =
 		`{ ( [ . ; , < > <= >= == != === !== + - * % << >> >>> & | ^ ! ~ && || ? : = += -= *= %= <<= >>= >>>= &= |= ^= /=`
-		.split(/ /g);
+			.split(/ /g);
 
 	/**
 	 * A grammar for parsing js and html within js templates, for use with lex.js. */
@@ -212,32 +279,7 @@ var ascendIf = regex => code => {
 		js: {
 			whitespace,
 			ln, // Separate from whitespace because \n can be used instead of semicolon to separate js statements.
-			semicolon: ';',
-			comment: [/^\/\/.*(?=\r?\n)/, /^\/\*[\s\S]*?\*\//],
-			template: code => {
-				if (code[0] === '`') {
-					++templateDepth;
-					braceDepth = 0;
-					return ['`', 'template'];
-				}
-			},
-			brace1: code => {
-				if (code[0] === '{') {
-					braceDepth++;
-					return ['{']
-				}
-			},
-			brace2: code => {
-				if (code[0] === '}') {
-					if (braceDepth === 0 && templateDepth)
-						return ['}', -1] // pop out of js mode, back to tempate mode.
-					braceDepth--;
-					return ['}']; // just match
-				}
-			},
-			hex: /^0x[0-9a-f]+/i, // Must occur before number.
-			number: /^\d*\.?\d+(e\d+)?/, // Must occur before . operator.
-
+			comment: /^\/\/.*(?=\r?\n)|^\/\*[\s\S]*?\*\//,
 			end: code => code.startsWith('</script>') ? ['', -1] : undefined,
 
 			// Can't use a regex to parse a regex, so instead we look for pairs of matching / and see if
@@ -271,41 +313,58 @@ var ascendIf = regex => code => {
 						new RegExp(piece.slice(1, -1)); // without the slashes
 						let suffix = code.slice(piece.length).match(/^[agimsx]*/)[0];
 						return [piece + suffix]; // is a valid regex.
-					} catch (e) {
-					}
+					} catch (e) {}
 				}
 
 			},
-
-			operator: (
-				'&& || ! => ' +                 // Logic / misc operators
-				'<<= >>= &= ^= |= &&= ||= ' +   // Assignment operators
-				'& | ^ ~ >>> << >> ' +          // Bitwise operators
-				'=== !=== == != >= > <= < ' +   // Comparison operators
-				'= **= += -= *= /= %= ??= ' +   // Assignment operators 2
-				'++ -- ** + - * / % ' +         // Arithmetic operators
-				', ... . ( ) [ ] ? :'			// Other operators
-			).split(/ /g),
+			hex: /^0x[0-9a-f]+/, // Must occur before number.
+			number: /^\d*\.?\d+(e\d+)?/, // Must occur before . operator.
 			// These are not included as keywords b/c they're also valid identifier names:  constructor, from
 			identifier: code => {
 				let result = (code.match(/^[_$a-z\xA0-\uFFFF][_$\w\xA0-\uFFFF]*/i) || [])[0]; // variables, labels, other things?
-				if (!keyword.includes(result) && !value.includes(result))
+				if (!keyword.includes(result))
 					return [result];
 			},
-			value,
+			template: code => {
+				if (code[0] === '`') {
+					++templateDepth;
+					braceDepth = 0;
+					return ['`', 'template'];
+				}
+			},
+			brace1: code => {
+				if (code[0] === '{') {
+					braceDepth++;
+					return ['{']
+				}
+			},
+			brace2: code => {
+				if (code[0] === '}') {
+					if (braceDepth === 0 && templateDepth)
+						return ['}', -1] // pop out of js mode, back to tempate mode.
+					braceDepth--;
+					return ['}']; // just match
+				}
+			},
+			semicolon: ';',
 			keyword,
-			string: [/^"(\\\\|\\"|[^"])*"/, /^'(\\\\|\\'|[^'])*'/],
+			operator: code => { // Must occur after comment
+				for (let op2 of operators)
+					if (code.startsWith(op2))
+						return [op2];
+			},
+			string: /^"(\\\\|\\"|[^"])*"|^'(\\\\|\\'|[^'])*'/
 		},
 		html: { // top level html not within javascript.  No other modes go to this mode.
 			script,
 			comment: descendIf('<!--', 'htmlComment'),
 			closeTag,
 			openTag: descendIf(tagStart, 'tag', match => lastTag = match[1]),
-			text: /^[\s\S]*?(?=<|$)/,
+			text: /^[\s\S]+?(?=<|$)/,
 		},
 		htmlComment: {
 			commentEnd: ascendIf('-->'),
-			commentBody: /^[\s\S]*?(?=-->|$)/,
+			commentBody: /^[\s\S]+?(?=-->|$)/,
 		},
 
 		template: { // template within javascript
@@ -330,7 +389,7 @@ var ascendIf = regex => code => {
 			commentEnd: ascendIf('-->'),
 			commentBody: code => [code.match(
 				lexHtmlJs.allowHashTemplates
-					? /^[\s\S]+?(?=-->|\${|#{|$)/
+					? /^[\s\S]+?(?=-->|[$#]{|$)/
 					: /^[\s\S]+?(?=-->|\${|$)/) || []][0],
 		},
 		tag,
@@ -345,13 +404,19 @@ var ascendIf = regex => code => {
 		squote: { // single quote string within tag
 			expr,
 			quote: ascendIf("'"),
-			text: /^[\s\S]+?(?=(?<!\\)\${|(?<!\\\$?){|<|`|')/,
+			text: code => [code.match(
+				lexHtmlJs.allowHashTemplates
+				? /^[\s\S]+?(?=(?<!\\)[$#]{|(?<!\\[$#]?){|<|`|')/
+				: /^[\s\S]+?(?=(?<!\\)\${|(?<!\\\$?){|<|`|')/) || []][0]
 		},
 
 		dquote: { // double quote string within tag.
 			expr,
 			quote: ascendIf('"'),
-			text: /^[\s\S]+?(?=(?<!\\)\${|(?<!\\\$?){|<|`|")/,
+			text: code => [code.match(
+				lexHtmlJs.allowHashTemplates
+				? /^[\s\S]+?(?=(?<!\\)[$#]{|(?<!\\[$#]?){|<|`|")/
+				: /^[\s\S]+?(?=(?<!\\)\${|(?<!\\\$?){|<|`|")/) || []][0]
 		},
 
 		// TODO: css?
@@ -379,9 +444,10 @@ var ascendIf = regex => code => {
  * or false if it doesn't match.
  */
 function fregex(...rules) {
+	rules = prepare(rules);
 	return tokens => {
 		let i = 0;
-		for (let rule of prepare(rules)) {
+		for (let rule of rules) {
 			let used = rule(tokens.slice(i));
 			if (used === false) // 0, false, null, or undefined
 				return false;
@@ -396,15 +462,17 @@ function fregex(...rules) {
 /**
  * Advance the number of tokens used by the first child that matches true.
  * TODO: Automatically treat an array given to an and() as an or() ? */
-fregex.or = (...rules) =>
-	tokens => {
-		for (let rule of prepare(rules)) {
+fregex.or = (...rules) => {
+	rules = prepare(rules);
+	return tokens => {
+		for (let rule of rules) {
 			let used = rule(tokens);
 			if (used !== false)
 				return used;
 		}
 		return false;
-	};
+	}
+};
 
 
 /**
@@ -418,13 +486,15 @@ fregex.not = (...rules) => {
 /**
  * Advance one token if none of the children match.  A "nor"
  * Equivalent to /[^abc]/ */
-fregex.nor = (...rules) =>
-	tokens => {
-		for (let rule of prepare(rules))
+fregex.nor = (...rules) => {
+	rules = prepare(rules);
+	return tokens => {
+		for (let rule of rules)
 			if (rule(tokens) > 0) // rule(tokens) returns the number used.
 				return false;
 		return 1;
 	};
+};
 
 
 /**
@@ -473,7 +543,7 @@ fregex.matchFirst = (pattern, haystack, startIndex=0) => {
 
 fregex.matchAll = (pattern, haystack, limit=Infinity, startIndex=0) => {
 	if (Array.isArray(pattern))
-		pattern = fregex(pattern);// same as prepare?
+		pattern = fregex(pattern);
 	let result = [];
 
 	// Iterate through each offset in haystack looking for strings of tokens that match pattern.
@@ -487,15 +557,17 @@ fregex.matchAll = (pattern, haystack, limit=Infinity, startIndex=0) => {
 
 
 // Experimental
-fregex.lookAhead = (...rules) =>
-	tokens => {
-		for (let rule of prepare(rules)) {
+fregex.lookAhead = (...rules) => {
+	rules = prepare(rules);
+	return tokens => {
+		for (let rule of rules) {
 			let used = rule(tokens);
 			if (used === false)
 				return false;
 		}
 		return 0;
-	};
+	}
+};
 
 /**
  * Experimental
@@ -505,14 +577,6 @@ fregex.lookAhead = (...rules) =>
 fregex.end = tokens => {
 	return tokens.length ? false : 0;
 };
-
-
-
-
-/**
- * Allow matching on functions, object properties, and strings.
- * @param rules
- * @returns {function[]} */
 var prepare = rules => {
 	if (Array.isArray(rules[0]) && rules.length === 1)
 		rules = rules[0];
@@ -554,10 +618,12 @@ let terminator = fregex.lookAhead(
 let property = fregex(
 	fregex.or(
 		fregex('.', {type: 'identifier'}), //.item
-		fregex('[', fregex.or({type: 'string'}, {type: 'number'}), ']') // ['item']
+		fregex('[', fregex.or({type: 'string'}, {type: 'number'}, {type: 'template'}), ']') // ['item']
 	),
 	terminator
 );
+
+let varExpressionCache = {};
 
 var Parse = {
 	/**
@@ -565,7 +631,12 @@ var Parse = {
 	 * @param vars
 	 * @returns {function(*): (boolean|number)} */
 	createVarExpression_(vars=[]) {
-		return fregex(
+		let key = vars.join(','); // Benchmarking shows this cache does speed things up a little.
+		let result = varExpressionCache[key];
+		if (result)
+			return result;
+
+		return varExpressionCache[key] = fregex(
 			fregex.or(
 				fregex('this', fregex.oneOrMore(property)),
 				...vars.map(v => fregex(v, fregex.zeroOrMore(property)))
@@ -668,7 +739,8 @@ var Parse = {
 		let loopBody = [];
 		let braceDepth=0, bracketDepth=0, parenDepth=0;
 		let bodyTokens = tokens.slice(mapExpr.length + paramExpr.length);
-		for (let i=0, token; token=bodyTokens[i]; i++) {
+		// noinspection JSAssignmentUsedAsCondition
+		for (let i=0, token; token = bodyTokens[i]; i++) {
 
 			braceDepth   += {'{':1, '}':-1}[token] | 0; // Single | gives the same result as double ||, yields smaller minified size.
 			bracketDepth += {'[':1, ']':-1}[token] | 0;
@@ -682,7 +754,6 @@ var Parse = {
 					break; // e.g. this.array.map(...).reduce(...)
 			} else
 				loopBody.push(token);
-
 		}
 
 		return [null, null];
@@ -729,8 +800,9 @@ var Parse = {
 		for (let piece of expr)
 			if (piece == 'this' || piece.type === 'identifier' || piece.type === 'number')
 				result.push(piece + '');
-			else if (piece.type === 'string') // part of this['that']['somethingElse']
-				result.push(JSON.parse(piece)); // Evaluate string.
+			else if (piece.type === 'string' || piece.type === 'template') // part of this['that']['somethingElse']
+				result.push(eval(piece + '')); // Evaluate string.  Unlike JSON.parse(), eval() handles "string", 'string', and `string`
+
 		return result;
 	}
 };
@@ -781,7 +853,8 @@ function delve(obj, path, createVal=dontCreateValue, watchless=false) {
 
 		if (watchless) {
 			obj = obj.$removeProxy || obj;
-			obj.$disableWatch = true; // sometimes this causes stack overflow?  Perhaps I need to use Object.getOwnPropertyDescriptor() to see if it's a prop?
+			if (typeof obj === 'object')
+				obj.$disableWatch = true; // sometimes this causes stack overflow?  Perhaps I need to use Object.getOwnPropertyDescriptor() to see if it's a prop?
 		}
 
 		// If the path is undefined and we're not to the end yet:
@@ -1000,7 +1073,10 @@ let handler = {
 		// Make sure to call functions on the unproxied version
 		if (typeof result === 'function') {
 			let obj2 = obj.$removeProxy || obj;
-			return obj2[field].bind(obj2);
+			let result = obj2[field];
+			if (result.prototype) // If it's a class and not a regular function, don't bind it to the object:
+				return result;
+			return result.bind(obj2);
 		}
 
 		// We only wrap objects and arrays in proxies.
@@ -1734,6 +1810,45 @@ var Watch = {
 
 };
 
+var txt = document.createElement('div');
+var decodeCache = {};
+
+var Html = {
+
+	/**
+	 * Convert html entities like &lt; to their literal values like <.
+	 * @param {string} html
+	 * @returns {string} */
+	decode(html) {
+		if (!html)
+			return '';
+
+		return html // Fast solution inspired by https://stackoverflow.com/a/43282001
+			.replace(/&[#A-Z0-9]+;/gi, entity => {
+				let result = decodeCache[entity];
+				if (result)
+					return result;
+
+				txt.innerHTML = entity; // create and cache new entity
+				return decodeCache[entity] = txt.textContent;
+			});
+
+	},
+
+	encode(text, quotes='') {
+		text = ((text || '') + '')
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/\a0/g, '&nbsp;');
+		if (quotes.includes("'"))
+			text = text.replace(/'/g, '&apos;');
+		if (quotes.includes('"'))
+			text = text.replace(/"/g, '&quot;');
+		return text;
+	}
+};
+
 class VText {
 
 	text = '';
@@ -1743,8 +1858,13 @@ class VText {
 
 	startIndex = 0;
 
-	constructor(text) {
-		this.text = text;
+	constructor(text='') {
+		if (text === null || text === undefined)
+			text = '';
+		else if (typeof text !== 'string' && !(text instanceof String))
+			text = JSON.stringify(text); // instanceof detects strings with added properties.
+
+		this.text = Html.decode(text);
 	}
 
 	apply(parent=null, el=null) {
@@ -1781,20 +1901,6 @@ class VText {
 	}
 	//#ENDIF
 }
-
-var txt$1 = document.createElement('textarea');
-
-var Html = {
-
-	/**
-	 * Convert html entities like &lt; to their literal values like <.
-	 * @param {string} html
-	 * @returns {string} */
-	decode(html) {
-		txt$1.innerHTML = html;
-		return txt$1.value;
-	}
-};
 
 /**
  * A parsed ${} or #{} expression embedded in an html template ``  */
@@ -2007,8 +2113,8 @@ class VExpression {
 			let htmls = [this.exec.apply(this.xel, Object.values(this.scope))]
 				.flat().map(h=>h===undefined?'':h); // undefined becomes empty string
 
-			if (this.isHash) // #{...} template.  TODO: Why is decode needed here?
-				result = [htmls.map(html => new VText(Html.decode(html)))]; // TODO: Don't join all the text nodes.  It creates index issues.
+			if (this.isHash) // #{...} template
+				result = [htmls.map(html => new VText(html))]; // TODO: Don't join all the text nodes.  It creates index issues.
 			else
 				for (let html of htmls) {
 					html += ''; // can be a number.
@@ -2055,7 +2161,7 @@ class VExpression {
 	 * @param oldVal {string} not used.
 	 * @param root {object|array} The unproxied root object that the path originates form. */
 	receiveNotification_(action, path, value, oldVal, root) {
-
+		//window.requestAnimationFrame(() => {
 
 		// if (window.debug) // This happens when a path on an element is watched, but the path doesn't exist?
 		// debugger;
@@ -2106,7 +2212,7 @@ class VExpression {
 						this.vChildren.splice(index, 0, []);
 
 					if (this.type === 'simple')
-						this.vChildren[index] = [new VText(Html.decode(array[index]))]; // TODO: Need to evaluate this expression instead of just using the value from the array.
+						this.vChildren[index] = [new VText(array[index])]; // TODO: Need to evaluate this expression instead of just using the value from the array.
 					else  // loop
 						this.vChildren[index] = this.loopItemEls.map(vel => vel.clone(this.xel, this));
 
@@ -2136,6 +2242,7 @@ class VExpression {
 		this.updateSubsequentIndices_();
 
 		// TODO: Should we have a path that generates the new children and compares them with the existing children and only change what's changed?
+		//});
 	}
 
 
@@ -2389,6 +2496,7 @@ class VExpression {
 
 lexHtmlJs.allowHashTemplates = true;
 
+
 /**
  * A virtual representation of an Element.
  * Supports expressions (VExpression) as attributes and children that can be evaluated later. */
@@ -2415,6 +2523,19 @@ class VElement {
 	/** @type {(VElement|VExpression|VText)[]} */
 	vChildren = [];
 
+	/**
+	 * TODO: We can speed things up if a VElement has no expressions within it.
+	 * And no ids, no svg's, no events, no shadowdom, and no slots.
+	 *
+	 * We should just store the html, and create it as needed.
+	 * Instead of recursing through all of the VElements attributes and children.
+	 *
+	 * I can add an getStaticCode() function that calculates and caches static code if it's static.
+	 *
+	 * Or we can apply id's, events, shadowdom, and slots manually after creating it?
+	 * @type {string|null} */
+	//staticCode = null;
+
 	/** @type {object<string, string>} */
 	scope = {};
 
@@ -2434,9 +2555,13 @@ class VElement {
 	 * @param parent {HTMLElement}
 	 * @param el {HTMLElement} */
 	apply(parent=null, el=null) {
+		let tagName = this.tagName;
 
-		// 1. Create Element
-		if (el) { // Binding to existing element.
+		if (tagName === 'svg')
+			Refract.inSvg = true;
+
+		// 1A. Binding to existing element.
+		if (el) {
 			this.el = el;
 
 			// This will cause trouble when we call cloneNode() on an element with a slot.
@@ -2446,15 +2571,15 @@ class VElement {
 				this.xel.slotHtml = el.innerHTML;
 			el.innerHTML = '';
 		}
-
+		// 1B. Create Element
 		else {
 			let newEl;
 
 			// Special path, because we can't use document.createElement() to create an element whose constructor
 			//     adds attributes and child nodes.
 			// https://stackoverflow.com/questions/43836886
-			if (this.tagName.includes('-') && customElements.get(this.tagName)) {
-				let Class = customElements.get(this.tagName);
+			if (tagName.includes('-') && customElements.get(tagName)) {
+				let Class = customElements.get(tagName);
 
 				let args = [];
 				if (Class.constructorArgs)
@@ -2471,7 +2596,7 @@ class VElement {
 								return true;
 
 							// Else evaluate as JSON, or as a string.
-							let result = VElement.evalVAttribute(this, (val || []), this.scope).join('');
+							let result = VElement.evalVAttributeAsString(this, (val || []), this.scope);
 							try {
 								result = JSON.parse(result);
 							} catch (e) {}
@@ -2481,9 +2606,10 @@ class VElement {
 
 				newEl = new Class(...args);
 			}
+			else if (Refract.inSvg) // SVG's won't render w/o this path.
+				newEl = document.createElementNS('http://www.w3.org/2000/svg', tagName);
 			else
-				newEl = document.createElement(this.tagName);
-
+				newEl = document.createElement(tagName);
 
 			if (this.el) {  // Replacing existing element
 				this.el.parentNode.insertBefore(newEl, this.el);
@@ -2498,11 +2624,12 @@ class VElement {
 			this.el = newEl;
 
 			if (Refract.elsCreated)
-				Refract.elsCreated.push('<'+this.tagName + '>');
+				Refract.elsCreated.push('<'+tagName + '>');
 		}
 
 
 		// 2. Set Attributes
+		let hasValue = ('value' in this.attributes && tagName !== 'option');
 		for (let name in this.attributes) {
 			let value = this.attributes[name];
 			for (let attrPart of value)
@@ -2512,22 +2639,24 @@ class VElement {
 					expr.watch(() => {
 						if (name === 'value')
 							setInputValue(this.xel, this.el, value, this.scope, isTextArea || isContentEditable);
-						else
-							this.el.setAttribute(name, VElement.evalVAttribute(this.xel, value, this.scope).join(''));
+
+						else {
+							let value2 = VElement.evalVAttributeAsString(this.xel, value, this.scope);
+							this.el.setAttribute(name, value2);
+						}
 					});
 				}
 
+			// TODO: This happens again for inputs in step 5 below:
 			VElement.setVAttribute(this.xel, this.el, name, value, this.scope);
 
 
 			// Id
-			if (name === 'id')
-				this.xel[this.el.getAttribute('id')] = this.el;
-			if (name === 'data-id')
-				this.xel[this.el.getAttribute('data-id')] = this.el;
+			if (name === 'id' || name === 'data-id')
+				this.xel[this.el.getAttribute(name)] = this.el;
 
 			// Events
-			if (name.startsWith('on')) {
+			else if (name.startsWith('on')) {
 
 				// Get the createFunction() from the class if it's already been instantiated.  Else use Refract's temporary createfunction().
 				// This lets us use other variabls defiend in the same scope as the class that extends Refract.
@@ -2536,37 +2665,35 @@ class VElement {
 				this.el[name] = event => { // e.g. el.onclick = ...
 					let args = ['event', 'el', ...Object.keys(this.scope)];
 					let code = this.el.getAttribute(name);
-					let func = createFunction(...args, code).bind(this.xel);
+					let func = createFunction(...args, code).bind(this.xel); // Create in same scope as parent class.
 					func(event, this.el, ...Object.values(this.scope));
 				};
 			}
 
 			// Shadow DOM
-			if (name==='shadow')
+			else if (name==='shadow' && !this.el.shadowRoot)
 				this.el.attachShadow({mode: this.el.getAttribute('shadow') || 'open'});
 		}
-
 
 		// List of input types:
 		// https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#input_types
 		//let hasTextEvents = Object.keys(this.attributes).some(attr =>
 		//	['onchange','oninput',  'onkeydown', 'onkeyup', 'onkeypress', 'oncut', 'onpaste'].includes(attr));
 		let isContentEditable =this.el.hasAttribute('contenteditable') && this.el.getAttribute('contenteditable') !== 'false';
-		let isTextArea = this.tagName==='textarea';
-		let isTypableInput = this.tagName === 'input' &&
-			!['button', 'checkbox', 'color', 'file', 'hidden', 'image', 'radio', 'reset', 'submit'].includes(this.el.getAttribute('type'));
-		let isTypable = isTextArea || isContentEditable || isTypableInput;
-
-
+		let isTextArea = tagName==='textarea';
 
 		// 2B. Form field two way binding.
 		// Listening for user to type in form field.
-		if ('value' in this.attributes) {
+		if (hasValue) {
 			let value = this.attributes.value;
 			let isSimpleExpr = value.length === 1 && value[0] && value[0].type === 'simple';
 
 			// Don't grab value from input if we can't reverse the expression.
 			if (isSimpleExpr) {
+
+				let isTypableInput = tagName === 'input' &&
+					!['button', 'checkbox', 'color', 'file', 'hidden', 'image', 'radio', 'reset', 'submit'].includes(this.el.getAttribute('type'));
+				let isTypable = isTextArea || isContentEditable || isTypableInput;
 
 				let scope = {'this': this.xel, ...this.scope};
 				if (isTypable) { // TODO: Input type="number" is typable but also dispatches change event on up/down click.
@@ -2586,12 +2713,11 @@ class VElement {
 						}
 					}, true); // We bind to the event capture phase so we can update values before it calls onchange and other event listeners added by the user.
 				}
-				else /*if (this.tagName === 'select' || this.tagName==='input')*/ {
+				else /*if (tagName === 'select' || tagName==='input')*/ {
 					this.el.addEventListener('change', () => {
-
 						// TODO: Convert value to boolean for checkbox.  File input type.
 						let val;
-						if (this.tagName === 'select' && this.el.hasAttribute('multiple')) {
+						if (tagName === 'select' && this.el.hasAttribute('multiple')) {
 							let val = Array.from(this.el.children).filter(el => el.selected).map(opt => opt.value);
 							// if (!Array.isArray(delve(scope, value[0].watchPaths[0])))
 							// 	val = val[0];
@@ -2609,7 +2735,7 @@ class VElement {
 
 		// 3. Slot content
 		let count = 0;
-		if (this.tagName === 'slot') {
+		if (tagName === 'slot') {
 			let slotChildren = VElement.fromHtml(this.xel.slotHtml, Object.keys(this.scope), this);
 			for (let vChild of slotChildren) {
 				vChild.scope = {...this.scope};
@@ -2620,19 +2746,21 @@ class VElement {
 			}
 		}
 
-
 		// 4. Recurse through children
 		for (let vChild of this.vChildren) {
-			vChild.scope = {...this.scope};
+			vChild.scope = {...this.scope}; // copy
 			vChild.startIndex = count;
 			count += vChild.apply(this.el);
 		}
 
-
 		// 5. Set initial value for select from value="" attribute.    
-	    if ('value' in this.attributes) { // This should happen after the children are added, e.g. for select <options>
+	    if (hasValue) // This should happen after the children are added, e.g. for select <options>
+	    	// TODO: Do we only need to do this for select boxes b/c we're waiting for their children?  Other input types are handled above in step 2.
 		    setInputValue(this.xel, this.el, this.attributes.value, this.scope, isTextArea || isContentEditable);
-	    }
+
+
+		if (tagName === 'svg')
+			Refract.inSvg = false;
 
 		return 1; // 1 element created, not counting children.
 	}
@@ -2685,7 +2813,7 @@ class VElement {
 
 
 	/**
-	 * TODO: Merge this with evalVAttribute
+	 * TODO: Reduce shared logic between this and evalVAttribute
 	 * If a solitary VExpression, return whatevr object it evaluates to.
 	 * Otherwise merge all pieces into a string and return that.
 	 * value="${'one'}" becomes 'one'
@@ -2694,14 +2822,13 @@ class VElement {
 	 * @param ref {Refract}
 	 * @param attrParts {(VExpression|string)[]}
 	 * @param scope {object}
-	 * @returns {*[]|string} */
-	static evalVAttribute2(ref, attrParts, scope={}) {
+	 * @returns {*|string} */
+	static evalVAttribute(ref, attrParts, scope={}) {
 		let result = attrParts.map(expr =>
 			expr instanceof VExpression ? expr.exec.apply(ref, Object.values(scope)) : expr
 		);
 
 		// If it's a single value, return that.
-		// This lets'
 		if (result.length === 1)
 			return result[0];
 
@@ -2712,38 +2839,34 @@ class VElement {
 	 * @param ref {Refract}
 	 * @param attrParts {(VExpression|string)[]}
 	 * @param scope {object}
-	 * @return {string[]} */
-	static evalVAttribute(ref, attrParts, scope={}) {
+	 * @return {string} */
+	static evalVAttributeAsString(ref, attrParts, scope={}) {
 		let result = [];
 		for (let attrPart of attrParts) {
 			if (attrPart instanceof VExpression) {
-
-				// TODO: What about scope?
 				let val = attrPart.exec.apply(ref, Object.values(scope));
 				if (Array.isArray(val) || (val instanceof Set))
 					val = Array.from(val).join(' '); // Useful for classes.
-				else if (typeof val === 'object') { // style attribute
-					let val2 = [];
-					for (let name in val)
-						val2.push(name + ': ' + val[name] + '; ');
-					val = val2.join('');
-				}
+				else if (val && typeof val === 'object') // style attribute
+					val = Object.entries(val).map(([name, value]) => `${name}: ${val[name]}; `).join('');
 				result.push(val);
 			}
 			else
 				result.push(Refract.htmlDecode(attrPart)); // decode because this will be passed to setAttribute()
 		}
-		return result;
+		return result.join('');
 	}
 
 	/**
+	 * @deprecated.  Just call setAttribute with evalVAttributeAsString()
 	 * @param xel {Refract}
 	 * @param el {HTMLElement}
 	 * @param attrName {string}
 	 * @param scope {object}
 	 * @param attrParts {(VExpression|string)[]} */
 	static setVAttribute(xel, el, attrName, attrParts, scope={}) {
-		el.setAttribute(attrName, VElement.evalVAttribute(xel, attrParts, scope).join(''));
+		let value = VElement.evalVAttributeAsString(xel, attrParts, scope);
+		el.setAttribute(attrName, value);
 	}
 
 	/**
@@ -2786,7 +2909,7 @@ class VElement {
 
 			// Text node
 			if (token.type === 'text') {
-				let vtext = new VText(Refract.htmlDecode(token));
+				let vtext = new VText(token);
 				result.push(vtext);
 			}
 
@@ -2852,6 +2975,7 @@ class VElement {
 				let isSelfClosing = tagTokens[tagTokens.length-1] == '/>' ||
 					['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source',
 						'track', 'wbr', 'command', 'keygen', 'menuitem'].includes(vel.tagName);
+					// TODO: What svg elements are self-closing?
 
 				// Process children if not a self-closing tag.
 				if (!isSelfClosing) {
@@ -2883,23 +3007,20 @@ class VElement {
 
 
 function setInputValue(ref, el, value, scope, isText) {
-	// if (el.tagName === 'X-SELECT2')
-	// 	debugger;
-	if (el.tagName === 'SELECT')
-		setSelectValue(el, VElement.evalVAttribute2(ref, value, scope));
-	else if (isText)
-		el.innerHTML = VElement.evalVAttribute(ref, value, scope).join('');
-	else // Some custom elements can accept object or array for the value property:
-		el.value = VElement.evalVAttribute2(ref, value, scope);
-}
-
-/**
- * @param select {HTMLElement}
- * @param values {string[]} */
-function setSelectValue(select, values) {
-	for (let opt of select.children) {
-		//let optVal = opt.hasAttribute('value') ? opt.getAttribute('value') : opt.textContent;
-		opt.selected = values.includes(opt.value);
+	if (isText || el.tagName === 'INPUT') {
+		let val = VElement.evalVAttributeAsString(ref, value, scope);
+		if (isText)
+			el.innerHTML = val;
+		else
+			el.value = val;
+	}
+	else {
+		let values = VElement.evalVAttribute(ref, value, scope);
+		if (el.tagName === 'SELECT')
+			for (let opt of el.children)
+				opt.selected = Array.isArray(values) ? values.includes(opt.value) : values === opt.value;
+		else // Some custom elements can accept object or array for the value property:
+			el.value = values;
 	}
 }
 
@@ -2977,7 +3098,10 @@ class Refract extends HTMLElement {
 	 * @type {boolean|(Node|HTMLElement)[]} */
 	static elsCreated = false;
 
-
+	/**
+	 * Used by VElement.apply() to keep track of whether we're within an svg tag.
+	 * @type {boolean} */
+	static inSvg = false;
 
 	/** @type {string} */
 	slotHtml = '';
@@ -3184,20 +3308,40 @@ class Refract extends HTMLElement {
 
 		// 1. Parse into tokens
 		let code = self.toString();
-		code = lex(lexHtmlJs, code);
-		let tokens = removeComments(code);
+		let tokens = lex(lexHtmlJs, code);
+		tokens = removeComments(tokens);
+		let htmlIdx = 0, constructorIdx=0;
 
 		// 2. Build the virtual element tree.
 		{
 			// A. Find html template token
-			// TODO: Make sure we're finding html = ` at the top level, and not inside a function.
-			let htmlMatch = fregex.matchFirst(['html', Parse.ws, '=', Parse.ws, {type: 'template'}], tokens);
+			// Make sure we're finding html = ` and the constructor at the top level, and not inside a function.
+			// This search is also faster than if we use matchFirst() from the first token.
+			let braceDepth = 0;
+			for (let i = 0, token; token = tokens[i]; i++) {
+				if (token == '{')
+					braceDepth++;
+				else if (token == '}')
+					braceDepth--;
+				else if (braceDepth === 1) {
+					if (!htmlIdx && token == 'html')
+						htmlIdx = i;
+					else if (!constructorIdx && token == 'constructor')
+						constructorIdx = i;
+				}
+				if (htmlIdx && constructorIdx)
+					break;
+			}
+
+			let htmlMatch = fregex.matchFirst(['html', Parse.ws, '=', Parse.ws, {type: 'template'}, Parse.ws, fregex.zeroOrOne(';')], tokens, htmlIdx);
 			//#IFDEV
 			if (!htmlMatch)
-				throw new Error('Class is missing an html property');
+				throw new Error(`Class ${self.name} is missing an html property with a template value.`);
 			//#ENDIF
-			let template = tokens[htmlMatch.index + htmlMatch.length - 1]; // a single token for the string value.
-			//	NewClass.html = template.slice(1, -1).trim();
+
+			// Remove the html property, so that when classes are constructed it's not evaluated as a regular template string.
+			let htmlAssign = tokens.splice(htmlMatch.index, htmlMatch.length);
+			let template = htmlAssign.filter(t=>t.tokens)[0]; // only the template token has sub-tokens.
 
 			// B. Parse html
 			let innerTokens = template.tokens.slice(1, -1); // skip open and close quotes.
@@ -3207,33 +3351,36 @@ class Refract extends HTMLElement {
 		}
 
 
-
-
 		// 3. Get the constructorArgs and inject new code.
 		{
-			let tokens2 = tokens.slice();
 
-			let constr = fregex.matchFirst(['constructor', Parse.ws, '('], tokens2);
+			let constr = fregex.matchFirst(['constructor', Parse.ws, '('], tokens, constructorIdx);
 			let injectIndex, injectCode;
 
 			// Modify existing constructor
 			if (constr) { // is null if no match found.
 
 				// Find arguments
-				let argTokens = fregex.matchFirst(Parse.argList, tokens2, constr.index+constr.length);
+				let argTokens = fregex.matchFirst(Parse.argList, tokens, constr.index+constr.length);
 				result.constructorArgs = Parse.filterArgNames(argTokens);
 
 				// Find super call in constructor  body
 				let sup = fregex.matchFirst(
-					['super', Parse.ws, '(', Parse.argList, ')', Parse.ws, ';'],
-					tokens2,
+					// TODO: Below I need to account for super calls that contain ; in an inline anonymous founction.
+					// Instead count the ( and ) and end on the last )
+					['super', Parse.ws, '(', fregex.zeroOrMore(fregex.not(';')), ';'],
+					tokens,
 					argTokens.index+argTokens.length);
+				//#IFDEV
+				if (!sup)
+					throw new Error(`Class ${self.name} constructor() { ... } is missing call to super().`);
+				//#ENDIF
 
 				injectIndex = sup.index + sup.length;
 				injectCode = [
 					'//Begin Refract injected code.',
 					...result.constructorArgs.map(argName=>
-						[`if (${argName}===undefined && this.hasAttribute('${argName}')) {`,
+						[`if (this.hasAttribute('${argName}')) {`,
 						`   ${argName} = this.getAttribute('${argName}');`,
 						`   try { ${argName} = JSON.parse(${argName}) } catch(e) {};`,
 						'}'] // [above] Parse attrib as json if it's valid json.
@@ -3249,7 +3396,7 @@ class Refract extends HTMLElement {
 
 			// Create new constructor
 			else {
-				injectIndex = fregex.matchFirst(['{'], tokens2).index+1;
+				injectIndex = fregex.matchFirst(['{'], tokens).index+1;
 				injectCode = [
 					'//Begin Refract injected code.',
 					`constructor() {`,
@@ -3263,8 +3410,8 @@ class Refract extends HTMLElement {
 				].join('\r\n\t\t');
 			}
 
-			tokens2.splice(injectIndex, 0, '\r\n\t\t\t' + injectCode);
-			result.code = tokens2.join('');
+			tokens.splice(injectIndex, 0, '\r\n\t\t\t' + injectCode);
+			result.code = tokens.join('');
 		}
 
 		return result;
@@ -3289,27 +3436,7 @@ class Refract extends HTMLElement {
 		customElements.define(NewClass.virtualElement.tagName.toLowerCase(), NewClass);
 	}
 
-	static htmlEncode(text, quotes='') {
-		text = text
-			.replace(/&/g, '&amp;')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;')
-			.replace(/\a0/g, '&nbsp;');
-		if (quotes.includes("'"))
-			text = text.replace(/'/g, '&apos;');
-		if (quotes.includes('"'))
-			text = text.replace(/"/g, '&quot;');
-		return text;
-	}
 
-	/**
-	 * Convert html entities like &lt; to their literal values like <.
-	 * @param {string} html
-	 * @returns {string} */
-	static htmlDecode(html) {
-		txt.innerHTML = html;
-		return txt.value;
-	}
 
 	/**
 	 * Create string code that creates a new class with with a modified constructor and the html property removed.
@@ -3335,7 +3462,7 @@ class Refract extends HTMLElement {
 				window.RefractCurrentClass = ${this.name};
 				${this.name}.createFunction = (...args) => eval(\`(function(\${args.slice(0, -1).join(',')}) {\${args[args.length-1]}})\`);
 				let compiled = ${this.name}.preCompile(${this.name});
-				${this.name} = eval('('+compiled.code+')');				
+				${this.name} = eval('('+compiled.code+')');		
 				${this.name}.decorate(${this.name}, compiled);
 				delete window.RefractCurrentClass;
 				return ${this.name};	
@@ -3345,11 +3472,7 @@ class Refract extends HTMLElement {
 	}
 }
 
-Object.defineProperty(Refract, 'h', {
-	set: (code) => { return Refract.htmlEncode(code)}
-});
-
-// Used by htmlEncode()/htmlDecode()
-var txt = document.createElement('textarea');
+Refract.htmlDecode = Html.decode;
+Refract.htmlEncode = Html.encode;
 
 export default Refract;

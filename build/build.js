@@ -30,7 +30,7 @@ const rollupOptions = {
 const terserOptions = {
 	ecma: 8, // Decreases size.
 	format: {
-		preamble: `// Version ${timestamp()}\r\n// License: MIT`,
+		preamble: `// Version ${timestamp()}\r\n// License: MIT\r\nhttps://github.com/vorticode/Refract`,
 	},
 	compress: { // https://github.com/terser/terser#compress-options
 		passes: 5,
@@ -92,7 +92,7 @@ async function rollup(input, output, options) {
 function timestamp() {
 	let d = new Date();
 	return d.getUTCFullYear() +
-		'.' + d.getUTCMonth() +
+		'.' + (d.getUTCMonth()+1) +
 		'.' + d.getUTCDate() +
 		'.' + (d.getUTCHours()+'').padStart(2, '0') + (d.getUTCMinutes()+'').padStart(2, '0')
 }

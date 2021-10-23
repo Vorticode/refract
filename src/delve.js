@@ -18,7 +18,8 @@ export default function delve(obj, path, createVal=dontCreateValue, watchless=fa
 
 		if (watchless) {
 			obj = obj.$removeProxy || obj;
-			obj.$disableWatch = true; // sometimes this causes stack overflow?  Perhaps I need to use Object.getOwnPropertyDescriptor() to see if it's a prop?
+			if (typeof obj === 'object')
+				obj.$disableWatch = true; // sometimes this causes stack overflow?  Perhaps I need to use Object.getOwnPropertyDescriptor() to see if it's a prop?
 		}
 
 		// If the path is undefined and we're not to the end yet:
