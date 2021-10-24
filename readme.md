@@ -38,7 +38,7 @@ Refract is a fast, lightweight, "reactive" JavaScript library for creating user 
 <shopping-list></shopping-list>
 ```
 
-Run [this example](https://jsfiddle.net/pdg4s589/) on JSFiddle.net.
+Run [this example](https://jsitor.com/1OPi_ooJCc) on jsitor.com.
 
 Refract is still **in development** and has several known bugs.  Exercise caution if using in a production environment.
 
@@ -133,15 +133,42 @@ As always, assigning different values to `this.name` or `this.resumeHtml` will u
 
 ### Form Elements
 
-TODO
+Refract performs two-way binding on form elements.  Setting the bound class property will change the value of the form element.  And changing the value of the form element will instantly change the class property.  Refract listens to the `oninput` event for typeable form elements, and `onchange` event for other form elements, during the capture phase.  
 
-### Constructors
+The values of `<input type="number">` and `<input type="range">` inputs will be converted to `float`, and datetime inputs to `Date`.  `<select multiple>` input values will provide the selected values in an array.
 
-TODO
+```javascript
+class CoolForm extends Refract {
+    this.inputVal = 'Input val';
+    this.selectVal = 'One';
+    this.textareaVal = 'Textarea Content';
+    this.customVal = 4;
+
+    html = `
+        <cool-form>
+            <input value="${this.inputVal}"/>
+            <select value="${this.selectVal}">
+                <option>One</option>
+                <option>Two</option>
+            </select>
+            <textarea value="${this.textareaVal}"></textarea>
+            <custom-refract-element value="${this.customVal}"></custom-refract-element>
+        </cool-form>`;
+}
+eval(NameTag.compile());
+```
+
+In the example above, `<custom-refract-elemenet>` is a custom form element built using Refract, that exposes a `.value` getter and setter to modify its value.
+
+Using a complex expression (an expression that doesn't link directly back to a class property) will only allow one-way binding.  In this case, typing in the input box will not update the class property:
+
+```javascript
+htlm = ` ... <input value="${this.inputVal+''}"/> ... `
+```
 
 ### Loops
 
-TODO
+TODO:  Document this feature.
 
 ### Events
 
@@ -171,18 +198,56 @@ document.body.append(car);
 
 In the example above, clicking the button will print `click happened on BUTTON.`
 
-### Nesting
+### Constructors and Nesting
+
+The classes that define Refract Elements have constructors, and values can be passed to those constructors when they're invoked via `new`, just as with any other JavaScript class.  However, constructors values can also be passed when creating a Refract element from HTML:
+
+```html
+<script>
+    class ColorText extends Refract {
+        constructor(color) {
+            super();
+            this.color = color;
+        }
+        html = `<color-text style="color: #{this.value}"></color-text>`;
+    }
+    eval(ColorText.compile());
+</script>
+
+<color-text color="red">I'm Red!</color-text>
+```
+
+Complex data can also be passed through constructor arguments.  Any constructor argument that is valid JSON will be parsed as such:
+
+```html
+<script>
+    class TodoList extends Refract {
+        constructor(items) {
+            super();
+            this.items = items;
+        }
+        html = `
+            <todo-list>
+                ${this.items.map(item => 
+                    `#{this.items[0])}<br>`
+                )}
+            </todo-list>`;
+    }
+    eval(TodoList.compile());
+</script>
+
+<todo-list items='["one", "two", "three"]'></todo-list>
+```
 
 Refract elements can also be embedded within the html of other Refract elements:
 
 ```javascript
 class CarWheel extends Refract {
     constructor(number) {
-         super();
+        super();
         this.number = number;
-    }
-    
-    html = '<car-wheel>Wheel #{this.number}</car-wheel>';
+    }    
+    html = `<car-wheel>Wheel #{this.number}</car-wheel>`;
 }
 
 class CarBody extends Refract  {
@@ -196,9 +261,17 @@ class CarBody extends Refract  {
 }
 ```
 
-And as seen above, attributes can be used to pass arguments to the nested element constructors.  Alternatively, we could write the FastCar class to use a loop and pass the number argument dynamically:
+And as seen above, attributes can be used to pass arguments to the nested element constructors.  Alternatively, we could write the CarBody class to use a loop and pass the number argument dynamically.  When one Refract element is embedded within another, constructor arguments can also be passed via `${...}` templates:
 
 ```javascript
+class CarWheel extends Refract {
+    constructor(number) {
+        super();
+        this.number = number;
+    }    
+    html = `<car-wheel>Wheel #{this.number}</car-wheel>`;
+}
+
 class CarBody extends Refract  {
     this.wheels = [1, 2, 3, 4];
     html = `
@@ -234,15 +307,15 @@ eval(FancyText.compile());
 
 ### Slots
 
-TODO
+TODO:  Document this feature.
 
 ### Helper Functions
 
-TODO.
+TODO:  Document this feature.
 
 ### Watching
 
-TODO
+TODO:  Document this feature.
 
 ## Browser Support
 
