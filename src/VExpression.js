@@ -539,16 +539,12 @@ export default class VExpression {
 			tokens = tokens.slice(1, -1); // Remove ${ and }
 		}
 
-
-		// Filter out whitespace.  Comments were removed at a previous step.
-		let actualTokens = tokens.filter(token => token.type !== 'whitespace' && token.type !== 'ln');
-
 		// Find the watchPathTokens before we call fromTokens() on child elements.
 		// That way we don't descend too deep.
-		let watchPathTokens = Parse.varExpressions_(actualTokens, scope);
+		let watchPathTokens = Parse.varExpressions_(tokens, scope);
 
 		// Find loopItem props if this is a loop.
-		let [loopParamNames, loopBody] = Parse.simpleMapExpression_(actualTokens, scope);
+		let [loopParamNames, loopBody] = Parse.simpleMapExpression_(tokens, scope);
 
 		// Get the createFunction() from the class if it's already been instantiated.  Else use Refract's temporary createfunction().
 		// This lets us use other variabls defiend in the same scope as the class that extends Refract.
@@ -564,9 +560,11 @@ export default class VExpression {
 				scope.push(p);
 			result.exec = Class.createFunction(...scope, 'return ' + watchPathTokens[0].join(''));
 
-			// TODO: Why isn't the second path all that we need?
-			if (loopBody.length === 1 && loopBody[0].type === 'template')
-				result.loopItemEls = VElement.fromTokens(loopBody[0].tokens.slice(1, -1), scope); // Remove beginning and end string, parse items.
+
+			let loopBodyTrimmed = loopBody.filter(token => token.type !== 'whitespace' && token.type !== 'ln');
+
+			if (loopBodyTrimmed.length === 1 && loopBodyTrimmed[0].type === 'template')
+				result.loopItemEls = VElement.fromTokens(loopBodyTrimmed[0].tokens.slice(1, -1), scope); // Remove beginning and end string, parse items.
 			else // javascript code
 				result.loopItemEls = [VExpression.fromTokens(loopBody, scope, vParent)];
 		}
@@ -574,7 +572,7 @@ export default class VExpression {
 		else {
 
 			// TODO: This duplicates code executed in Parse.varExpressions_ above?
-			if (Parse.createVarExpression_(scope)(actualTokens) !== actualTokens.length)
+			if (Parse.createVarExpression_(scope)(tokens) !== tokens.length)
 				result.type = 'complex';
 
 			// Build function to evaluate expression.
@@ -583,8 +581,11 @@ export default class VExpression {
 			// understood by the vanilla JavaScript that executes the template string.
 			tokens = Parse.replaceHashExpr(tokens, null, Class.name);
 
-			// joining on line return req'd for // comments and lines not ending in semicolon.
-			result.exec = Class.createFunction(...scope, 'return ' + tokens.join(''));
+			// Trim required.  B/c if there's a line return after return, the function will return undefined!
+			let body = tokens.join('');
+			if (tokens[0] != '{')
+				body = 'return (' + body.trim() + ')';
+			result.exec = Class.createFunction(...scope, body);
 		}
 
 		// Get just the identifier names between the dots.

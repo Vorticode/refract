@@ -1,18 +1,5 @@
 import fregex from "./fregex.js";
 
-let terminator = fregex.lookAhead(
-	fregex.or(
-		fregex.end,
-		fregex.not('(')
-	)
-);
-let property = fregex(
-	fregex.or(
-		fregex('.', {type: 'identifier'}), //.item
-		fregex('[', fregex.or({type: 'string'}, {type: 'number'}, {type: 'template'}), ']') // ['item']
-	),
-	terminator
-);
 
 let varExpressionCache = {};
 
@@ -29,8 +16,8 @@ var Parse = {
 
 		return varExpressionCache[key] = fregex(
 			fregex.or(
-				fregex('this', fregex.oneOrMore(property)),
-				...vars.map(v => fregex(v, fregex.zeroOrMore(property)))
+				fregex('this', Parse.ws, fregex.oneOrMore(property)),  // this.prop
+				...vars.map(v => fregex(v, fregex.zeroOrMore(property)))    // item.prop
 			),
 			terminator
 		);
@@ -105,14 +92,17 @@ var Parse = {
 
 		let loopMatch = [
 			Parse.createVarExpression_(vars),
-			'.', 'map', '('
+			Parse.ws, '.', Parse.ws, 'map', Parse.ws, '('
 		];
 		let loopParamMatch = [
+			Parse.ws,
 			fregex.or([
-				{type: 'identifier'},
-				['(', Parse.argList, ')'] // match any number of arguments.
+				{type: 'identifier'}, // single argument with no parens.
+				['(', Parse.ws, Parse.argList, Parse.ws, ')'] // match any number of arguments.
 			]),
-			'=>'
+			Parse.ws,
+			'=>',
+			Parse.ws
 		];
 
 		// this.array.map(
@@ -129,9 +119,13 @@ var Parse = {
 		// Loop through remaining tokens, keep track of braceDepth, bracketDepth, and parenDepth, until we reach a closing ).
 		let loopBody = [];
 		let braceDepth=0, bracketDepth=0, parenDepth=0;
-		let bodyTokens = tokens.slice(mapExpr.length + paramExpr.length);
+		let lastToken = tokens.length-1; // Trim whitespace from end
+		while (tokens[lastToken].type === 'whitespace' || tokens[lastToken].type==='ln')
+			lastToken --;
+
+		let bodyTokens = tokens.slice(mapExpr.length + paramExpr.length, lastToken+1);
 		// noinspection JSAssignmentUsedAsCondition
-		for (let i=0, token; token = bodyTokens[i]; i++) {
+		for (let i=0, token; token=bodyTokens[i]; i++) {
 
 			braceDepth   += {'{':1, '}':-1}[token] | 0; // Single | gives the same result as double ||, yields smaller minified size.
 			bracketDepth += {'[':1, ']':-1}[token] | 0;
@@ -162,12 +156,7 @@ var Parse = {
 	 * @param vars
 	 * @private
 	 */
-	objectMapExpression_(tokens, vars=[]) {
-
-
-
-	},
-
+	objectMapExpression_(tokens, vars=[]) {},
 
 	/**
 	 * Find expressions that start with "this" or with local variables.
@@ -179,6 +168,8 @@ var Parse = {
 
 		// Discard any paths that come after a ".", which means they occur within another variable expression.
 		// E.g. we dont' want to return "a.b" and also the "b" from the second part of that path.
+		// TODO: But what about when one expression is within another:
+		// this.items[this.index]
 		return result.filter(path => tokens[path.index-1] != '.');
 	},
 
@@ -203,17 +194,21 @@ Parse.ws = fregex.zeroOrMore(fregex.or(
 	{type: 'whitespace'}, {type: 'ln'}
 ));
 
+let indexType = [
+	{type: 'number'},
+	{type: 'hex'},
+	{type: 'string'},
+	{type: 'template'}
+];
 
 Parse.arg = fregex([
 	{type: 'identifier'},
 	Parse.ws,
 	fregex.zeroOrOne([
 		'=', Parse.ws, fregex.or([
-			{type: 'hex'},
-			{type: 'number'},
-			{type: 'regex'},
-			{type: 'string'},
+			...indexType,
 			{type: 'identifier'},
+			{type: 'regex'},
 		])
 	])
 ]);
@@ -223,6 +218,21 @@ Parse.argList = fregex.zeroOrMore([
 		Parse.ws, ',', Parse.ws, Parse.arg
 	])
 ]);
+
+
+let terminator = fregex.lookAhead([
+	fregex.or(
+		fregex.end,
+		fregex.not(Parse.ws, '(')
+	)
+]);
+let property = fregex(
+	fregex.or(
+		fregex(Parse.ws,'.', Parse.ws, {type: 'identifier'}), //.item
+		fregex(Parse.ws,'[', Parse.ws, fregex.or(...indexType), Parse.ws, ']') // ['item']
+	),
+	terminator
+);
 
 
 

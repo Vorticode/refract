@@ -423,15 +423,17 @@ Deno.test('Refract.loop.Map', () => {
 
 	assertEquals(a.outerHTML, '<x-26>AppleBanana</x-26>');
 
+	Refract.elsCreated = [];
 	a.fruits.push('Cherry');
 	assertEquals(a.outerHTML, '<x-26>AppleBananaCherry</x-26>');
+	assertEquals(Refract.elsCreated, ['Cherry']);
 });
 
 Deno.test('Refract.loop.Map2', () => {
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
 		html =
-			`<x-28>${this.fruits.map(fruit => // Inline comment test
+			`<x-28>${this . fruits . map ( ( fruit ) => // Inline comment test
 				`<p>${fruit}</p>`
 			)}</x-28>`;
 	}
@@ -513,6 +515,26 @@ Deno.test('Refract.loop.MapTwoChilden', () => {
 	a.fruits.unshift('Cherry');
 	assertEquals(a.outerHTML, '<x-320>Hi <b>Cherry</b>Hi <b>Apple</b></x-320>');
 
+});
+
+
+
+
+Deno.test('Refract.loop.MapBrace', () => { // Make sure attribute quotes are escaped.
+
+	class A extends Refract {
+		items = [1, 2];
+		html =
+			`<x-330>${this.items.map(item => {
+				return item;
+			})}</x-330>`;
+	}
+	eval(A.compile());
+
+	//document.body.append(A.debugRender());
+
+	// let a = new A();
+	// console.log(a.outerHTML);
 });
 
 Deno.test('Refract.loop.ItemProps', () => {
@@ -772,7 +794,7 @@ Deno.test('Refract.loop.nested2', () => {
 	assertEquals(Refract.elsCreated, ["<p>", "Bird", " will ", "Tweet", "."]);
 });
 
-Deno.test('Refract.loop.nexted3', () => {
+Deno.test('Refract.loop.nested3', () => {
 
 	class A extends Refract {
 		verb = 'will';
@@ -861,31 +883,31 @@ Deno.test('Refract.loop.If', () => {
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
 		html =
-			`<x-77>${this.fruits.map(fruit =>
+			`<x-770>${this.fruits.map(fruit =>
 				fruit.startsWith('A') ? fruit : ''
-			)}</x-77>`;
+			)}</x-770>`;
 	}
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-77>Apple</x-77>`);
+	assertEquals(a.outerHTML, `<x-770>Apple</x-770>`);
 
 	a.fruits.push('Cherry');
-	assertEquals(a.outerHTML, `<x-77>Apple</x-77>`);
+	assertEquals(a.outerHTML, `<x-770>Apple</x-770>`);
 
 	a.fruits.push('Avacado');
-	assertEquals(a.outerHTML, `<x-77>AppleAvacado</x-77>`);
+	assertEquals(a.outerHTML, `<x-770>AppleAvacado</x-770>`);
 
 
 	a.fruits.shift();
-	assertEquals(a.outerHTML, `<x-77>Avacado</x-77>`);
+	assertEquals(a.outerHTML, `<x-770>Avacado</x-770>`);
 
 	a.fruits.unshift('Applesauce');
-	assertEquals(a.outerHTML, `<x-77>ApplesauceAvacado</x-77>`);
+	assertEquals(a.outerHTML, `<x-770>ApplesauceAvacado</x-770>`);
 
 	a.fruits[1] = 'Dragonfruit';
 	assertEquals(a.fruits.slice(), ['Applesauce', 'Dragonfruit', 'Cherry', 'Avacado']);
-	assertEquals(a.outerHTML, `<x-77>ApplesauceAvacado</x-77>`);
+	assertEquals(a.outerHTML, `<x-770>ApplesauceAvacado</x-770>`);
 });
 
 Deno.test('Refract.loop.IfNested', () => {
