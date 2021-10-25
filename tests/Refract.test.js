@@ -531,10 +531,30 @@ Deno.test('Refract.loop.MapBrace', () => { // Make sure attribute quotes are esc
 	}
 	eval(A.compile());
 
-	//document.body.append(A.debugRender());
+	let a = new A();
+	assertEquals(a.outerHTML, `<x-330>12</x-330>`);
 
-	// let a = new A();
-	// console.log(a.outerHTML);
+	Refract.elsCreated = [];
+	a.items.push(3);
+	assertEquals(a.outerHTML, `<x-330>123</x-330>`);
+	assertEquals(Refract.elsCreated, ['3']);
+});
+
+
+
+Deno.test('Refract.loop.MapBrace2', () => { // Make sure attribute quotes are escaped.
+
+	class A extends Refract {
+		items = [1, 2];
+		html =
+			`<x-340>${this.items.map(item => {
+				return item + `a`;
+			})}</x-340>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	assertEquals(a.outerHTML, `<x-340>1a2a</x-340>`);
 });
 
 Deno.test('Refract.loop.ItemProps', () => {
@@ -874,8 +894,7 @@ Deno.test('Refract.loop.Expr3', () => { // Make sure attribute quotes are escape
 	eval(A.compile());
 
 	let a = new A();
-	//console.log(Refract.htmlEncode('"', '"'));
-	console.log(a.outerHTML);
+	assertEquals(a.outerHTML, `<x-765><div title="&quot;">"</div><div title="'">'</div></x-765>`);
 });
 
 Deno.test('Refract.loop.If', () => {

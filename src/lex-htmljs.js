@@ -24,6 +24,7 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 	let lastTag = null; // Last tag name we descended into.
 
 	let braceDepth = 0;
+	let braceStack = []; // Keep track of the brace depth in outer demplates.
 	let templateDepth = 0;
 	let whitespace = /^[ \t\v\f\xa0]+/;
 	let ln = /^\r?\n/
@@ -51,17 +52,19 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 		if ((lexHtmlJs.allowHashTemplates && code.startsWith('#{')) || code.startsWith('${')) {
 			if (templateDepth <= 0)
 				templateDepth = 1;
+			braceStack.push(braceDepth);
 			braceDepth = 0;
 			return [
 				code.slice(0, 2),
-				'js'
+				'js' // Go from template mode into javascript
 			];
 		}
 	}
 
-	let template = code => {
+	let templateEnd = code => {
 		if (code[0] === '`') {
 			--templateDepth;
+			braceDepth = braceStack.pop();
 			return ['`', -1];
 		}
 	};
@@ -75,20 +78,16 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 		,
 		equals: '=',
 		tagEnd: code => {
-			//let ret = lastTag === 'script' ? 'js' : -1;
-
 			if (code[0] === '>')
-				return ['>', -1];
+				return ['>', -1]; // exit tag mode
 			if (code.startsWith('/>'))
-				return ['/>', -1];
+				return ['/>', -1]; // exit tag mode.
 		},
 
 		unknown: code => lexHtmlJs.allowUnknownTagTokens
 			? [code.match(/^\w+|\S/) || []][0] // Don't fail on unknown stuff in html tags.
 			: undefined,
 	};
-
-
 
 	// Check previous token to see if we've just entered a script tag.
 	let script = (code, prev, tokens) => {
@@ -162,9 +161,10 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 				if (!keyword.includes(result))
 					return [result];
 			},
-			template: code => {
+			template: code => { // go into a template
 				if (code[0] === '`') {
 					++templateDepth;
+					braceStack.push(braceDepth);
 					braceDepth = 0;
 					return ['`', 'template'];
 				}
@@ -177,8 +177,10 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 			},
 			brace2: code => {
 				if (code[0] === '}') {
-					if (braceDepth === 0 && templateDepth)
+					if (braceDepth === 0 && templateDepth) {
+						braceDepth = braceStack.pop();
 						return ['}', -1] // pop out of js mode, back to tempate mode.
+					}
 					braceDepth--;
 					return ['}']; // just match
 				}
@@ -210,7 +212,7 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 			comment: descendIf('<!--', 'templateComment'),
 			closeTag,
 			openTag: descendIf(tagStart, 'templateTag', match => lastTag = match[1]),
-			template,
+			templateEnd,
 
 			// Continue until end of text.
 			// supports both ${} and #{} template expressions.
@@ -233,7 +235,7 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 
 		templateTag: { // html tag within template.
 			expr,
-			template, // A ` quote to end the template.
+			templateEnd, // A ` quote to end the template.
 			...tag,
 		},
 

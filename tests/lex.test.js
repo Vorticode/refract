@@ -44,7 +44,7 @@ Deno.test('lex.template', () => {
 	// Template string
 	assertEquals(tokens[4].tokens, ['`', 'hello ', '${name}', '`']);
 	assertEquals(tokens[4].tokens[0].mode, 'template');
-	assertEquals(tokens[4].tokens.map(t=>t.type), ["template","text","expr","template"]);
+	assertEquals(tokens[4].tokens.map(t=>t.type), ["template","text","expr","templateEnd"]);
 	assertEquals(tokens[4].tokens.map(t=>t.mode), ['template','template','template','template']);
 
 	// Js inside template string.
@@ -92,10 +92,26 @@ Deno.test('lex.template-escape', () => {
 });
 
 Deno.test('lex.template-brace-depth', () => {
+	let code = '<div>${{a: `a`})}</div>';
+
+	let tokens = lex(jsHtml, code, 'template');
+	console.log(tokens); // TODO
+
+	assertEquals(tokens, ['<div>', '${{a: `a`})}', '</div>']);
+});
+
+Deno.test('lex.template-brace-depth2', () => {
 	let code = '`a ${{b: `${{c: 3}}`}}`.length';
 	let tokens = lex(jsHtml, code);
 	// Test braceDepth
 	// TOOD: test.
+	console.log(tokens);
+
+	assertEquals(tokens, ['`a ${{b: `${{c: 3}}`}}`', '.', 'length']);
+	assertEquals(tokens[0].tokens, ['`', 'a ', '${{b: `${{c: 3}}`}}', '`']);
+	assertEquals(tokens[0].tokens[2].tokens, ['${', '{', 'b', ':', ' ', '`${{c: 3}}`', '}', '}']);
+	assertEquals(tokens[0].tokens[2].tokens[5].tokens, ['`', '${{c: 3}}', '`']);
+	assertEquals(tokens[0].tokens[2].tokens[5].tokens[1].tokens, ['${', '{', 'c', ':', ' ', '3', '}', '}']);
 });
 
 Deno.test('lex.template-tag-expr', () => {
@@ -162,8 +178,9 @@ Deno.test('lex.template-misc', () => {
 
 	let tokens = lex(jsHtml, code, 'template');
 	console.log(tokens); // TODO
-
 });
+
+
 
 Deno.test('lex.template-script-tag', () => {
 	let code = '${var a=`<script>var b=1<3</script>`}';
