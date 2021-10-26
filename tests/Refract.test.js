@@ -517,9 +517,6 @@ Deno.test('Refract.loop.MapTwoChilden', () => {
 
 });
 
-
-
-
 Deno.test('Refract.loop.MapBrace', () => { // Make sure attribute quotes are escaped.
 
 	class A extends Refract {
@@ -539,8 +536,6 @@ Deno.test('Refract.loop.MapBrace', () => { // Make sure attribute quotes are esc
 	assertEquals(a.outerHTML, `<x-330>123</x-330>`);
 	assertEquals(Refract.elsCreated, ['3']);
 });
-
-
 
 Deno.test('Refract.loop.MapBrace2', () => { // Make sure attribute quotes are escaped.
 
@@ -897,6 +892,25 @@ Deno.test('Refract.loop.Expr3', () => { // Make sure attribute quotes are escape
 	assertEquals(a.outerHTML, `<x-765><div title="&quot;">"</div><div title="'">'</div></x-765>`);
 });
 
+Deno.test('Refract.loop.attributeExpr', () => { // Make sure loop scope is passed to attributes
+
+	class A extends Refract {
+		files = [
+			{selected: 'no'},
+		];
+		html =
+			`<x-768>${this.files.map(file =>
+				`<div class="${file.selected}">one</div>`
+			)}</x-768>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+
+	a.files[0].selected = 'yes';
+	assertEquals(a.outerHTML, `<x-768><div class="yes">one</div></x-768>`);
+});
+
 Deno.test('Refract.loop.If', () => {
 
 	class A extends Refract {
@@ -944,28 +958,28 @@ Deno.test('Refract.loop.IfNested', () => {
 		];
 
 		html =
-			`<x-79>${this.pets.map(pet =>
+			`<x-790>${this.pets.map(pet =>
 				pet.activities.map(activity =>
 					activity.length >= 5
 						? `<p>#{pet.name} will ${activity}.</p>`
 						: ''
 				)
-			)}</x-79>`;
+			)}</x-790>`;
 	}
 
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-79><p>Cat will Sleep.</p><p>Dog will Frolic.</p><p>Dog will Fetch.</p></x-79>`);
+	assertEquals(a.outerHTML, `<x-790><p>Cat will Sleep.</p><p>Dog will Frolic.</p><p>Dog will Fetch.</p></x-790>`);
 
 	Refract.elsCreated = [];
 	a.pets[0].activities[0] = 'Doze'; // Less than 5 characters.
-	assertEquals(a.outerHTML, `<x-79><p>Dog will Frolic.</p><p>Dog will Fetch.</p></x-79>`);
+	assertEquals(a.outerHTML, `<x-790><p>Dog will Frolic.</p><p>Dog will Fetch.</p></x-790>`);
 	assertEquals(Refract.elsCreated, []);
 
 	Refract.elsCreated = [];
 	a.pets[0].activities[0] = 'Slumber';
-	assertEquals(a.outerHTML, `<x-79><p>Cat will Slumber.</p><p>Dog will Frolic.</p><p>Dog will Fetch.</p></x-79>`);
+	assertEquals(a.outerHTML, `<x-790><p>Cat will Slumber.</p><p>Dog will Frolic.</p><p>Dog will Fetch.</p></x-790>`);
 	assertEquals(Refract.elsCreated, ["<p>", "Cat will Slumber."]);
 });
 
@@ -1181,6 +1195,28 @@ Deno.test('Refract.form.inputExpr', () => {
 	a.input.dispatchEvent(new Event('input'));
 	assertEquals(a.value, 'Cherry');
 });
+
+Deno.test('Refract.form.inputExprUndefined', () => {
+
+	class A extends Refract {
+		form = {};
+		html = `<a-122><input id="input" value="${this.form.value}"></a-122>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	assertEquals(a.input.value, '');
+
+	// Set class value.
+	a.form.value = 'Banana';
+	assertEquals(a.input.value, 'Banana');
+
+	// Set input value
+	a.input.value = 'Cherry';
+	a.input.dispatchEvent(new Event('input'));
+	assertEquals(a.form.value, 'Cherry');
+});
+
 
 Deno.test('Refract.form.inputEvent', () => {
 
@@ -1470,7 +1506,7 @@ Deno.test('Refract.misc.formInputDeep', () => {
 
 	class A extends Refract {
 		deep = { value: 'Apple'};
-		html = `<a-121><input id="input" value="${this.deep.value}"></a-121>`;
+		html = `<a-155><input id="input" value="${this.deep.value}"></a-155>`;
 	}
 	eval(A.compile());
 
@@ -1494,7 +1530,7 @@ Deno.test('Refract.misc.TwoVars', () => {
 	class A extends Refract {
 		a = 1;
 		b = 2;
-		html = `<a-122>${this.a + this.b}</a-122>`;
+		html = `<a-160>${this.a + this.b}</a-160>`;
 	}
 	eval(A.compile());
 

@@ -209,7 +209,6 @@ export default class VExpression {
 
 		let result = [];
 		if (this.type!=='loop') { // simple or complex
-
 			//#IFDEV
 			if (!this.xel)
 				throw new Error();
@@ -230,6 +229,8 @@ export default class VExpression {
 				}
 
 		} else { // loop
+
+
 			let array = this.exec.apply(this.xel, Object.values(this.scope));
 			//#IFDEV
 			if (!array)
@@ -246,6 +247,12 @@ export default class VExpression {
 					let params = [array[i], i, array];
 					for (let j in this.loopParamNames)
 						vel.scope[this.loopParamNames[j]] = params[j];
+
+					// Copy scope to attributes
+					for (let attrName in vel.attributes)
+						for (let attrPart of vel.attributes[attrName])
+							if (attrPart instanceof VExpression)
+								attrPart.scope = vel.scope;
 
 					group.push(vel);
 				}
@@ -515,8 +522,6 @@ export default class VExpression {
 	 * @param attrName {string?} If set, this VExpression is part of an attribute, otherwise it creates html child nodes.
 	 * @returns {VExpression} */
 	static fromTokens(tokens, scope, vParent, attrName) {
-
-
 		let result = new VExpression();
 		result.vParent = vParent;
 		if (vParent) {

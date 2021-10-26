@@ -70,6 +70,7 @@ export default class VElement {
 		if (tagName === 'svg')
 			Refract.inSvg = true;
 
+
 		// 1A. Binding to existing element.
 		if (el) {
 			this.el = el;
@@ -239,7 +240,6 @@ export default class VElement {
 						delve(scope, value[0].watchPaths[0], val);
 					}, true);
 				}
-
 			}
 		}
 
@@ -400,33 +400,20 @@ export default class VElement {
 	 * @returns {(VElement|VExpression|string)[]}
 	 *     Array with a .index property added, to keep track of what token we're on. */
 	static fromTokens(tokens, scopeVars=[], vParent=null, limit=false, index=0) {
-		let result = [];
-
-		//#IFDEV
-		if (!Array.isArray(tokens))
-			throw new Error('array required.');
-		//#ENDIF
-
 		if (!tokens.length)
 			return [];
 
+		let result = [];
 		do {
 			let token = tokens[index];
-			//#IFDEV
-			if (!token)
-				debugger;
-			//#ENDIF
 
 			// Text node
-			if (token.type === 'text') {
-				let vtext = new VText(token);
-				result.push(vtext);
-			}
+			if (token.type === 'text')
+				result.push(new VText(token));
 
 			// Expression child
-			else if (token.type === 'expr') {
+			else if (token.type === 'expr')
 				result.push(VExpression.fromTokens(token.tokens, scopeVars, vParent));
-			}
 
 			// Collect tagName and attributes from open tag.
 			else if (token.type === 'openTag') {
@@ -435,15 +422,12 @@ export default class VElement {
 				vel.xel = vParent?.xel;
 				if (vParent)
 					vel.scope = {...vParent.scope};
-
-
 				let attrName='';
 				let tagTokens = token.tokens.filter(token => token.type !== 'whitespace') // Tokens excluding whitespace.
 
 				for (let j=0, tagToken; (tagToken = tagTokens[j]); j++) {
 					if (j === 0)
 						vel.tagName = tagToken.slice(1);
-
 
 					else if (tagToken.type === 'attribute') {
 						attrName = tagToken;
@@ -457,7 +441,6 @@ export default class VElement {
 						// Tokens within attribute value string.
 						if (tagToken.type === 'string')
 							for (let exprToken of tagToken.tokens.slice(1, -1)) { // slice to remove surrounding quotes.
-
 								if (exprToken.type === 'expr')
 									attrValues.push(VExpression.fromTokens(exprToken.tokens, scopeVars, vParent, attrName));
 								else // string:
@@ -470,7 +453,6 @@ export default class VElement {
 							throw new Error(); // Shouldn't happen.
 						//#ENDIF
 
-
 						vel.attributes[attrName] = attrValues;
 						attrName = undefined;
 					}
@@ -478,9 +460,7 @@ export default class VElement {
 					// Expression that creates attribute(s)
 					else if (tagToken.type === 'expr')
 						vel.attributeExpressions.push(VExpression.fromTokens(tagToken.tokens, scopeVars, vParent));
-
 				}
-
 
 				let isSelfClosing = tagTokens[tagTokens.length-1] == '/>' ||
 					['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source',
@@ -510,7 +490,6 @@ export default class VElement {
 		} while (index < tokens.length);
 
 		result.index = index;
-
 		return result;
 	}
 }
