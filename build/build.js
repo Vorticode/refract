@@ -30,7 +30,7 @@ const rollupOptions = {
 const terserOptions = {
 	ecma: 8, // Decreases size.
 	format: {
-		preamble: `// Version ${timestamp()}\r\n// License: MIT\r\nhttps://github.com/vorticode/Refract`,
+		preamble: `// Version ${timestamp()}\r\n// License: MIT\r\n// https://github.com/vorticode/Refract`,
 	},
 	compress: { // https://github.com/terser/terser#compress-options
 		passes: 5,

@@ -909,7 +909,16 @@ Deno.test('Refract.loop.attributeExpr', () => { // Make sure loop scope is passe
 
 	a.files[0].selected = 'yes';
 	assertEquals(a.outerHTML, `<x-768><div class="yes">one</div></x-768>`);
+
+	let file = {selected: 'no'};
+	a.files.push(file);
+	assertEquals(a.outerHTML, `<x-768><div class="yes">one</div><div class="no">one</div></x-768>`);
+
+	file.selected = 'yes';
+	assertEquals(a.outerHTML, `<x-768><div class="yes">one</div><div class="yes">one</div></x-768>`);
 });
+
+
 
 Deno.test('Refract.loop.If', () => {
 

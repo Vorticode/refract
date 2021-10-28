@@ -248,12 +248,6 @@ export default class VExpression {
 					for (let j in this.loopParamNames)
 						vel.scope[this.loopParamNames[j]] = params[j];
 
-					// Copy scope to attributes
-					for (let attrName in vel.attributes)
-						for (let attrPart of vel.attributes[attrName])
-							if (attrPart instanceof VExpression)
-								attrPart.scope = vel.scope;
-
 					group.push(vel);
 				}
 
@@ -547,6 +541,7 @@ export default class VExpression {
 		// Find the watchPathTokens before we call fromTokens() on child elements.
 		// That way we don't descend too deep.
 		let watchPathTokens = Parse.varExpressions_(tokens, scope);
+		console.log(watchPathTokens);
 
 		// Find loopItem props if this is a loop.
 		let [loopParamNames, loopBody] = Parse.simpleMapExpression_(tokens, scope);

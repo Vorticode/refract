@@ -1,3 +1,4 @@
+
 /**
  * Parse code into tokens according to rules in a grammar.
  *

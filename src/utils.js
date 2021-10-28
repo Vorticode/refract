@@ -1,9 +1,6 @@
-/**
- * Shortened version of this answer: stackoverflow.com/a/18751951
- * @type {string[]} */
-var eventNamesMap = {};
-Object.keys(document.__proto__.__proto__)
-	.map(x => x.startsWith('on') ? eventNamesMap[x] = true : 0);
+// Version 2021.10.28.1939
+// License: MIT
+// https://github.com/vorticode/Refract
 
 //#IFDEV
 class RefractError extends Error {
@@ -64,26 +61,6 @@ var csv = (array) => JSON.stringify(array).slice(1, -1); // slice() to remove st
  * @returns {boolean} */
 var isObj = (obj) => obj && typeof obj === 'object'; // Make sure it's not null, since typof null === 'object'.
 
-/**
- * Is name a valid attribute for el.
- * @param el {HTMLElement}
- * @param name {string}
- * @returns {boolean} */
-var isValidAttribute = (el, name) => {
-	if ((name.startsWith('data-') || name.startsWith('x-') ||el.hasAttribute(name)) ||
-		(name.startsWith('on') && eventNames.includes(name.slice(2))))
-		return true;
-
-	if (name in el)
-		return false;
-
-	// Try setting the prop to see if it creates an attribute.
-	el[name] = 1;
-	var isAttr = el.hasAttribute(name);
-	delete el[name];
-	return isAttr;
-};
-
 
 /**
  * Operates recursively to remove all proxies.
@@ -132,7 +109,7 @@ var removeProxies = (obj, visited) => {
 	return obj;
 };
 
-export { csv, isObj, isValidAttribute, eventNamesMap };
+export { csv, isObj };
 //#IFDEV
 export { RefractError }
 //#ENDIF

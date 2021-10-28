@@ -70,7 +70,6 @@ export default class VElement {
 		if (tagName === 'svg')
 			Refract.inSvg = true;
 
-
 		// 1A. Binding to existing element.
 		if (el) {
 			this.el = el;
@@ -147,6 +146,7 @@ export default class VElement {
 				if (attrPart instanceof VExpression) {
 					let expr = attrPart;
 					expr.parent = this.el;
+					expr.scope = this.scope; // Share scope with attributes.
 					expr.watch(() => {
 						if (name === 'value')
 							setInputValue(this.xel, this.el, value, this.scope, isTextArea || isContentEditable);

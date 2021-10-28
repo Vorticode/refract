@@ -187,6 +187,7 @@ var ascendIf = regex => code => {
 	let lastTag = null; // Last tag name we descended into.
 
 	let braceDepth = 0;
+	let braceStack = []; // Keep track of the brace depth in outer demplates.
 	let templateDepth = 0;
 	let whitespace = /^[ \t\v\f\xa0]+/;
 	let ln = /^\r?\n/;
@@ -214,17 +215,19 @@ var ascendIf = regex => code => {
 		if ((lexHtmlJs.allowHashTemplates && code.startsWith('#{')) || code.startsWith('${')) {
 			if (templateDepth <= 0)
 				templateDepth = 1;
+			braceStack.push(braceDepth);
 			braceDepth = 0;
 			return [
 				code.slice(0, 2),
-				'js'
+				'js' // Go from template mode into javascript
 			];
 		}
 	};
 
-	let template = code => {
+	let templateEnd = code => {
 		if (code[0] === '`') {
 			--templateDepth;
+			braceDepth = braceStack.pop();
 			return ['`', -1];
 		}
 	};
@@ -238,20 +241,16 @@ var ascendIf = regex => code => {
 		,
 		equals: '=',
 		tagEnd: code => {
-			//let ret = lastTag === 'script' ? 'js' : -1;
-
 			if (code[0] === '>')
-				return ['>', -1];
+				return ['>', -1]; // exit tag mode
 			if (code.startsWith('/>'))
-				return ['/>', -1];
+				return ['/>', -1]; // exit tag mode.
 		},
 
 		unknown: code => lexHtmlJs.allowUnknownTagTokens
 			? [code.match(/^\w+|\S/) || []][0] // Don't fail on unknown stuff in html tags.
 			: undefined,
 	};
-
-
 
 	// Check previous token to see if we've just entered a script tag.
 	let script = (code, prev, tokens) => {
@@ -325,9 +324,10 @@ var ascendIf = regex => code => {
 				if (!keyword.includes(result))
 					return [result];
 			},
-			template: code => {
+			template: code => { // go into a template
 				if (code[0] === '`') {
 					++templateDepth;
+					braceStack.push(braceDepth);
 					braceDepth = 0;
 					return ['`', 'template'];
 				}
@@ -340,8 +340,10 @@ var ascendIf = regex => code => {
 			},
 			brace2: code => {
 				if (code[0] === '}') {
-					if (braceDepth === 0 && templateDepth)
+					if (braceDepth === 0 && templateDepth) {
+						braceDepth = braceStack.pop();
 						return ['}', -1] // pop out of js mode, back to tempate mode.
+					}
 					braceDepth--;
 					return ['}']; // just match
 				}
@@ -373,7 +375,7 @@ var ascendIf = regex => code => {
 			comment: descendIf('<!--', 'templateComment'),
 			closeTag,
 			openTag: descendIf(tagStart, 'templateTag', match => lastTag = match[1]),
-			template,
+			templateEnd,
 
 			// Continue until end of text.
 			// supports both ${} and #{} template expressions.
@@ -396,7 +398,7 @@ var ascendIf = regex => code => {
 
 		templateTag: { // html tag within template.
 			expr,
-			template, // A ` quote to end the template.
+			templateEnd, // A ` quote to end the template.
 			...tag,
 		},
 
@@ -609,20 +611,6 @@ var prepare = rules => {
 	return result;
 };
 
-let terminator = fregex.lookAhead(
-	fregex.or(
-		fregex.end,
-		fregex.not('(')
-	)
-);
-let property = fregex(
-	fregex.or(
-		fregex('.', {type: 'identifier'}), //.item
-		fregex('[', fregex.or({type: 'string'}, {type: 'number'}, {type: 'template'}), ']') // ['item']
-	),
-	terminator
-);
-
 let varExpressionCache = {};
 
 var Parse = {
@@ -638,8 +626,8 @@ var Parse = {
 
 		return varExpressionCache[key] = fregex(
 			fregex.or(
-				fregex('this', fregex.oneOrMore(property)),
-				...vars.map(v => fregex(v, fregex.zeroOrMore(property)))
+				fregex('this', Parse.ws, fregex.oneOrMore(property)),  // this.prop
+				...vars.map(v => fregex(v, fregex.zeroOrMore(property)))    // item.prop
 			),
 			terminator
 		);
@@ -714,14 +702,17 @@ var Parse = {
 
 		let loopMatch = [
 			Parse.createVarExpression_(vars),
-			'.', 'map', '('
+			Parse.ws, '.', Parse.ws, 'map', Parse.ws, '('
 		];
 		let loopParamMatch = [
+			Parse.ws,
 			fregex.or([
-				{type: 'identifier'},
-				['(', Parse.argList, ')'] // match any number of arguments.
+				{type: 'identifier'}, // single argument with no parens.
+				['(', Parse.ws, Parse.argList, Parse.ws, ')'] // match any number of arguments.
 			]),
-			'=>'
+			Parse.ws,
+			'=>',
+			Parse.ws
 		];
 
 		// this.array.map(
@@ -738,9 +729,13 @@ var Parse = {
 		// Loop through remaining tokens, keep track of braceDepth, bracketDepth, and parenDepth, until we reach a closing ).
 		let loopBody = [];
 		let braceDepth=0, bracketDepth=0, parenDepth=0;
-		let bodyTokens = tokens.slice(mapExpr.length + paramExpr.length);
+		let lastToken = tokens.length-1; // Trim whitespace from end
+		while (tokens[lastToken].type === 'whitespace' || tokens[lastToken].type==='ln')
+			lastToken --;
+
+		let bodyTokens = tokens.slice(mapExpr.length + paramExpr.length, lastToken+1);
 		// noinspection JSAssignmentUsedAsCondition
-		for (let i=0, token; token = bodyTokens[i]; i++) {
+		for (let i=0, token; token=bodyTokens[i]; i++) {
 
 			braceDepth   += {'{':1, '}':-1}[token] | 0; // Single | gives the same result as double ||, yields smaller minified size.
 			bracketDepth += {'[':1, ']':-1}[token] | 0;
@@ -771,12 +766,7 @@ var Parse = {
 	 * @param vars
 	 * @private
 	 */
-	objectMapExpression_(tokens, vars=[]) {
-
-
-
-	},
-
+	objectMapExpression_(tokens, vars=[]) {},
 
 	/**
 	 * Find expressions that start with "this" or with local variables.
@@ -788,6 +778,8 @@ var Parse = {
 
 		// Discard any paths that come after a ".", which means they occur within another variable expression.
 		// E.g. we dont' want to return "a.b" and also the "b" from the second part of that path.
+		// TODO: But what about when one expression is within another:
+		// this.items[this.index]
 		return result.filter(path => tokens[path.index-1] != '.');
 	},
 
@@ -812,17 +804,21 @@ Parse.ws = fregex.zeroOrMore(fregex.or(
 	{type: 'whitespace'}, {type: 'ln'}
 ));
 
+let indexType = [
+	{type: 'number'},
+	{type: 'hex'},
+	{type: 'string'},
+	{type: 'template'}
+];
 
 Parse.arg = fregex([
 	{type: 'identifier'},
 	Parse.ws,
 	fregex.zeroOrOne([
 		'=', Parse.ws, fregex.or([
-			{type: 'hex'},
-			{type: 'number'},
-			{type: 'regex'},
-			{type: 'string'},
+			...indexType,
 			{type: 'identifier'},
+			{type: 'regex'},
 		])
 	])
 ]);
@@ -832,6 +828,21 @@ Parse.argList = fregex.zeroOrMore([
 		Parse.ws, ',', Parse.ws, Parse.arg
 	])
 ]);
+
+
+let terminator = fregex.lookAhead([
+	fregex.or(
+		fregex.end,
+		fregex.not(Parse.ws, '(')
+	)
+]);
+let property = fregex(
+	fregex.or(
+		fregex(Parse.ws,'.', Parse.ws, {type: 'identifier'}), //.item
+		fregex(Parse.ws,'[', Parse.ws, fregex.or(...indexType), Parse.ws, ']') // ['item']
+	),
+	terminator
+);
 
 var dontCreateValue = {};
 
@@ -894,12 +905,9 @@ function delve(obj, path, createVal=dontCreateValue, watchless=false) {
 
 delve.dontCreateValue = dontCreateValue;
 
-/**
- * Shortened version of this answer: stackoverflow.com/a/18751951
- * @type {string[]} */
-var eventNamesMap = {};
-Object.keys(document.__proto__.__proto__)
-	.map(x => x.startsWith('on') ? eventNamesMap[x] = true : 0);
+// Version 2021.10.28.1939
+// License: MIT
+// https://github.com/vorticode/Refract
 
 //#IFDEV
 class RefractError extends Error {
@@ -2104,7 +2112,6 @@ class VExpression {
 
 		let result = [];
 		if (this.type!=='loop') { // simple or complex
-
 			//#IFDEV
 			if (!this.xel)
 				throw new Error();
@@ -2125,6 +2132,8 @@ class VExpression {
 				}
 
 		} else { // loop
+
+
 			let array = this.exec.apply(this.xel, Object.values(this.scope));
 			//#IFDEV
 			if (!array)
@@ -2410,8 +2419,6 @@ class VExpression {
 	 * @param attrName {string?} If set, this VExpression is part of an attribute, otherwise it creates html child nodes.
 	 * @returns {VExpression} */
 	static fromTokens(tokens, scope, vParent, attrName) {
-
-
 		let result = new VExpression();
 		result.vParent = vParent;
 		if (vParent) {
@@ -2434,16 +2441,13 @@ class VExpression {
 			tokens = tokens.slice(1, -1); // Remove ${ and }
 		}
 
-
-		// Filter out whitespace.  Comments were removed at a previous step.
-		let actualTokens = tokens.filter(token => token.type !== 'whitespace' && token.type !== 'ln');
-
 		// Find the watchPathTokens before we call fromTokens() on child elements.
 		// That way we don't descend too deep.
-		let watchPathTokens = Parse.varExpressions_(actualTokens, scope);
+		let watchPathTokens = Parse.varExpressions_(tokens, scope);
+		console.log(watchPathTokens);
 
 		// Find loopItem props if this is a loop.
-		let [loopParamNames, loopBody] = Parse.simpleMapExpression_(actualTokens, scope);
+		let [loopParamNames, loopBody] = Parse.simpleMapExpression_(tokens, scope);
 
 		// Get the createFunction() from the class if it's already been instantiated.  Else use Refract's temporary createfunction().
 		// This lets us use other variabls defiend in the same scope as the class that extends Refract.
@@ -2459,9 +2463,11 @@ class VExpression {
 				scope.push(p);
 			result.exec = Class.createFunction(...scope, 'return ' + watchPathTokens[0].join(''));
 
-			// TODO: Why isn't the second path all that we need?
-			if (loopBody.length === 1 && loopBody[0].type === 'template')
-				result.loopItemEls = VElement.fromTokens(loopBody[0].tokens.slice(1, -1), scope); // Remove beginning and end string, parse items.
+
+			let loopBodyTrimmed = loopBody.filter(token => token.type !== 'whitespace' && token.type !== 'ln');
+
+			if (loopBodyTrimmed.length === 1 && loopBodyTrimmed[0].type === 'template')
+				result.loopItemEls = VElement.fromTokens(loopBodyTrimmed[0].tokens.slice(1, -1), scope); // Remove beginning and end string, parse items.
 			else // javascript code
 				result.loopItemEls = [VExpression.fromTokens(loopBody, scope, vParent)];
 		}
@@ -2469,7 +2475,7 @@ class VExpression {
 		else {
 
 			// TODO: This duplicates code executed in Parse.varExpressions_ above?
-			if (Parse.createVarExpression_(scope)(actualTokens) !== actualTokens.length)
+			if (Parse.createVarExpression_(scope)(tokens) !== tokens.length)
 				result.type = 'complex';
 
 			// Build function to evaluate expression.
@@ -2478,8 +2484,11 @@ class VExpression {
 			// understood by the vanilla JavaScript that executes the template string.
 			tokens = Parse.replaceHashExpr(tokens, null, Class.name);
 
-			// joining on line return req'd for // comments and lines not ending in semicolon.
-			result.exec = Class.createFunction(...scope, 'return ' + tokens.join(''));
+			// Trim required.  B/c if there's a line return after return, the function will return undefined!
+			let body = tokens.join('');
+			if (tokens[0] != '{')
+				body = 'return (' + body.trim() + ')';
+			result.exec = Class.createFunction(...scope, body);
 		}
 
 		// Get just the identifier names between the dots.
@@ -2636,6 +2645,7 @@ class VElement {
 				if (attrPart instanceof VExpression) {
 					let expr = attrPart;
 					expr.parent = this.el;
+					expr.scope = this.scope; // Share scope with attributes.
 					expr.watch(() => {
 						if (name === 'value')
 							setInputValue(this.xel, this.el, value, this.scope, isTextArea || isContentEditable);
@@ -2729,7 +2739,6 @@ class VElement {
 						delve(scope, value[0].watchPaths[0], val);
 					}, true);
 				}
-
 			}
 		}
 
@@ -2890,33 +2899,20 @@ class VElement {
 	 * @returns {(VElement|VExpression|string)[]}
 	 *     Array with a .index property added, to keep track of what token we're on. */
 	static fromTokens(tokens, scopeVars=[], vParent=null, limit=false, index=0) {
-		let result = [];
-
-		//#IFDEV
-		if (!Array.isArray(tokens))
-			throw new Error('array required.');
-		//#ENDIF
-
 		if (!tokens.length)
 			return [];
 
+		let result = [];
 		do {
 			let token = tokens[index];
-			//#IFDEV
-			if (!token)
-				debugger;
-			//#ENDIF
 
 			// Text node
-			if (token.type === 'text') {
-				let vtext = new VText(token);
-				result.push(vtext);
-			}
+			if (token.type === 'text')
+				result.push(new VText(token));
 
 			// Expression child
-			else if (token.type === 'expr') {
+			else if (token.type === 'expr')
 				result.push(VExpression.fromTokens(token.tokens, scopeVars, vParent));
-			}
 
 			// Collect tagName and attributes from open tag.
 			else if (token.type === 'openTag') {
@@ -2925,15 +2921,12 @@ class VElement {
 				vel.xel = vParent?.xel;
 				if (vParent)
 					vel.scope = {...vParent.scope};
-
-
 				let attrName='';
 				let tagTokens = token.tokens.filter(token => token.type !== 'whitespace'); // Tokens excluding whitespace.
 
 				for (let j=0, tagToken; (tagToken = tagTokens[j]); j++) {
 					if (j === 0)
 						vel.tagName = tagToken.slice(1);
-
 
 					else if (tagToken.type === 'attribute') {
 						attrName = tagToken;
@@ -2947,7 +2940,6 @@ class VElement {
 						// Tokens within attribute value string.
 						if (tagToken.type === 'string')
 							for (let exprToken of tagToken.tokens.slice(1, -1)) { // slice to remove surrounding quotes.
-
 								if (exprToken.type === 'expr')
 									attrValues.push(VExpression.fromTokens(exprToken.tokens, scopeVars, vParent, attrName));
 								else // string:
@@ -2960,7 +2952,6 @@ class VElement {
 							throw new Error(); // Shouldn't happen.
 						//#ENDIF
 
-
 						vel.attributes[attrName] = attrValues;
 						attrName = undefined;
 					}
@@ -2968,9 +2959,7 @@ class VElement {
 					// Expression that creates attribute(s)
 					else if (tagToken.type === 'expr')
 						vel.attributeExpressions.push(VExpression.fromTokens(tagToken.tokens, scopeVars, vParent));
-
 				}
-
 
 				let isSelfClosing = tagTokens[tagTokens.length-1] == '/>' ||
 					['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source',
@@ -3000,7 +2989,6 @@ class VElement {
 		} while (index < tokens.length);
 
 		result.index = index;
-
 		return result;
 	}
 }
