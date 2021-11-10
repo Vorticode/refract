@@ -293,11 +293,11 @@ export default class Refract extends HTMLElement {
 				let argTokens = fregex.matchFirst(Parse.argList, tokens, constr.index+constr.length);
 				result.constructorArgs = Parse.filterArgNames(argTokens);
 
-				// Find super call in constructor  body
+				// Find super call in constructor body
 				let sup = fregex.matchFirst(
-					// TODO: Below I need to account for super calls that contain ; in an inline anonymous founction.
+					// TODO: Below I need to account for super calls that contain ) or ; in an inline anonymous function.
 					// Instead count the ( and ) and end on the last )
-					['super', Parse.ws, '(', fregex.zeroOrMore(fregex.not(';')), ';'],
+					['super', Parse.ws, '(', fregex.zeroOrMore(fregex.not(')')), ')', fregex.zeroOrOne(';')],
 					tokens,
 					argTokens.index+argTokens.length);
 				//#IFDEV
@@ -316,7 +316,7 @@ export default class Refract extends HTMLElement {
 					).flat(),
 					`if (!this.virtualElement) {`, // If not already created by a super-class
 					`\tthis.virtualElement = this.constructor.virtualElement.clone(this);`,
-					`\tthis.virtualElement.apply(this, this);`,
+					`\tthis.virtualElement.apply(null, this);`,
 					`}`,
 					'//End Refract injected code.'
 				].join('\r\n\t\t\t');
@@ -332,7 +332,7 @@ export default class Refract extends HTMLElement {
 					`\tsuper();`,
 					`\tif (!this.virtualElement) {`, // If not already created by a super-class
 					`\t\tthis.virtualElement = this.constructor.virtualElement.clone(this);`,
-					`\t\tthis.virtualElement.apply(this, this);`,
+					`\t\tthis.virtualElement.apply(null, this);`,
 					'\t}',
 					'}',
 					'//End Refract injected code.'
@@ -360,6 +360,20 @@ export default class Refract extends HTMLElement {
 		for (let staticField of Object.getOwnPropertyNames(compiled.self))
 			if (!(staticField in Refract)) // If not inherited
 				NewClass[staticField] = compiled.self[staticField];
+
+
+		// Re-evaluate the function so that any references to its own class points to the new instance and not the old one.
+		// TODO: This doesn't get the arguments of the function.
+		// TODO: Does this need to be done for non-static methos also?
+		// TODO: Can this be combined with step 3 above?
+    /*
+		for (let name of Reflect.ownKeys(NewClass))
+			if ((typeof NewClass[name] === 'function') && name !== 'createFunction') {
+				let code = NewClass[name].toString();
+				code = code.slice(code.indexOf('{')+1, code.lastIndexOf('}'));
+				NewClass[name] = NewClass.createFunction(code);
+			}
+  */
 
 		// 4. Register the class as an html element.
 		customElements.define(NewClass.virtualElement.tagName.toLowerCase(), NewClass);
@@ -395,11 +409,17 @@ export default class Refract extends HTMLElement {
 				${this.name}.decorate(${this.name}, compiled);
 				delete window.RefractCurrentClass;
 				return ${this.name};	
-			})();
-		
+			})();		
 		`;
 	}
 }
 
 Refract.htmlDecode = Html.decode;
 Refract.htmlEncode = Html.encode;
+
+// Expose useful internals to users of Refract:
+export {default as Watch} from './Watch.js';
+export {default as lex} from './lex.js';
+export {default as lexHtmlJs} from './lex-htmljs.js';
+export {default as delve} from './delve.js';
+export {default as fregex} from './fregex.js';

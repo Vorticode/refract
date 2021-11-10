@@ -1,6 +1,3 @@
-// Version 2021.10.28.1939
-// License: MIT
-// https://github.com/vorticode/Refract
 
 //#IFDEV
 class RefractError extends Error {
@@ -53,13 +50,13 @@ export default {
  * Return the array as a quoted csv string.
  * @param array {string[]}
  * @returns {string} */
-var csv = (array) => JSON.stringify(array).slice(1, -1); // slice() to remove starting and ending [].
+var csv = array => JSON.stringify(array).slice(1, -1); // slice() to remove starting and ending [].
 
 
 /**
  * @param obj {*}
  * @returns {boolean} */
-var isObj = (obj) => obj && typeof obj === 'object'; // Make sure it's not null, since typof null === 'object'.
+var isObj = obj => obj && typeof obj === 'object'; // Make sure it's not null, since typof null === 'object'.
 
 
 /**

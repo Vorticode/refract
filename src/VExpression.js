@@ -229,8 +229,6 @@ export default class VExpression {
 				}
 
 		} else { // loop
-
-
 			let array = this.exec.apply(this.xel, Object.values(this.scope));
 			//#IFDEV
 			if (!array)
@@ -541,7 +539,6 @@ export default class VExpression {
 		// Find the watchPathTokens before we call fromTokens() on child elements.
 		// That way we don't descend too deep.
 		let watchPathTokens = Parse.varExpressions_(tokens, scope);
-		console.log(watchPathTokens);
 
 		// Find loopItem props if this is a loop.
 		let [loopParamNames, loopBody] = Parse.simpleMapExpression_(tokens, scope);

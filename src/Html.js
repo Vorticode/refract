@@ -1,5 +1,5 @@
 
-var txt = document.createElement('div');
+var div = document.createElement('div');
 var decodeCache = {};
 
 export default {
@@ -18,8 +18,8 @@ export default {
 				if (result)
 					return result;
 
-				txt.innerHTML = entity; // create and cache new entity
-				return decodeCache[entity] = txt.textContent;
+				div.innerHTML = entity; // create and cache new entity
+				return decodeCache[entity] = div.textContent;
 			});
 
 	},
@@ -37,4 +37,6 @@ export default {
 		return text;
 	}
 };
+
+export {div};
 

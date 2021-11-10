@@ -5,6 +5,7 @@ import lex from "./lex.js";
 import htmljs from "./lex-htmljs.js";
 htmljs.allowHashTemplates = true;
 import delve from "./delve.js";
+import {div} from "./Html.js";
 
 
 /**
@@ -69,6 +70,7 @@ export default class VElement {
 
 		if (tagName === 'svg')
 			Refract.inSvg = true;
+		var oldEl = this.el;
 
 		// 1A. Binding to existing element.
 		if (el) {
@@ -83,7 +85,7 @@ export default class VElement {
 		}
 		// 1B. Create Element
 		else {
-			let newEl;
+			var newEl;
 
 			// Special path, because we can't use document.createElement() to create an element whose constructor
 			//     adds attributes and child nodes.
@@ -121,15 +123,19 @@ export default class VElement {
 			else
 				newEl = document.createElement(tagName);
 
-			if (this.el) {  // Replacing existing element
-				this.el.parentNode.insertBefore(newEl, this.el);
-				this.el.remove();
+			//newEl.style.display = 'none';
+			if (oldEl) {  // Replacing existing element
+				oldEl.parentNode.insertBefore(newEl,oldEl);
+				oldEl.remove();
 			} else {// if (parent)
-				let p2 = parent.shadowRoot || parent;
-				if (p2 !== this.xel && p2.tagName && p2.tagName.includes('-') && newEl.tagName !== 'SLOT') // Insert into slot if it has one.  TODO: How to handle named slots here?
-					p2 = p2.querySelector('slot') || p2;
 
-				p2.insertBefore(newEl, p2.childNodes[this.startIndex]);
+				if (!oldEl) {
+					let p2 = parent.shadowRoot || parent;
+					if (p2 !== this.xel && p2.tagName && p2.tagName.includes('-') && newEl.tagName !== 'SLOT') // Insert into slot if it has one.  TODO: How to handle named slots here?
+						p2 = p2.querySelector('slot') || p2;
+
+					p2.insertBefore(newEl, p2.childNodes[this.startIndex]);
+				}
 			}
 			this.el = newEl;
 
@@ -167,12 +173,11 @@ export default class VElement {
 				this.xel[this.el.getAttribute(name)] = this.el;
 
 			// Events
-			else if (name.startsWith('on')) {
+			else if (name.startsWith('on') && (name in div)) {
 
 				// Get the createFunction() from the class if it's already been instantiated.  Else use Refract's temporary createfunction().
 				// This lets us use other variabls defiend in the same scope as the class that extends Refract.
 				let createFunction = ((this.xel && this.xel.constructor) || window.RefractCurrentClass).createFunction;
-
 				this.el[name] = event => { // e.g. el.onclick = ...
 					let args = ['event', 'el', ...Object.keys(this.scope)];
 					let code = this.el.getAttribute(name);

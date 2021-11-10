@@ -28,8 +28,8 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 	let templateDepth = 0;
 	let whitespace = /^[ \t\v\f\xa0]+/;
 	let ln = /^\r?\n/
-	let tagStart = /^<!?([\-_\w\xA0-\uFFFF:]+)/i;
-	let closeTag = /^<\/[\-_$\w\xA0-\uFFFF:]+\s*>/i;
+	let tagStart = /^<!?([\w\xA0-\uFFFF:_-]+)/i;
+	let closeTag = /^<\/[\w\xA0-\uFFFF:_-]+\s*>/i;
 
 	let operators = (
 		'&& || ! => ' +                 // Logic / misc operators
@@ -96,8 +96,8 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 			return ['', 'js'];
 	};
 
-	let keyword = `null true false Infinity NaN undefined globalThis
-				await break case catch class constructor const continue debugger default delete do enum else export extends
+	// null true false Infinity NaN undefined globalThis // <-- These will be parsed as identifiers, which is fine.
+	let keyword = `await break case catch class constructor const continue debugger default delete do enum else export extends
 				finally for function if implements import in instanceof interface let new package private protected public
 				return static super switch this throw try typeof var void while with yield`.trim().split(/\s+/g);
 
@@ -217,9 +217,9 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 			// Continue until end of text.
 			// supports both ${} and #{} template expressions.
 			text: code => [code.match(
-				lexHtmlJs.allowHashTemplates  // (?<!\\) is a negative lookbehind to make sure the ${ isn't preceded by an escape \
-					? /^[\s\S]+?(?=<|`|(?<!\\)\${|(?<!\\)#{|(?=$))/
-					: /^[\s\S]+?(?=<|`|(?<!\\)\${|(?=$))/) || []][0],
+				lexHtmlJs.allowHashTemplates // https://stackoverflow.com/a/977294
+					? /^(?:\\#{|\\\${|\s|(?!(#{|\${|`|<[\w\xA0-\uFFFF:/_-]|$)).)+/
+					: /^(?:\\\${|\s|(?!(\${|`|<[\w\xA0-\uFFFF:/_-]|$)).)+/) || []][0],
 		},
 
 		// Comment within a `template` tag.
@@ -245,8 +245,8 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 			quote: ascendIf("'"),
 			text: code => [code.match(
 				lexHtmlJs.allowHashTemplates
-				? /^[\s\S]+?(?=(?<!\\)[$#]{|(?<!\\[$#]?){|<|`|')/
-				: /^[\s\S]+?(?=(?<!\\)\${|(?<!\\\$?){|<|`|')/) || []][0]
+				? /^(?:\\'|(?!'|#{|\${).)+/
+				: /^(?:\\'|(?!'|#{).)+/) || []][0]
 		},
 
 		dquote: { // double quote string within tag.
@@ -254,8 +254,8 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 			quote: ascendIf('"'),
 			text: code => [code.match(
 				lexHtmlJs.allowHashTemplates
-				? /^[\s\S]+?(?=(?<!\\)[$#]{|(?<!\\[$#]?){|<|`|")/
-				: /^[\s\S]+?(?=(?<!\\)\${|(?<!\\\$?){|<|`|")/) || []][0]
+				? /^(?:\\"|(?!"|#{|\${).)+/
+				: /^(?:\\"|(?!"|#{).)+/) || []][0]
 		},
 
 		// TODO: css?
