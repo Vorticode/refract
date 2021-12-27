@@ -35,6 +35,14 @@ export default class Refract extends HTMLElement {
 	/** @type {string} */
 	slotHtml = '';
 
+	constructor(props) {
+		super();
+
+		// Allow setting properties on the object before any html is created:
+		for (let name in props)
+			this[name] = props[name];
+	}
+
 	//#IFDEV
 
 	debugRender() {
@@ -380,6 +388,29 @@ export default class Refract extends HTMLElement {
 	}
 
 
+	/**
+	 * Call a function when a node is added to the DOM.
+	 * @param node {HTMLElement|Node}
+	 * @param callback {function()} */
+	static onMount(node, callback) {
+		let observer = new MutationObserver(mutations => {
+			if (mutations[0].addedNodes[0] === node || document.body.contains(node)) {
+				//observer.disconnect();
+				callback();
+			}
+		});
+		observer.observe(document.body, {childList: true, subtree: true});
+	}
+
+	static onFirstMount(node, callback) {
+		let observer = new MutationObserver(mutations => {
+			if (mutations[0].addedNodes[0] === node || document.body.contains(node)) {
+				observer.disconnect();
+				callback();
+			}
+		});
+		observer.observe(document.body, {childList: true, subtree: true});
+	}
 
 	/**
 	 * Create string code that creates a new class with with a modified constructor and the html property removed.
@@ -403,7 +434,11 @@ export default class Refract extends HTMLElement {
 		return `
 			(() => {
 				window.RefractCurrentClass = ${this.name};
-				${this.name}.createFunction = (...args) => eval(\`(function(\${args.slice(0, -1).join(',')}) {\${args[args.length-1]}})\`);
+				${this.name}.createFunction = (...args) => {
+					let params = args.slice(0, -1).join(',');
+					let code = args[args.length-1];
+					return eval(\`(function(\${params}) {\${code}})\`);
+				};
 				let compiled = ${this.name}.preCompile(${this.name});
 				${this.name} = eval('('+compiled.code+')');		
 				${this.name}.decorate(${this.name}, compiled);

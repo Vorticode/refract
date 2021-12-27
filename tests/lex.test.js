@@ -78,14 +78,27 @@ Deno.test('lex.templateHash', () => {
 });
 
 Deno.test('lex.template-escape', () => {
-	let code = 'var a=`hello \\${name}`;';
+	let code = 'var a=`hello \\${name}`;'; // Same as \$ instide a template string.
 	let tokens = lex(jsHtml, code);
 	// Javascript level
-	assertEquals(tokens, ['var', ' ', 'a', '=', '`hello \\${name}`', ';']);
+	assertEquals(tokens, ['var', ' ', 'a', '=', '`hello \\' +
+	'${name}`', ';']);
 
 	// Template string
-	assertEquals(tokens[4].tokens, ['`', 'hello \\${name}', '`']);
+	assertEquals(tokens[4].tokens, ['`', 'hello \\${name}', '`']); // It's not split into "hello" and ${name}
 	assertEquals(tokens[4].tokens[0].mode, 'template');
+});
+
+
+
+Deno.test('lex.template-hash-escape', () => {
+	let code = 'var a=`hello \\#{name}`;';
+	let tokens = lex(jsHtml, code);
+	// Javascript level
+	assertEquals(tokens, ['var', ' ', 'a', '=', '`hello \\#{name}`', ';']);
+
+	// Template string
+	assertEquals(tokens[4].tokens, ['`', 'hello \\#{name}', '`']);
 
 	// Js inside template string.
 	assertEquals(tokens[4].tokens[2].tokens, undefined);

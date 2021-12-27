@@ -116,34 +116,92 @@ Deno.test('Refract.expr.string', () => {
 
 Deno.test('Refract.expr.template', () => {
 	class A extends Refract {
-		html = `<x-12>${`hi`}</x-12>`;
+		html = `<x-120>${`hi`}</x-120>`;
 	}
 	eval(A.compile());
 	let a = new A();
-	assertEquals(a.outerHTML, '<x-12>hi</x-12>');
+	assertEquals(a.outerHTML, '<x-120>hi</x-120>');
 	assertEquals(a.childNodes.length, 1);
 });
 
 // Make sure parser leaves spaces.
 Deno.test('Refract.expr.basic', () => {
 	class A extends Refract {
-		html = `<x-130>${new Date('2010-02-01 00:00:00').getUTCFullYear()}</x-130>`;
+		html = `<x-123>${new Date('2010-02-01 00:00:00').getUTCFullYear()}</x-123>`;
 	}
 	eval(A.compile());
 	let a = new A();
 
-	assertEquals(a.outerHTML, '<x-130>2010</x-130>');
+	assertEquals(a.outerHTML, '<x-123>2010</x-123>');
 });
 
-Deno.test('Refract.expr._undefined', () => {
+Deno.test('Refract.expr.undefinedText', () => {
 	class A extends Refract {
-		value = 'undefined';
-		html = `<x-135>${this.value}</x-135>`;
+		value = undefined;
+		html = `<x-130>${this.value}</x-130>`;
 	}
 	eval(A.compile());
 	let a = new A();
 
-	assertEquals(a.outerHTML, `<x-135></x-135>`);
+	assertEquals(a.outerHTML, `<x-130></x-130>`);
+});
+
+Deno.test('Refract.expr.misc', () => {
+	class A extends Refract {
+		items = ['a', 'b'];
+		images = ['a', 'b'];
+
+		// old code: return ('<div data-value="/#{image}"><img src="#{image}"></div>')
+		// new code: return ('<div data-value="/${A.htmlEncode(image,'"')}"><img src="${A.htmlEncode(image,'"')}"></div>')
+		html = `
+			<x-133>
+				${this.items.slice().map((variable, i) =>		
+					`<div>
+						\${this.images.map(image => 
+							'<div data-value="/\#{image}"><img src="\#{image}"></div>'
+						)}		
+					</div>`
+				)}
+			</x-133>`;
+	}
+	eval(A.compile());
+	let a = new A();
+
+});
+
+
+Deno.test('Refract.expr.undefinedAttr', () => {
+	class A extends Refract {
+		value;
+		html = `<x-136><div title="${this.value}"></div></x-136>`;
+	}
+	eval(A.compile());
+	let a = new A();
+
+	assertEquals(a.outerHTML, `<x-136><div title=""></div></x-136>`);
+});
+
+
+Deno.test('Refract.expr.undefinedAttr2', () => {
+	class A extends Refract {
+		value;                     // [below] Complex expression
+		html = `<x-137><div title="${this['val' + 'ue']}"></div></x-137>`;
+	}
+	eval(A.compile());
+	let a = new A();
+
+	assertEquals(a.outerHTML, `<x-137><div title=""></div></x-137>`);
+});
+
+Deno.test('Refract.expr.undefinedInputVal', () => {
+	class A extends Refract {
+		value;
+		html = `<x-138><input value="${this.value}"></x-138>`;
+	}
+	eval(A.compile());
+	let a = new A();
+	assertEquals(a.firstElementChild.value, '');
+	assertEquals(a.outerHTML, `<x-138><input value=""></x-138>`);
 });
 
 Deno.test('Refract.expr.var', () => {

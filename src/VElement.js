@@ -239,6 +239,8 @@ export default class VElement {
 							// 	val = val[0];
 							delve(scope, value[0].watchPaths[0], val);
 						}
+						else if (this.el.type === 'checkbox')
+							val = this.el.checked;
 						else
 							val = isContentEditable ? this.el.innerHTML : this.el.value;
 
@@ -505,6 +507,8 @@ function setInputValue(ref, el, value, scope, isText) {
 		let val = VElement.evalVAttributeAsString(ref, value, scope);
 		if (isText)
 			el.innerHTML = val;
+		else if (el.type === 'checkbox')
+			el.checked = ['1', 'true'].includes((val+'').toLowerCase());
 		else
 			el.value = val;
 	}
