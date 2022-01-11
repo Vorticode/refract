@@ -151,14 +151,12 @@ Deno.test('Refract.expr.misc', () => {
 		items = ['a', 'b'];
 		images = ['a', 'b'];
 
-		// old code: return ('<div data-value="/#{image}"><img src="#{image}"></div>')
-		// new code: return ('<div data-value="/${A.htmlEncode(image,'"')}"><img src="${A.htmlEncode(image,'"')}"></div>')
 		html = `
 			<x-133>
 				${this.items.slice().map((variable, i) =>		
 					`<div>
-						\${this.images.map(image => 
-							'<div data-value="/\#{image}"><img src="\#{image}"></div>'
+						${this.images.map(image => 
+							`<div data-value="/#{image}"><img src="#{image}"></div>`
 						)}		
 					</div>`
 				)}
@@ -318,7 +316,7 @@ Deno.test('Refract.expr.strings', () => {
 	assertEquals(a.outerHTML, `<x-185>2</x-185>`);
 });
 
-Deno.test('Refract.expr.strings2', () => {
+Deno.test('Refract.expr._strings2', () => {
 	class A extends Refract {
 		a = {b: {c: {d: {e12: 1}}}}
 		html = `<x-187>${this.a['b']["c"][`d`][`e${1}2`]}</x-187>`;
@@ -383,6 +381,58 @@ Deno.test('Refract.expr.Inherited', () => {
 
 	assertEquals(b.outerHTML, '<b-200>3</b-200>');
 
+});
+
+
+
+Deno.test('Refract.expr.conditional', () => {
+
+	// TODO: This only works if we escape the \$.
+	// We should do this automatically in expressions that have template strings?
+	class A extends Refract {
+		value = 'Apple';
+		html = `<a-210>${true && `${this.value}`}</a-210>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	assertEquals(a.outerHTML, `<a-210>Apple</a-210>`);
+	a.value = 'Banana';
+	assertEquals(a.outerHTML, `<a-210>Banana</a-210>`);
+});
+
+Deno.test('Refract.expr.doubleConditional', () => {
+
+	// TODO: This only works if we escape the \$.
+	// We should do this automatically in expressions that have template strings?
+	class A extends Refract {
+		value = 'Apple';
+		html = `<a-220>${true && `${true && `${this.value}`}`}</a-220>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	assertEquals(a.outerHTML, `<a-220>Apple</a-220>`);
+	a.value = 'Banana';
+	assertEquals(a.outerHTML, `<a-220>Banana</a-220>`);
+});
+
+
+
+Deno.test('Refract.expr.tripleConditional', () => {
+
+	// TODO: This only works if we escape the \$.
+	// We should do this automatically in expressions that have template strings?
+	class A extends Refract {
+		value = 'Apple';
+		html = `<a-230>${true && `${true && `${true && `${this.value}`}`}`}</a-230>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	assertEquals(a.outerHTML, `<a-230>Apple</a-230>`);
+	a.value = 'Banana';
+	assertEquals(a.outerHTML, `<a-230>Banana</a-230>`);
 });
 
 
@@ -976,8 +1026,6 @@ Deno.test('Refract.loop.attributeExpr', () => { // Make sure loop scope is passe
 	assertEquals(a.outerHTML, `<x-768><div class="yes">one</div><div class="yes">one</div></x-768>`);
 });
 
-
-
 Deno.test('Refract.loop.If', () => {
 
 	class A extends Refract {
@@ -1029,7 +1077,7 @@ Deno.test('Refract.loop.IfNested', () => {
 				pet.activities.map(activity =>
 					activity.length >= 5
 						? `<p>#{pet.name} will ${activity}.</p>`
-						: ''
+						: ``
 				)
 			)}</x-790>`;
 	}
@@ -1047,7 +1095,7 @@ Deno.test('Refract.loop.IfNested', () => {
 	Refract.elsCreated = [];
 	a.pets[0].activities[0] = 'Slumber';
 	assertEquals(a.outerHTML, `<x-790><p>Cat will Slumber.</p><p>Dog will Frolic.</p><p>Dog will Fetch.</p></x-790>`);
-	assertEquals(Refract.elsCreated, ["<p>", "Cat will Slumber."]);
+	assertEquals(Refract.elsCreated, ["<p>", "Cat", " will ", "Slumber", "."]);
 });
 
 Deno.test('Refract.loop.ifNested2', () => {
@@ -1433,7 +1481,7 @@ Deno.test('Refract.events.Loop', () => {
 	assertEquals(clicked.fruit, 'Banana');
 });
 
-// Same as above, but without a simple loop.
+// Same as above, but as an expression instead of a parsed loop.
 Deno.test('Refract.events._Loop2', () => {
 	var clicked = {};
 	class E extends Refract {

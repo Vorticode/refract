@@ -42,6 +42,12 @@ export default {
 			if (key.startsWith(prefix))
 				return true;
 		return false;
+	},
+
+	toString(val) {
+		if (val === undefined || val === null)
+			return '';
+		return val+'';
 	}
 }
 

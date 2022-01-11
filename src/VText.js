@@ -1,5 +1,6 @@
 import Refract from "./Refract.js";
 import Html from "./Html.js";
+import Utils from "./utils.js";
 
 export default class VText {
 
@@ -31,7 +32,7 @@ export default class VText {
 			}
 
 			if (Refract.elsCreated)
-				Refract.elsCreated.push(this.text + '');
+				Refract.elsCreated.push(Utils.toString(this.text));
 		}
 
 		return 1;

@@ -7,7 +7,7 @@ var Parse = {
 	/**
 	 * Create a fregex to find expressions that start with "this" or with local variables.
 	 * @param vars
-	 * @returns {function(*): (boolean|number)} */
+	 * @return {function(*): (boolean|number)} */
 	createVarExpression_(vars=[]) {
 		let key = vars.join(','); // Benchmarking shows this cache does speed things up a little.
 		let result = varExpressionCache[key];
@@ -26,7 +26,7 @@ var Parse = {
 
 	/**
 	 * @param tokens {Token[]}
-	 * @returns {string[]} */
+	 * @return {string[]} */
 	filterArgNames(tokens) {
 		let result = [];
 		let find = 1; // Don't find identifiers after an =.
@@ -43,7 +43,7 @@ var Parse = {
 	 * @param tokenList {Token[]}
 	 * @param mode
 	 * @param className
-	 * @returns {Token[]} */
+	 * @return {Token[]} */
 	replaceHashExpr(tokenList, mode, className) {
 		let result = [];
 		let isHash = false;
@@ -75,6 +75,23 @@ var Parse = {
 		return result;
 	},
 
+
+	/**
+	 *
+	 * @param tokens {Token[]}
+	 * @return {Token[]} */
+	escape$(tokens) {
+		let inFunction = false;
+		for (let i=0, token; token=tokens[i]; i++) {
+			if (token == '=>') // TODO: Code to more accurately track whether we're in a function.
+				inFunction = true;
+
+			if (token.type === 'template' && !inFunction)
+				tokens[i] = '`'+ token.slice(1, -1).replace(/\${/g, '\\${').replace(/`/g, '\\`') + '`';
+		}
+		return tokens
+	},
+
 	/**
 	 * Return the tokens if they're a single map() expression and nothing more.  E.g:
 	 * this.items.map(x => x)
@@ -87,7 +104,7 @@ var Parse = {
 	 *
 	 * @param tokens {Token[]}
 	 * @param vars {string[]} Name of variables in scope.  So we can have more than just `this.varname`
-	 * @returns {[string[], Token[]]|[null, null]} The loop param names and the loop body. */
+	 * @return {[string[], Token[]]|[null, null]} The loop param names and the loop body. */
 	simpleMapExpression_(tokens, vars=[]) {
 
 		let loopMatch = [
@@ -162,7 +179,7 @@ var Parse = {
 	 * Find expressions that start with "this" or with local variables.
 	 * @param tokens {Token[]}
 	 * @param vars {string[]} List of local variables.
-	 * @returns {Token[][]} */
+	 * @return {Token[][]} */
 	varExpressions_(tokens, vars=[]) {
 		let result = fregex.matchAll(Parse.createVarExpression_(vars), tokens);
 
@@ -176,7 +193,7 @@ var Parse = {
 	/**
 	 * ['this', '.', 'fruits', '[', '0', ']'] becomes ['this', 'fruits', '0']
 	 * @param expr {string[]}
-	 * @returns {string[]} */
+	 * @return {string[]} */
 	varExpressionToPath_(expr) {
 		let result = [];
 		for (let piece of expr)

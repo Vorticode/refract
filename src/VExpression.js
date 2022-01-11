@@ -578,6 +578,12 @@ export default class VExpression {
 			// understood by the vanilla JavaScript that executes the template string.
 			tokens = Parse.replaceHashExpr(tokens, null, Class.name);
 
+			/**
+			 * We want sub-templates within the expression to be parsed to find their own variables,
+			 * so we escape them, so they're not evaluated as part of the outer template.
+			 * Unless we do this, their own variables will be evaluated immediately, instead of parsed and watched. */
+			tokens = Parse.escape$(tokens);
+
 			// Trim required.  B/c if there's a line return after return, the function will return undefined!
 			let body = tokens.join('');
 			if (tokens[0] != '{')

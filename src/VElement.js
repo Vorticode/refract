@@ -6,6 +6,7 @@ import htmljs from "./lex-htmljs.js";
 htmljs.allowHashTemplates = true;
 import delve from "./delve.js";
 import {div} from "./Html.js";
+import Utils from "./utils.js";
 
 
 /**
@@ -24,7 +25,7 @@ export default class VElement {
 	/** @type {Refract} */
 	xel = null;
 
-	/** @type {HTMLElement} */
+	/** @type {HTMLElement|HTMLInputElement} */
 	el = null;
 
 
@@ -206,13 +207,16 @@ export default class VElement {
 
 			// Don't grab value from input if we can't reverse the expression.
 			if (isSimpleExpr) {
-
-				let isTypableInput = tagName === 'input' &&
-					!['button', 'checkbox', 'color', 'file', 'hidden', 'image', 'radio', 'reset', 'submit'].includes(this.el.getAttribute('type'));
-				let isTypable = isTextArea || isContentEditable || isTypableInput;
+				let useInputEvent = isTextArea || isContentEditable || (
+					tagName === 'input' &&
+						!['button', 'color', 'file', 'hidden', 'image', 'radio', 'reset', 'submit'].includes(this.el.getAttribute('type'))
+				);
 
 				let scope = {'this': this.xel, ...this.scope};
-				if (isTypable) { // TODO: Input type="number" is typable but also dispatches change event on up/down click.
+
+				// It's better to do it on input than change, b/c input fires first.
+				// Then if user code adds and event listener on input, this one will fire first and have the value already set.
+				if (useInputEvent) { // TODO: Input type="number" is typable but also dispatches change event on up/down click.
 					this.el.addEventListener('input', ()=> {
 
 						let type = this.el.getAttribute('type') || '';
@@ -221,15 +225,17 @@ export default class VElement {
 						let val = isContentEditable ? this.el.innerHTML : this.el.value;
 						if (type === 'number' || type === 'range')
 							val = parseFloat(val);
-						if (type === 'datetime-local' || type === 'datetime')
+						else if (type === 'datetime-local' || type === 'datetime')
 							val = new Date(val);
+						else if (this.el.type === 'checkbox')
+							val = this.el.checked;
 
 						if (delve(scope, value[0].watchPaths[0]) !== val) {
 							delve(scope, value[0].watchPaths[0], val); // TODO: Watchless if updating the original value.
 						}
 					}, true); // We bind to the event capture phase so we can update values before it calls onchange and other event listeners added by the user.
 				}
-				else /*if (tagName === 'select' || tagName==='input')*/ {
+				else {
 					this.el.addEventListener('change', () => {
 						// TODO: Convert value to boolean for checkbox.  File input type.
 						let val;
@@ -239,8 +245,7 @@ export default class VElement {
 							// 	val = val[0];
 							delve(scope, value[0].watchPaths[0], val);
 						}
-						else if (this.el.type === 'checkbox')
-							val = this.el.checked;
+
 						else
 							val = isContentEditable ? this.el.innerHTML : this.el.value;
 
@@ -349,7 +354,7 @@ export default class VElement {
 		if (result.length === 1)
 			return result[0];
 
-		return result.flat().join('');
+		return result.flat().map(Utils.toString).join('');
 	}
 
 	/**
@@ -371,7 +376,7 @@ export default class VElement {
 			else
 				result.push(Refract.htmlDecode(attrPart)); // decode because this will be passed to setAttribute()
 		}
-		return result.join('');
+		return result.map(Utils.toString).join('');
 	}
 
 	/**

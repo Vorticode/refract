@@ -1,3 +1,4 @@
+import Utils from "./utils.js";
 
 var div = document.createElement('div');
 var decodeCache = {};
@@ -25,7 +26,7 @@ export default {
 	},
 
 	encode(text, quotes='') {
-		text = ((text || '') + '')
+		text = Utils.toString(text) // TODO: This changes 0 to ''
 			.replace(/&/g, '&amp;')
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;')

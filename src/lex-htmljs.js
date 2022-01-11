@@ -28,8 +28,8 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 	let templateDepth = 0;
 	let whitespace = /^[ \t\v\f\xa0]+/;
 	let ln = /^\r?\n/
-	let tagStart = /^<!?([\w\xA0-\uFFFF:_-]+)/i;
-	let closeTag = /^<\/[\w\xA0-\uFFFF:_-]+\s*>/i;
+	let tagStart = /^<!?([\w\xA0-\uFFFF:-]+)/i; // \w includes underscore
+	let closeTag = /^<\/[\w\xA0-\uFFFF:-]+\s*>/i;
 
 	let operators = (
 		'&& || ! => ' +                 // Logic / misc operators
@@ -218,8 +218,8 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 			// supports both ${} and #{} template expressions.
 			text: code => [code.match(
 				lexHtmlJs.allowHashTemplates // https://stackoverflow.com/a/977294
-					? /^(?:\\#{|\\\${|\s|(?!(#{|\${|`|<[\w\xA0-\uFFFF:/_-]|$)).)+/
-					: /^(?:\\\${|\s|(?!(\${|`|<[\w\xA0-\uFFFF:/_-]|$)).)+/) || []][0],
+					? /^(?:\\#{|\\\${|\s|(?!(#{|\${|`|<[\w\xA0-\uFFFF!:/-]|$)).)+/
+					: /^(?:\\\${|\s|(?!(\${|`|<[\w\xA0-\uFFFF!:/-]|$)).)+/) || []][0],
 		},
 
 		// Comment within a `template` tag.
@@ -240,13 +240,13 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 		},
 
 		// TODO: template end with `
-		squote: { // single quote string within tag
+		squote: { // single quote string within tag.  Used for both js strings and html attributes.
 			expr,
 			quote: ascendIf("'"),
 			text: code => [code.match(
 				lexHtmlJs.allowHashTemplates
-				? /^(?:\\'|(?!'|#{|\${).)+/
-				: /^(?:\\'|(?!'|#{).)+/) || []][0]
+				? /^(?:\\'|(?!'|#{|\${)[\S\s])+/
+				: /^(?:\\'|(?!'|#{)[\S\s])+/) || []][0]
 		},
 
 		dquote: { // double quote string within tag.
@@ -254,8 +254,8 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 			quote: ascendIf('"'),
 			text: code => [code.match(
 				lexHtmlJs.allowHashTemplates
-				? /^(?:\\"|(?!"|#{|\${).)+/
-				: /^(?:\\"|(?!"|#{).)+/) || []][0]
+				? /^(?:\\"|(?!"|#{|\${)[\S\s])+/
+				: /^(?:\\"|(?!"|#{)[\S\s])+/) || []][0]
 		},
 
 		// TODO: css?
