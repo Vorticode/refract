@@ -126,7 +126,7 @@ export default class VExpression {
 
 		// Remove old children.
 		for (let group of this.vChildren)
-			for (let vChild of group)
+			for (let vChild of group.slice()) // Slice because vChild.remove() can alter group, throwing off the index.
 				vChild.remove();
 
 		// Create new children.
@@ -361,7 +361,7 @@ export default class VExpression {
 
 		// 2. Remove children, so that their watches are unsubscribed.
 		for (let group of this.vChildren)
-			for (let vChild of group)
+			for (let vChild of group) // TODO: Should group be .slice() like it is in apply() above?
 				vChild.remove();
 
 		// 3. Remove from parent.
@@ -557,13 +557,24 @@ export default class VExpression {
 				scope.push(p);
 			result.exec = Class.createFunction(...scope, 'return ' + watchPathTokens[0].join(''));
 
-
+			// If the loop body is a single `template` string:
+			// TODO Why is this special path necessary, instead of always just using the else path?
 			let loopBodyTrimmed = loopBody.filter(token => token.type !== 'whitespace' && token.type !== 'ln');
+			if (loopBodyTrimmed.length === 1 && loopBodyTrimmed[0].type === 'template') {
 
-			if (loopBodyTrimmed.length === 1 && loopBodyTrimmed[0].type === 'template')
-				result.loopItemEls = VElement.fromTokens(loopBodyTrimmed[0].tokens.slice(1, -1), scope); // Remove beginning and end string, parse items.
-			else // javascript code
+				//console.log(loopBodyTrimmed[0].tokens.slice(1, -1));
+
+				// Remove beginning and end string delimiters, parse items.
+				result.loopItemEls = VElement.fromTokens(loopBodyTrimmed[0].tokens.slice(1, -1), scope);
+			}
+
+			// The loop body is more complex javascript code:
+			else {
+				//console.log(loopBody.join(''));
+
 				result.loopItemEls = [VExpression.fromTokens(loopBody, scope, vParent)];
+
+			}
 		}
 
 		else {
@@ -582,7 +593,9 @@ export default class VExpression {
 			 * We want sub-templates within the expression to be parsed to find their own variables,
 			 * so we escape them, so they're not evaluated as part of the outer template.
 			 * Unless we do this, their own variables will be evaluated immediately, instead of parsed and watched. */
+			// console.log(tokens.join(''));
 			tokens = Parse.escape$(tokens);
+			//console.log(tokens.join(''));
 
 			// Trim required.  B/c if there's a line return after return, the function will return undefined!
 			let body = tokens.join('');

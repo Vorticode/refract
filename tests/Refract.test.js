@@ -146,7 +146,7 @@ Deno.test('Refract.expr.undefinedText', () => {
 	assertEquals(a.outerHTML, `<x-130></x-130>`);
 });
 
-Deno.test('Refract.expr.misc', () => {
+Deno.test('Refract.expr.loopInExprLoop', () => {
 	class A extends Refract {
 		items = ['a', 'b'];
 		images = ['a', 'b'];
@@ -156,7 +156,7 @@ Deno.test('Refract.expr.misc', () => {
 				${this.items.slice().map((variable, i) =>		
 					`<div>
 						${this.images.map(image => 
-							`<div data-value="/#{image}"><img src="#{image}"></div>`
+							`<div data-value="/#{image}"><div title="#{image}"></div>`
 						)}		
 					</div>`
 				)}
@@ -386,9 +386,7 @@ Deno.test('Refract.expr.Inherited', () => {
 
 
 Deno.test('Refract.expr.conditional', () => {
-
-	// TODO: This only works if we escape the \$.
-	// We should do this automatically in expressions that have template strings?
+	// This only works if we escape the $ via Parse.escape$()
 	class A extends Refract {
 		value = 'Apple';
 		html = `<a-210>${true && `${this.value}`}</a-210>`;
@@ -403,8 +401,6 @@ Deno.test('Refract.expr.conditional', () => {
 
 Deno.test('Refract.expr.doubleConditional', () => {
 
-	// TODO: This only works if we escape the \$.
-	// We should do this automatically in expressions that have template strings?
 	class A extends Refract {
 		value = 'Apple';
 		html = `<a-220>${true && `${true && `${this.value}`}`}</a-220>`;
@@ -417,12 +413,8 @@ Deno.test('Refract.expr.doubleConditional', () => {
 	assertEquals(a.outerHTML, `<a-220>Banana</a-220>`);
 });
 
-
-
 Deno.test('Refract.expr.tripleConditional', () => {
 
-	// TODO: This only works if we escape the \$.
-	// We should do this automatically in expressions that have template strings?
 	class A extends Refract {
 		value = 'Apple';
 		html = `<a-230>${true && `${true && `${true && `${this.value}`}`}`}</a-230>`;
@@ -433,6 +425,103 @@ Deno.test('Refract.expr.tripleConditional', () => {
 	assertEquals(a.outerHTML, `<a-230>Apple</a-230>`);
 	a.value = 'Banana';
 	assertEquals(a.outerHTML, `<a-230>Banana</a-230>`);
+});
+
+Deno.test('Refract.expr.exprIndex', () => {
+
+	class A extends Refract {
+		values = [1, 2];
+		index = 0;
+		html = `<a-240>${this.values[this.index]}</a-240>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	assertEquals(a.outerHTML, `<a-240>1</a-240>`);
+	a.index = 1;
+	assertEquals(a.outerHTML, `<a-240>2</a-240>`);
+	a.index = 2; // undefined index
+	assertEquals(a.outerHTML, `<a-240></a-240>`);
+
+	a.values = [1, 2, 3];
+	assertEquals(a.outerHTML, `<a-240>3</a-240>`);
+});
+
+Deno.test('Refract.expr.exprTemplate', () => {
+
+	class A extends Refract {
+		values = [1, 2];
+		delimiter = '-';
+		html = `<a-250>${this.values.join(`${this.delimiter}`)}</a-250>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	assertEquals(a.outerHTML, `<a-250>1-2</a-250>`);
+
+	a.values[0] = 0;
+	assertEquals(a.outerHTML, `<a-250>0-2</a-250>`);
+
+	a.values = [3, 4];
+	assertEquals(a.outerHTML, `<a-250>3-4</a-250>`);
+
+	a.delimiter = ';';
+	assertEquals(a.outerHTML, `<a-250>3;4</a-250>`);
+});
+
+Deno.test('Refract.expr.conditionalFunction', () => {
+
+	class A extends Refract {
+		value = [1, 2];
+		html = `<a-260>${true && `${this.value.map(x=>x+1)}`}</a-260>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	assertEquals(a.outerHTML, `<a-260>23</a-260>`);
+	a.value = [3, 4];
+	a.delimiter = ';';
+	assertEquals(a.outerHTML, `<a-260>45</a-260>`);
+});
+
+Deno.test('Refract.expr.conditionalFunctionMap', () => {
+
+	// This tests the inFunction detection of Parse.escape$()
+	class A extends Refract {
+		value = [1, 2];
+		delimiter = '-';
+		html = `<a-270>${this.value.map(x=>x+1).join(`${this.delimiter}`)}</a-270>`;
+	}
+	eval(A.compile());
+
+
+	let a = new A();
+	assertEquals(a.outerHTML, '<a-270>2-3</a-270>');
+
+	a.value = [3, 4];
+	assertEquals(a.outerHTML, '<a-270>4-5</a-270>');
+
+	a.delimiter = ';';
+	assertEquals(a.outerHTML, '<a-270>4;5</a-270>');
+});
+
+Deno.test('Refract.expr.conditionalFunction2', () => {
+
+	class A extends Refract {
+		value = [1, 2];
+		delimiter = '-';
+		html = `<a-280>${true && `${this.value.map(x=>x+1).join(`${this.delimiter}`)}`}</a-280>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	assertEquals(a.outerHTML, '<a-280>2-3</a-280>');
+
+	a.value = [3, 4];
+	assertEquals(a.outerHTML, '<a-280>4-5</a-280>');
+
+	a.delimiter = ';';
+	assertEquals(a.outerHTML, '<a-280>4;5</a-280>');
 });
 
 
@@ -933,11 +1022,11 @@ Deno.test('Refract.loop.nested3', () => {
 		];
 
 		html =
-			`<x-74>${this.pets.map(pet =>
+			`<x-740>${this.pets.map(pet =>
 				pet.activities.map(activity=>
 					`<p>#{pet.name} #{this.verb} ${activity.name}.</p>`
 				)
-			)}</x-74>`;
+			)}</x-740>`;
 	}
 	eval(A.compile());
 
@@ -948,8 +1037,32 @@ Deno.test('Refract.loop.nested3', () => {
 
 	Refract.elsCreated = [];
 	a.verb = "won't";
-	assertEquals(a.outerHTML, `<x-74><p>Cat won't Purr.</p><p>Cat won't Eat.</p><p>Dog won't Frolic.</p></x-74>`);
+	assertEquals(a.outerHTML, `<x-740><p>Cat won't Purr.</p><p>Cat won't Eat.</p><p>Dog won't Frolic.</p></x-740>`);
 	assertEquals(Refract.elsCreated, ["won't", "won't", "won't"]);
+});
+
+
+Deno.test('Refract.loop.Slice', () => {
+
+	// fails if we have escape$, and it doesn't stop within function bodies:
+	class A extends Refract {
+		items = ['a', 'b'];
+		html =
+			`<x-745>${this.items.slice().map(item =>
+				`${item}`
+			)}</x-745>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	assertEquals(a.outerHTML, `<x-745>ab</x-745>`);
+
+	a.items[0] = 'c';
+	assertEquals(a.outerHTML, `<x-745>cb</x-745>`);
+
+
+	a.items = ['d', 'e'];
+	assertEquals(a.outerHTML, `<x-745>de</x-745>`);
 });
 
 Deno.test('Refract.loop.Expr', () => {
@@ -957,17 +1070,17 @@ Deno.test('Refract.loop.Expr', () => {
 	class A extends Refract {
 		fruits = ['Apple'];
 		html =
-			`<x-75>${this.fruits.map(fruit =>
+			`<x-750>${this.fruits.map(fruit =>
 				fruit + `${fruit}`
-			)}</x-75>`;
+			)}</x-750>`;
 	}
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-75>AppleApple</x-75>`);
+	assertEquals(a.outerHTML, `<x-750>AppleApple</x-750>`);
 
 	a.fruits.push('Banana');
-	assertEquals(a.outerHTML, `<x-75>AppleAppleBananaBanana</x-75>`);
+	assertEquals(a.outerHTML, `<x-750>AppleAppleBananaBanana</x-750>`);
 });
 
 Deno.test('Refract.loop.Expr2', () => {

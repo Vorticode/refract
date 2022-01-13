@@ -35,7 +35,7 @@ export default class Refract extends HTMLElement {
 	/** @type {string} */
 	slotHtml = '';
 
-	constructor(props) {
+	constructor(props={}) {
 		super();
 
 		// Allow setting properties on the object before any html is created:
@@ -304,7 +304,7 @@ export default class Refract extends HTMLElement {
 				// Find super call in constructor body
 				let sup = fregex.matchFirst(
 					// TODO: Below I need to account for super calls that contain ) or ; in an inline anonymous function.
-					// Instead count the ( and ) and end on the last )
+					// Use the logic from the new Parse.findFunction()
 					['super', Parse.ws, '(', fregex.zeroOrMore(fregex.not(')')), ')', fregex.zeroOrOne(';')],
 					tokens,
 					argTokens.index+argTokens.length);
@@ -402,14 +402,31 @@ export default class Refract extends HTMLElement {
 		observer.observe(document.body, {childList: true, subtree: true});
 	}
 
+	/**
+	 * Call a function when a node is first added to the DOM.
+	 * Or call it immediately if it's already mounted.
+	 * @param node {HTMLElement|Node}
+	 * @param callback {function()} */
 	static onFirstMount(node, callback) {
-		let observer = new MutationObserver(mutations => {
-			if (mutations[0].addedNodes[0] === node || document.body.contains(node)) {
-				observer.disconnect();
-				callback();
-			}
-		});
-		observer.observe(document.body, {childList: true, subtree: true});
+
+		function contains2(parent, node) { // same as Node.contains() but also traverses shadow dom.
+			while (node = node.parentNode || node.host)
+				if (node === parent)
+					return true;
+			return false;
+		}
+
+		if (contains2(document, node))
+			callback();
+		else {
+			let observer = new MutationObserver(mutations => {
+				if (mutations[0].addedNodes[0] === node || contains2(document, node)) {
+					observer.disconnect();
+					callback();
+				}
+			});
+			observer.observe(document.body, {childList: true, subtree: true});
+		}
 	}
 
 	/**

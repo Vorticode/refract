@@ -25,6 +25,7 @@ var Parse = {
 
 
 	/**
+	 * Given theh tokens of a function(...) definition, find the argument names.
 	 * @param tokens {Token[]}
 	 * @return {string[]} */
 	filterArgNames(tokens) {
@@ -40,14 +41,14 @@ var Parse = {
 
 	/**
 	 * Recursively replace #{...} with ${Refract.htmlEncode(...)}
-	 * @param tokenList {Token[]}
+	 * @param tokens {Token[]}
 	 * @param mode
 	 * @param className
 	 * @return {Token[]} */
-	replaceHashExpr(tokenList, mode, className) {
+	replaceHashExpr(tokens, mode, className) {
 		let result = [];
 		let isHash = false;
-		for (let token of tokenList) {
+		for (let token of tokens) {
 			// TODO: Completely recreate the original tokens, instead of just string versions of them:
 			if (token.tokens) {
 				let tokens = Parse.replaceHashExpr(token.tokens, token.mode, className);
@@ -75,18 +76,94 @@ var Parse = {
 		return result;
 	},
 
+	/**
+	 *
+	 * @param tokens {Token[]}
+	 * @param start {int}
+	 * @returns {int|null} */
+	findFunctionStart(tokens, start=0) {
+		for (let i=start, token; token=tokens[i]; i++) {
+			if (token == 'function')
+				return i;
+			else if (token == '=>') {
+				let depth = 0;
+				for (let j=-1, token; token=tokens[i+j]; j--) {
+					if (token.type === 'whitespace' || token.type === 'ln')
+						continue;
+					if (token == ')')
+						depth++;
+					else if (token == '(')
+						depth--;
+					if (depth === 0)
+						return i+j;
+				}
+			}
+		}
+		return null;
+	},
 
 	/**
 	 *
 	 * @param tokens {Token[]}
+	 * @param start
+	 * @returns {int|null} */
+	findFunctionEnd(tokens, start) {
+		let isArrow = tokens[start] != 'function';
+		let depth = 0, groups = isArrow ? 1 : 2;
+		for (let i=start, token; token = tokens[i]; i++) {
+			if (!depth && isArrow && (token == ';' || token == ')'))
+				return i;
+
+			if (token == '(' || token == '{')
+				depth++;
+			else if (token == ')' || token == '}') {
+				depth--;
+				if (!depth) {
+					groups--;
+					if (!groups)
+						return i+1;
+				}
+			}
+		}
+		return null;
+	},
+
+	/**
+	 * Find the start and end of the first function within tokens.
+	 * @param tokens {Token[]}
+	 * @param start {int=}
+	 * @return {[start:int, end:int]} */
+	findFunction(tokens, start = 0) {
+		// Types of functions to account for:
+		// a => a+1;
+		// a => (a+1);
+		// (a => a+1)
+		// a => { return a+1 }
+		// a => { return {a:1} }
+		// function(a) { return a+1 }
+
+		// Find the beginning of the function.
+		let functionStart = this.findFunctionStart(tokens, start);
+		let end = this.findFunctionEnd(tokens, functionStart);
+		return [functionStart, end];
+	},
+
+
+	/**
+	 * Replace `${`string`}` with `\${\`string\`}`, but not within function bodies.
+	 * @param tokens {Token[]}
 	 * @return {Token[]} */
 	escape$(tokens) {
-		let inFunction = false;
-		for (let i=0, token; token=tokens[i]; i++) {
-			if (token == '=>') // TODO: Code to more accurately track whether we're in a function.
-				inFunction = true;
 
-			if (token.type === 'template' && !inFunction)
+		let fstart = this.findFunctionStart(tokens);
+		for (let i=0, token; token=tokens[i]; i++) {
+
+			if (i===fstart) {
+				i = this.findFunctionEnd(tokens, i);
+				fstart = this.findFunctionStart(tokens, i);
+			}
+
+			if (token.type === 'template')
 				tokens[i] = '`'+ token.slice(1, -1).replace(/\${/g, '\\${').replace(/`/g, '\\`') + '`';
 		}
 		return tokens
@@ -141,7 +218,6 @@ var Parse = {
 			lastToken --;
 
 		let bodyTokens = tokens.slice(mapExpr.length + paramExpr.length, lastToken+1);
-		// noinspection JSAssignmentUsedAsCondition
 		for (let i=0, token; token=bodyTokens[i]; i++) {
 
 			braceDepth   += {'{':1, '}':-1}[token] | 0; // Single | gives the same result as double ||, yields smaller minified size.
