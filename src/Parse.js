@@ -86,6 +86,7 @@ var Parse = {
 			if (token == 'function')
 				return i;
 			else if (token == '=>') {
+				// TODO: Use findGroupEnd
 				let depth = 0;
 				for (let j=-1, token; token=tokens[i+j]; j--) {
 					if (token.type === 'whitespace' || token.type === 'ln')
@@ -103,6 +104,57 @@ var Parse = {
 	},
 
 	/**
+	 * TODO: test search direction.
+	 * @param tokens {Token[]}
+	 * @param start {int} Index directly after start token.
+	 * @param dir {int} Direction.  Must be 1 or -1;  A value of 0 will cause an infinite loop.
+	 * @param terminator {?Token|string}
+	 * @return {?int} The index of the end token, or terminator if supplied.*/
+	findGroupEnd(tokens, start=0, dir=1, terminator=null) {
+		let depth = 0;
+		for (let i=start, token; token = tokens[i]; i+= dir) {
+			if (token == '(' || token == '{')
+				depth+=dir;
+			else if (token == ')' || token == '}') {
+				depth-=dir;
+				if (depth < 0)
+					return i;
+			}
+			else if (!depth && token == terminator)
+				return i;
+		}
+		return null;
+	},
+
+	/**
+	 * Find all tokens that are function arguments, not counting any open or close parens.
+	 * @param tokens {Token[]}
+	 * @param start {int} Index of the first token of the function.
+	 * E.g., below the first token is the start of the function.
+	 *   function(a,b) {...}
+	 *   function foo(a,b) {...}
+	 *   a => a+1
+	 *   (a) => a+1*/
+	findFunctionArgs(tokens, start=0) {
+		const isArrow = tokens[start] != 'function';
+		if (isArrow && tokens[start] != '(')
+			return [start, start+1];
+		while (tokens[start] != '(' && start < tokens.length)
+			start++;
+
+
+		return [start+1, this.findGroupEnd(tokens, start+1)];
+	},
+
+	/**
+	 * Find all tokens that are part of the function body, not counting open or close braces.
+	 * @param tokens {Token[]}
+	 * @param start {int} */
+	findFunctionBody(tokens, start=0) {
+
+	},
+
+	/**
 	 *
 	 * @param tokens {Token[]}
 	 * @param start
@@ -114,6 +166,7 @@ var Parse = {
 			if (!depth && isArrow && (token == ';' || token == ')'))
 				return i;
 
+			// TODO: Use findGroupEnd
 			if (token == '(' || token == '{')
 				depth++;
 			else if (token == ')' || token == '}') {
@@ -305,6 +358,9 @@ Parse.arg = fregex([
 		])
 	])
 ]);
+
+/**
+ * @deprecated */
 Parse.argList = fregex.zeroOrMore([
 	Parse.arg,
 	fregex.zeroOrMore([

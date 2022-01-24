@@ -28,7 +28,7 @@ Deno.test('Refract.basic.constructor', () => {
 			constructorCalled++;
 		}
 
-		html = `<a-2>hi</a-2>`;
+		html = `<a-20>hi</a-20>`;
 	}
 	eval(A.compile());
 
@@ -37,9 +37,31 @@ Deno.test('Refract.basic.constructor', () => {
 	// Make sure constructor is called when instantiative via createEl.
 	assertEquals(constructorCalled, 1);
 
-	console.log();
+	let a2 = createEl('<a-20></a-20>');
 
-	let a2 = createEl('<a-2></a-2>');
+	assertEquals(constructorCalled, 2);
+});
+
+Deno.test('Refract.basic.constructor2', () => {
+	let constructorCalled = 0;
+
+	class A extends Refract {
+		constructor(a, b=x=>x+1, c=function(){ return (1+1)}, d={}) {
+			super({});
+			constructorCalled++;
+		}
+
+		html = `<a-22>hi</a-22>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+
+	// Make sure constructor is called when instantiative via createEl.
+	assertEquals(constructorCalled, 1);
+
+
+	let a2 = createEl('<a-22></a-22>');
 
 	assertEquals(constructorCalled, 2);
 });
@@ -47,7 +69,7 @@ Deno.test('Refract.basic.constructor', () => {
 Deno.test('Refract.basic.slash', () => {
 	class A extends Refract {
 		a = '//';
-		html = `<a-3></a-3>`;
+		html = `<a-30></a-30>`;
 	}
 	eval(A.compile());
 });

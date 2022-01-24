@@ -254,6 +254,7 @@ export default class Refract extends HTMLElement {
 			// A. Find html template token
 			// Make sure we're finding html = ` and the constructor at the top level, and not inside a function.
 			// This search is also faster than if we use matchFirst() from the first token.
+			// TODO: Use Parse.groupEnd() ?
 			let braceDepth = 0;
 			for (let i = 0, token; token = tokens[i]; i++) {
 				if (token == '{')
@@ -290,7 +291,6 @@ export default class Refract extends HTMLElement {
 
 		// 3. Get the constructorArgs and inject new code.
 		{
-
 			let constr = fregex.matchFirst(['constructor', Parse.ws, '('], tokens, constructorIdx);
 			let injectIndex, injectCode;
 
@@ -298,16 +298,29 @@ export default class Refract extends HTMLElement {
 			if (constr) { // is null if no match found.
 
 				// Find arguments
-				let argTokens = fregex.matchFirst(Parse.argList, tokens, constr.index+constr.length);
+				let argTokens = tokens.slice(constr.index+constr.length, Parse.findGroupEnd(tokens, constr.index+constr.length));
 				result.constructorArgs = Parse.filterArgNames(argTokens);
 
 				// Find super call in constructor body
 				let sup = fregex.matchFirst(
-					// TODO: Below I need to account for super calls that contain ) or ; in an inline anonymous function.
-					// Use the logic from the new Parse.findFunction()
-					['super', Parse.ws, '(', fregex.zeroOrMore(fregex.not(')')), ')', fregex.zeroOrOne(';')],
+					['super', Parse.ws, '('],
 					tokens,
-					argTokens.index+argTokens.length);
+					constr.index+constr.length+argTokens.length);
+
+
+				let supEnd = Parse.findGroupEnd(tokens, sup.index+sup.length)+1;
+				let e = fregex(Parse.ws, ';')(tokens.slice(supEnd));
+				supEnd += e;
+
+				let s = sup.index;
+
+				sup = tokens.slice(sup.index, supEnd);
+				sup.index = s;
+
+
+
+				//console.log(sup);
+
 				//#IFDEV
 				if (!sup)
 					throw new Error(`Class ${self.name} constructor() { ... } is missing call to super().`);
@@ -457,6 +470,7 @@ export default class Refract extends HTMLElement {
 					return eval(\`(function(\${params}) {\${code}})\`);
 				};
 				let compiled = ${this.name}.preCompile(${this.name});
+				//console.log(compiled.code);
 				${this.name} = eval('('+compiled.code+')');		
 				${this.name}.decorate(${this.name}, compiled);
 				delete window.RefractCurrentClass;

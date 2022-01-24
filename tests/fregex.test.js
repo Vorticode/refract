@@ -109,9 +109,21 @@ Deno.test('fregex.zeroOrMore', () => {
 
 	assertEquals(isMatch(['a']), 0);
 	assertEquals(isMatch(['b']), 1);
+	assertEquals(isMatch(['a', 'b']), 0); // only find at start.
 });
 
 Deno.test('fregex.zeroOrMore2', () => {
+	let isMatch = fregex(
+		fregex.zeroOrMore('b1'),
+		'c',
+	);
+	assertEquals(isMatch(['c']), 1);
+	assertEquals(isMatch(['b1', 'c']), 2);
+	assertEquals(isMatch(['a', 'c']), false); // Doesn't start with the pattern.
+	assertEquals(isMatch(['a', 'b1', 'c']), false);
+});
+
+Deno.test('fregex.zeroOrMore3', () => {
 	let isMatch = fregex(
 		'a',
 		fregex.zeroOrMore('b1'),
@@ -121,9 +133,25 @@ Deno.test('fregex.zeroOrMore2', () => {
 	assertEquals(isMatch(['a']), false);
 	assertEquals(isMatch(['a', 'd']), false);
 	assertEquals(isMatch(['a', 'c']), 2);
+	assertEquals(isMatch(['a', 'c', 'b1', 'c']), 2); // Match the first ones only.
 	assertEquals(isMatch(['a', 'b1', 'c']), 3);
 	assertEquals(isMatch(['a', 'b1', 'b1', 'c']), 4);
 });
+
+Deno.test('fregex.zeroOrMoreOr', () => {
+	let isMatch = fregex(
+		'a',
+		fregex.zeroOrMore(fregex.or('b1', 'b2')),
+		'c',
+	);
+
+	assertEquals(isMatch(['a', 'c']), 2);
+	assertEquals(isMatch(['a', 'b1', 'c']), 3);
+	assertEquals(isMatch(['a', 'b1', 'b2', 'b1', 'c']), 5);
+	assertEquals(isMatch(['a', 'b1', 'b2', 'b3', 'c']), false);
+	assertEquals(isMatch(['a', 'b1', 'b2', 'd']), false);
+});
+
 
 Deno.test('fregex.oneOrMore', () => {
 	let isMatch = fregex(
@@ -153,20 +181,20 @@ Deno.test('fregex.oneOrMoreOr', () => {
 
 
 
-Deno.test('fregex._oneOrMoreOrZeroOrMore', () => {
+Deno.test('fregex.oneOrMoreOr', () => {
 	let isMatch = fregex(
 		'a',
 		fregex.oneOrMore(
-			fregex.or('b1', 'b2', fregex.zeroOrMore('b3'))
+			fregex.or('b1', 'b2')
 		),
 		'c',
 	);
 
 	assertEquals(isMatch(['a', 'c']), false);
 	assertEquals(isMatch(['a', 'b1', 'c']), 3);
-	assertEquals(isMatch(['a', 'b1', 'b2', 'b3', 'b1', 'c']), 6);
+	assertEquals(isMatch(['a', 'b1', 'b2', 'b1', 'c']), 5);
 
-	assertEquals(isMatch(['a', 'b1', 'b4', 'b3', 'c']), false);
+	assertEquals(isMatch(['a', 'b1', 'b3', 'c']), false);
 });
 
 Deno.test('fregex.oneOrMoreNot', () => {
