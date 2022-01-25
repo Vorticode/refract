@@ -269,6 +269,7 @@ var Parse = {
 		// if (mapEnd + 1 < tokens.length) {
 		// 	funcTokens = funcTokens.slice(...functionIndices);
 		// 	debugger;
+
 		// 	return [null, null];
 		// }
 
