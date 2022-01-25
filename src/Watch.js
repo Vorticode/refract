@@ -15,7 +15,7 @@ class WatchProperties {
 		                   // This is necessary to store the values of obj_ after defineProperty() is called.
 		this.proxy_ = watchProxy(this.fields_, this.notify_.bind(this));
 
-		/** @type {object<string, function>} A map from a path to the callback subscribed to that path. */
+		/** @type {Object<string, function>} A map from a path to the callback subscribed to that path. */
 		this.subs_ = {};
 	}
 

@@ -340,7 +340,7 @@ var Testimony = {
 
 	/**
 	 * A flat object of full test name -> test object.
-	 * @type object<string, object<string, *> */
+	 * @type Object<string, Object<string, *> */
 	tests: {},
 
 	render: TableRenderer,
@@ -368,7 +368,7 @@ var Testimony = {
 	},
 
 	/**
-	 * @returns {object<string, object|Test>} */
+	 * @returns {Object<string, object|Test>} */
 	getTestTree() {
 		let result = {};
 		for (let name in Testimony.tests)

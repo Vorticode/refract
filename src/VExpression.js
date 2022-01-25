@@ -74,7 +74,7 @@ export default class VExpression {
 
 
 
-	/** @type {object<string, *>} */
+	/** @type {Object<string, *>} */
 	scope = {};
 
 	/** @type {int} DOM index of the first DOM child created by this VExpression within parent. */

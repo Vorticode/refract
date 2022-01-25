@@ -4,7 +4,6 @@ import Refract from './Refract.js';
 import lex from "./lex.js";
 import htmljs from "./lex-htmljs.js";
 htmljs.allowHashTemplates = true;
-import delve from "./delve.js";
 import {div} from "./Html.js";
 import Utils from "./utils.js";
 
@@ -15,7 +14,7 @@ import Utils from "./utils.js";
 export default class VElement {
 	tagName = '';
 
-	/** @type {object<string, (string|VExpression)[]>} */
+	/** @type {Object<string, (string|VExpression)[]>} */
 	attributes = {};
 
 	/** @type {VExpression[]} Expressions that create whole attribute name/value pairs. */

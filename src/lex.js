@@ -12,7 +12,7 @@
  *     {type:string, mode:string, line:int, col:int, ?tokens:Token[]}
  * }
  *
- * @param grammar {object<string, GrammarRule|GrammarRule[]>}.  An object of rules objects, where the key is the mode to use.
+ * @param grammar {Object<string, GrammarRule|GrammarRule[]>}.  An object of rules objects, where the key is the mode to use.
  * Each rule object has a key with name of the rule's type, and a value that can be either:
  * 1. A string,
  * 2. A regular expression.
