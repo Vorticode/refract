@@ -29,12 +29,19 @@ var Parse = {
 	 * @param tokens {Token[]}
 	 * @return {string[]} */
 	filterArgNames(tokens) {
+
 		let result = [];
-		let find = 1; // Don't find identifiers after an =.
+		let find = 1, depth=0; // Don't find identifiers after an =.
 		for (let token of tokens) {
-			if (find === 1 && token.type === 'identifier')
+			if (find === 1 && token.type === 'identifier' && !depth)
 				result.push(token + '');
-			find = {',': 1, '=': -1}[token] || find;
+			else if (token == '(' || token == '{' || token == '[')
+				depth++;
+			else if (token == ')' || token == '}' || token == ']')
+				depth --;
+
+			if (!depth)
+				find = {',': 1, '=': -1}[token] || find;
 		}
 		return result;
 	},
@@ -77,33 +84,6 @@ var Parse = {
 	},
 
 	/**
-	 *
-	 * @param tokens {Token[]}
-	 * @param start {int}
-	 * @returns {int|null} */
-	findFunctionStart(tokens, start=0) {
-		for (let i=start, token; token=tokens[i]; i++) {
-			if (token == 'function')
-				return i;
-			else if (token == '=>') {
-				// TODO: Use findGroupEnd
-				let depth = 0;
-				for (let j=-1, token; token=tokens[i+j]; j--) {
-					if (token.type === 'whitespace' || token.type === 'ln')
-						continue;
-					if (token == ')')
-						depth++;
-					else if (token == '(')
-						depth--;
-					if (depth === 0)
-						return i+j;
-				}
-			}
-		}
-		return null;
-	},
-
-	/**
 	 * TODO: test search direction.
 	 * @param tokens {Token[]}
 	 * @param start {int} Index directly after start token.
@@ -128,7 +108,7 @@ var Parse = {
 
 	/**
 	 * Find all tokens that are function arguments, not counting any open or close parens.
-	 * @param tokens {Token[]}
+	 * @param tokens {Token[]} Should start at the beginning of a function.
 	 * @param start {int} Index of the first token of the function.
 	 * E.g., below the first token is the start of the function.
 	 *   function(a,b) {...}
@@ -155,14 +135,42 @@ var Parse = {
 	},
 
 	/**
-	 *
+	 * Loop through the tokens and find the start of a function.
 	 * @param tokens {Token[]}
-	 * @param start
+	 * @param start {int}
+	 * @returns {int|null} */
+	findFunctionStart(tokens, start=0) {
+		for (let i=start, token; token=tokens[i]; i++) {
+			if (token == 'function')
+				return i;
+			else if (token == '=>') {
+				// TODO: Use findGroupEnd
+				let depth = 0;
+				for (let j=-1, token; token=tokens[i+j]; j--) {
+					if (token.type === 'whitespace' || token.type === 'ln')
+						continue;
+					if (token == ')')
+						depth++;
+					else if (token == '(')
+						depth--;
+					if (depth === 0)
+						return i+j;
+				}
+			}
+		}
+		return null;
+	},
+
+	/**
+	 * Finds the last token of a function, not including a trailing semicolon.
+	 * @param tokens {Token[]}
+	 * @param start {int} Must be the index of the first token of the function.
 	 * @returns {int|null} */
 	findFunctionEnd(tokens, start) {
 		let isArrow = tokens[start] != 'function';
-		let depth = 0, groups = isArrow ? 1 : 2;
+		let depth = 0, groups = isArrow && tokens[start] != '(' ? 1 : 2;
 		for (let i=start, token; token = tokens[i]; i++) {
+
 			if (!depth && isArrow && (token == ';' || token == ')'))
 				return i;
 
@@ -185,18 +193,20 @@ var Parse = {
 	 * Find the start and end of the first function within tokens.
 	 * @param tokens {Token[]}
 	 * @param start {int=}
-	 * @return {[start:int, end:int]} */
+	 * @return {[start:int, end:int]|null} */
 	findFunction(tokens, start = 0) {
 		// Types of functions to account for:
 		// a => a+1;
 		// a => (a+1);
 		// (a => a+1)
 		// a => { return a+1 }
-		// a => { return {a:1} }
+		// (a) => { return {a:1} }
 		// function(a) { return a+1 }
 
 		// Find the beginning of the function.
 		let functionStart = this.findFunctionStart(tokens, start);
+		if (functionStart === null)
+			return null;
 		let end = this.findFunctionEnd(tokens, functionStart);
 		return [functionStart, end];
 	},
@@ -230,6 +240,7 @@ var Parse = {
 	 * or
 	 * this.items.map((x, index, array) => `<p>${... any other expressions ...}</p>`)
 	 *
+	 * TODO: This function needs to be rewritten adn cleaned up.
 	 * TODO:  this.items.map(function(x) { return x})
 	 *
 	 * @param tokens {Token[]}
@@ -239,8 +250,41 @@ var Parse = {
 
 		let loopMatch = [
 			Parse.createVarExpression_(vars),
-			Parse.ws, '.', Parse.ws, 'map', Parse.ws, '('
+			Parse.ws, '.', Parse.ws, 'map', Parse.ws, '(', Parse.ws
 		];
+		// this.array.map(
+		let mapExpr = fregex.matchFirst(loopMatch, tokens)
+		if (!mapExpr)
+			return [null, null];
+
+		let funcTokens = tokens.slice(mapExpr.length);
+		let functionIndices = Parse.findFunction(funcTokens);
+
+		// New path that's not working yet.
+		// let functionStart = Parse.findFunctionStart(tokens, mapExpr.length);
+		// let mapEnd = Parse.findGroupEnd(tokens, mapExpr.length); // closing ) of the map()
+		//
+		// // Has extra tokens at the end.  Therefore this isn't a simple map expr.
+		// // e.g. this.array.map(x=>x+1).reduce(...)
+		// if (mapEnd + 1 < tokens.length) {
+		// 	funcTokens = funcTokens.slice(...functionIndices);
+		// 	debugger;
+		// 	return [null, null];
+		// }
+
+
+
+
+		if (!functionIndices || functionIndices[0] !== 0)
+			return [null, null];
+		funcTokens = funcTokens.slice(...functionIndices);
+
+		let argTokens = funcTokens.slice(...Parse.findFunctionArgs(funcTokens));
+		let loopParamNames = Parse.filterArgNames(argTokens);
+
+
+
+		// Old path:
 		let loopParamMatch = [
 			Parse.ws,
 			fregex.or([
@@ -252,16 +296,12 @@ var Parse = {
 			Parse.ws
 		];
 
-		// this.array.map(
-		let mapExpr = fregex.matchFirst(loopMatch, tokens)
-		if (!mapExpr)
-			return [null, null];
 
 		// (item, i, array) =>
-		let paramExpr = fregex.matchFirst(loopParamMatch, tokens.slice(mapExpr.length));
+		let paramExpr =  fregex.matchFirst(loopParamMatch, tokens.slice(mapExpr.length));
 		if (!paramExpr)
 			return [null, null];
-		let loopParamNames = Parse.filterArgNames(tokens.slice(mapExpr.length, mapExpr.length + paramExpr.length));
+		//let loopParamNames = Parse.filterArgNames(tokens.slice(mapExpr.length, mapExpr.length + paramExpr.length));
 
 		// Loop through remaining tokens, keep track of braceDepth, bracketDepth, and parenDepth, until we reach a closing ).
 		let loopBody = [];

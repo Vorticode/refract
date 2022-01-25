@@ -307,7 +307,6 @@ export default class Refract extends HTMLElement {
 					tokens,
 					constr.index+constr.length+argTokens.length);
 
-
 				let supEnd = Parse.findGroupEnd(tokens, sup.index+sup.length)+1;
 				let e = fregex(Parse.ws, ';')(tokens.slice(supEnd));
 				supEnd += e;
@@ -316,10 +315,6 @@ export default class Refract extends HTMLElement {
 
 				sup = tokens.slice(sup.index, supEnd);
 				sup.index = s;
-
-
-
-				//console.log(sup);
 
 				//#IFDEV
 				if (!sup)
