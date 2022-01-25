@@ -58,13 +58,13 @@ export default {
 	 * @param el {HTMLInputElement|HTMLElement}
 	 * @param callback {function(val:*)}	 */
 	watchInput(el, callback) {
-		let tagName = el.tagName.toLowerCase();
+		let tagName = el.tagName;
 		let isContentEditable =el.hasAttribute('contenteditable') && el.getAttribute('contenteditable') !== 'false';
-		let isTextArea = tagName==='textarea';
+		let isTextArea = tagName==='TEXTAREA';
 
 
 		let useInputEvent = isTextArea || isContentEditable || (
-			tagName === 'input' &&
+			tagName === 'INPUT' &&
 			!['button', 'color', 'file', 'hidden', 'image', 'radio', 'reset', 'submit'].includes(el.getAttribute('type'))
 		);
 
@@ -93,7 +93,7 @@ export default {
 			el.addEventListener('change', () => {
 				// TODO: Convert value to boolean for checkbox.  File input type.
 				let val;
-				if (tagName === 'select' && el.hasAttribute('multiple'))
+				if (tagName === 'SELECT' && el.hasAttribute('multiple'))
 					val = Array.from(el.children).filter(el => el.selected).map(opt => opt.value);
 				else
 					val = isContentEditable ? el.innerHTML : el.value;
