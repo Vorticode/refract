@@ -1505,7 +1505,7 @@ Deno.test('Refract.form.inputValueOnInputExpr', () => {
 	assertEquals(a.value, 'Cherry');
 });
 
-Deno.test('Refract.form._inputExprDereference', () => {
+Deno.test('Refract.form.inputExprDereference', () => {
 
 	class A extends Refract {
 		values = ['zero', 'one'];
@@ -1518,9 +1518,18 @@ Deno.test('Refract.form._inputExprDereference', () => {
 
 	a.input.value = 'two';
 	a.input.dispatchEvent(new Event('input'));
-	console.log(a.values);
+	assertEquals(a.values[0], 'two');
 
-	//assert(false);
+
+	a.values[0] = 'three';
+	assertEquals(a.input.value, 'three');
+
+	a.index = 1;
+	assertEquals(a.input.value, 'one');
+
+	a.input.value = 'four';
+	a.input.dispatchEvent(new Event('input'));
+	assertEquals(a.values[1], 'four');
 });
 
 Deno.test('Refract.form.select', () => {

@@ -194,12 +194,7 @@ export default class VElement {
 				this.el.attachShadow({mode: this.el.getAttribute('shadow') || 'open'});
 		}
 
-		// List of input types:
-		// https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#input_types
-		//let hasTextEvents = Object.keys(this.attributes).some(attr =>
-		//	['onchange','oninput',  'onkeydown', 'onkeyup', 'onkeypress', 'oncut', 'onpaste'].includes(attr));
-		let isContentEditable =this.el.hasAttribute('contenteditable') && this.el.getAttribute('contenteditable') !== 'false';
-		let isTextArea = tagName==='textarea';
+
 
 		// 2B. Form field two-way binding.
 		// Listening for user to type in form field.
@@ -211,10 +206,15 @@ export default class VElement {
 			if (isSimpleExpr) {
 				let scope = {'this': this.xel, ...this.scope};
 
+
+				let createFunction = ((this.xel && this.xel.constructor) || window.RefractCurrentClass).createFunction;
+				let assignFunc = createFunction(...Object.keys(this.scope), 'val', value[0].code + '=val;').bind(this.xel);
+
 				// Update the value when the input changes:
 				Utils.watchInput(this.el, val => {
-					if (delve(scope, value[0].watchPaths[0]) !== val)
-						delve(scope, value[0].watchPaths[0], val); // TODO: Watchless if updating the original value.
+					assignFunc(...Object.values(this.scope), val);
+					//if (delve(scope, value[0].watchPaths[0]) !== val)
+					//	delve(scope, value[0].watchPaths[0], val); // TODO: Watchless if updating the original value.
 				});
 			}
 		}
@@ -239,7 +239,11 @@ export default class VElement {
 			count += vChild.apply(this.el);
 		}
 
-		// 5. Set initial value for select from value="" attribute.    
+		// 5. Set initial value for select from value="" attribute.
+		// List of input types:
+		// https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#input_types
+		let isContentEditable =this.el.hasAttribute('contenteditable') && this.el.getAttribute('contenteditable') !== 'false';
+		let isTextArea = tagName==='textarea';
 	    if (hasValue) // This should happen after the children are added, e.g. for select <options>
 	    	// TODO: Do we only need to do this for select boxes b/c we're waiting for their children?  Other input types are handled above in step 2.
 		    setInputValue(this.xel, this.el, this.attributes.value, this.scope, isTextArea || isContentEditable);
@@ -470,9 +474,11 @@ export default class VElement {
 	}
 }
 
-
+// TODO: Pair this with Utils.watchInput() ?
 function setInputValue(ref, el, value, scope, isText) {
 	if (isText || el.tagName === 'INPUT') {
+
+
 		let val = VElement.evalVAttributeAsString(ref, value, scope);
 		if (isText)
 			el.innerHTML = val;

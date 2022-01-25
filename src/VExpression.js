@@ -20,7 +20,7 @@ export default class VExpression {
 
 	/**
 	 * @type {string} simple|complex|loop
-	 * simple:  ${this.field[0].value} or ${this.fields}
+	 * simple:  ${this.field[0].value} or ${this.fields} or ${this.field[this.index].value} .  An lvalue.
 	 * complex: ${JSON.stringify(this.fields)} or ${foo(this.array)).map(x => `${x}`)}
 	 * loop:    ${this.fields.map(item => ...)}
 	 *
@@ -130,7 +130,7 @@ export default class VExpression {
 				vChild.remove();
 
 		// Create new children.
-		this.vChildren = this.evaluate();
+		this.vChildren = this.evaluateToVElements();
 
 		// Add children to parent.
 		let count = 0;
@@ -177,22 +177,23 @@ export default class VExpression {
 
 		//#IFDEV
 		result.code = this.code;
-
-
-		//#IFDEV
-		//result.cloned = (new Error()).stack.split(/\n\s+at /g).slice(1);
-		//#ENDIF
 		//#ENDIF
 
 		return result;
 	}
 
 	/**
+	 * @returns {string|string[]} */
+	evaluate() {
+		return this.exec.apply(this.xel, Object.values(this.scope));
+	}
+
+	/**
 	 * @pure
 	 * Non-recursively resolve this and all child VExpressions, returning a tree of VElement and VText.
-	 * Does not modify DOM.
+	 * Does not modify the actual DOM.
 	 * @return {(VElement|VText|VExpression)[][]} */
-	evaluate() {
+	evaluateToVElements() {
 
 		// Remove previous watches.
 		// TODO: Only do this if the watches are changing.
@@ -214,7 +215,7 @@ export default class VExpression {
 				throw new Error();
 			//#ENDIF
 
-			let htmls = [this.exec.apply(this.xel, Object.values(this.scope))]
+			let htmls = [this.evaluate()]
 				.flat().map(h=>h===undefined?'':h); // undefined becomes empty string
 
 			if (this.isHash) // #{...} template
@@ -229,7 +230,7 @@ export default class VExpression {
 				}
 
 		} else { // loop
-			let array = this.exec.apply(this.xel, Object.values(this.scope));
+			let array = this.evaluate();
 			//#IFDEV
 			if (!array)
 				throw new Error(`${this.watchPaths[0].join('.')} is not iterable in ${this.code}`);
@@ -526,7 +527,7 @@ export default class VExpression {
 
 
 		//#IFDEV
-		result.code = tokens.join(''); // So we can quickly see what a VExpression is in the debugger.
+		result.code = tokens.slice(1, -1).join(''); // So we can quickly see what a VExpression is in the debugger.
 		//#ENDIF
 
 		// remove enclosing ${ }
@@ -561,27 +562,25 @@ export default class VExpression {
 			// TODO Why is this special path necessary, instead of always just using the else path?
 			let loopBodyTrimmed = loopBody.filter(token => token.type !== 'whitespace' && token.type !== 'ln');
 			if (loopBodyTrimmed.length === 1 && loopBodyTrimmed[0].type === 'template') {
-
-				//console.log(loopBodyTrimmed[0].tokens.slice(1, -1));
-
 				// Remove beginning and end string delimiters, parse items.
-				result.loopItemEls = VElement.fromTokens(loopBodyTrimmed[0].tokens.slice(1, -1), scope);
+				result.loopItemEls = VElement.fromTokens(loopBodyTrimmed[0].tokens.slice(1, -1), scope, vParent);
 			}
 
 			// The loop body is more complex javascript code:
-			else {
-				//console.log(loopBody.join(''));
-
+			else
 				result.loopItemEls = [VExpression.fromTokens(loopBody, scope, vParent)];
-
-			}
 		}
 
 		else {
 
 			// TODO: This duplicates code executed in Parse.varExpressions_ above?
-			if (Parse.createVarExpression_(scope)(tokens) !== tokens.length)
-				result.type = 'complex';
+			if (Parse.createVarExpression_(scope)(tokens) !== tokens.length) {
+				// This will find things like this.values[this.index].name
+				if (Parse.isLValue(tokens) === tokens.length)
+					result.type = 'simple';
+				else
+					result.type = 'complex';
+			}
 
 			// Build function to evaluate expression.
 			// Later, scope object will be matched with param names to call this function.

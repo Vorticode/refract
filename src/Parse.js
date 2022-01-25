@@ -15,6 +15,7 @@ var Parse = {
 		if (result)
 			return result;
 
+
 		return varExpressionCache[key] = fregex(
 			fregex.or(
 				fregex('this', Parse.ws, fregex.oneOrMore(property)),  // this.prop
@@ -280,7 +281,8 @@ var Parse = {
 			return [null, null];
 		funcTokens = funcTokens.slice(...functionIndices);
 
-		let argTokens = funcTokens.slice(...Parse.findFunctionArgs(funcTokens));
+		let argIndices = Parse.findFunctionArgs(funcTokens);
+		let argTokens = funcTokens.slice(...argIndices);
 		let loopParamNames = Parse.filterArgNames(argTokens);
 
 
@@ -300,8 +302,6 @@ var Parse = {
 
 		// (item, i, array) =>
 		let paramExpr =  fregex.matchFirst(loopParamMatch, tokens.slice(mapExpr.length));
-		if (!paramExpr)
-			return [null, null];
 		//let loopParamNames = Parse.filterArgNames(tokens.slice(mapExpr.length, mapExpr.length + paramExpr.length));
 
 		// Loop through remaining tokens, keep track of braceDepth, bracketDepth, and parenDepth, until we reach a closing ).
@@ -385,9 +385,32 @@ let indexType = [
 	{type: 'number'},
 	{type: 'hex'},
 	{type: 'string'},
-	{type: 'template'}
+	{type: 'template'},
 ];
 
+// TODO: actually parse instead of just finding the right type of tokens.
+Parse.isLValue = fregex.oneOrMore(
+	fregex.or(
+		'this', '.', '[', ']', {type: 'identifier'}, {type: 'number'}, {type: 'hex'}, {type: 'string'}, {type: 'template'}, {type: 'whitespace'}, {type: 'ln'}
+	)
+);
+
+let terminator = fregex.lookAhead([
+	fregex.or(
+		fregex.end, // no more tokens
+		fregex.not(Parse.ws, '(')
+	)
+]);
+let property = fregex(
+	fregex.or(
+		fregex(Parse.ws,'.', Parse.ws, {type: 'identifier'}), //.item
+		fregex(Parse.ws,'[', Parse.ws, fregex.or(...indexType), Parse.ws, ']') // ['item']
+	),
+	terminator // TODO: Why is the terminator here?
+);
+
+
+/** @deprecated */
 Parse.arg = fregex([
 	{type: 'identifier'},
 	Parse.ws,
@@ -400,30 +423,13 @@ Parse.arg = fregex([
 	])
 ]);
 
-/**
- * @deprecated */
+/** @deprecated */
 Parse.argList = fregex.zeroOrMore([
 	Parse.arg,
 	fregex.zeroOrMore([
 		Parse.ws, ',', Parse.ws, Parse.arg
 	])
 ]);
-
-
-let terminator = fregex.lookAhead([
-	fregex.or(
-		fregex.end,
-		fregex.not(Parse.ws, '(')
-	)
-]);
-let property = fregex(
-	fregex.or(
-		fregex(Parse.ws,'.', Parse.ws, {type: 'identifier'}), //.item
-		fregex(Parse.ws,'[', Parse.ws, fregex.or(...indexType), Parse.ws, ']') // ['item']
-	),
-	terminator
-);
-
 
 
 export default Parse;
