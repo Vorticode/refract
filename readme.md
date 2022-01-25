@@ -174,7 +174,7 @@ TODO:  Document this feature.
 
 Events can be used via the conventional `on` attributes.  The event code is given these variables implicitly:
 
-1. `this` The parent Refract element.
+1. `this` The parent Refract class instance.
 2. `event` The event object.
 3. `el` The HTML Element where the attribute is present.
 4. Any new variables in scope from a containing loop.
@@ -356,20 +356,17 @@ html = `<div>one ${this.two} three</div>`;
 
 ### document.createElement()
 
-Imagine the following Refract element:
+Refract element can't be instantiated via document.createElement():
 
 ```javascript
 class RefractElement extends Refract {
     html = `<refract-element>Hi!</refract-element>`;
 }
 eval(RefractElement.compile());
-```
 
-Refract element can't be instantiated via document.createElement():
-
-```javascript
 document.createElement('refract-element'); // Error
 ```
+
 
 But they can be by assigning their tag names as innerHTML to another element:
 
@@ -389,7 +386,7 @@ This is also valid:
 
 ### Cannot Watch Function Result
 
-Imagine the following code:
+The return value of a function cannot be watched for changes:
 
 ```javascript
 class RefractElement extends Refract {

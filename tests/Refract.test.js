@@ -1,8 +1,9 @@
 import {assert, assertEquals, Testimony} from './lib/Testimony.js';
 Testimony.enableJsDom();
 
-//import Refract from './../dist/Refract.js';
-import Refract from './../src/Refract.js';
+import Refract from './../dist/Refract.js';
+//import Refract from './../dist/Refract.min.js';
+//import Refract from './../src/Refract.js';
 import createEl from '../src/createEl.js';
 
 Refract.elsCreated = [];
