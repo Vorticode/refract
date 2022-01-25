@@ -64,6 +64,7 @@ const terserOptions = {
 
 const input = process.argv[2];
 const output = process.argv[3];
+const outputRelease = output.replace(/\.js$/, '-release.js');
 const outputMin = output.replace(/\.js$/, '.min.js');
 
 const fs = require('fs');
@@ -102,6 +103,21 @@ async function terser(options) {
 
 	// Remove //#IFDEV blocks.
 	code = code.replace(/\/\/#IFDEV[\s\S]*?\/\/#ENDIF/gm, '');
+
+	//fs.writeFileSync(outputRelease, code);
+
+	let idx = code.indexOf('#IFDEV')
+	if (idx !== -1) {
+		console.log(idx);
+		console.log(code.slice(Math.max(idx-50, 0), idx+50));
+		throw new Error('Unmatched #IFDEV block');
+	}
+	idx = code.indexOf('#ENDIF');
+	if (idx !== -1) {
+		console.log(code.slice(Math.max(idx-50, 0), idx+50));
+		throw new Error('Unmatched #ENDIF block');
+	}
+
 
 	var result = await Terser.minify(code, options);
 	fs.writeFileSync(outputMin, result.code);
