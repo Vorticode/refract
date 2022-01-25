@@ -449,7 +449,7 @@ Deno.test('Refract.expr.tripleConditional', () => {
 	assertEquals(a.outerHTML, `<a-230>Banana</a-230>`);
 });
 
-Deno.test('Refract.expr.exprIndex', () => {
+Deno.test('Refract.expr.exprDereference', () => {
 
 	class A extends Refract {
 		values = [1, 2];
@@ -1467,7 +1467,6 @@ Deno.test('Refract.form.inputExprUndefined', () => {
 	assertEquals(a.form.value, 'Cherry');
 });
 
-
 Deno.test('Refract.form.inputEvent', () => {
 
 	class A extends Refract {
@@ -1504,6 +1503,24 @@ Deno.test('Refract.form.inputValueOnInputExpr', () => {
 	a.input.value = 'Cherry Pie';
 	a.input.dispatchEvent(new Event('input'));
 	assertEquals(a.value, 'Cherry');
+});
+
+Deno.test('Refract.form._inputExprDereference', () => {
+
+	class A extends Refract {
+		values = ['zero', 'one'];
+		index = 0;
+		html = `<a-235><input id="input" value="${this.values[this.index]}"></a-235>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+
+	a.input.value = 'two';
+	a.input.dispatchEvent(new Event('input'));
+	console.log(a.values);
+
+	//assert(false);
 });
 
 Deno.test('Refract.form.select', () => {

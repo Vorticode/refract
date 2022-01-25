@@ -1,5 +1,7 @@
 
 //#IFDEV
+import delve from "./delve.js";
+
 class RefractError extends Error {
 	constructor(msg) {
 		super(msg);
@@ -48,6 +50,59 @@ export default {
 		if (val === undefined || val === null)
 			return '';
 		return val+'';
+	},
+
+
+	/**
+	 * When the input's value changes, call the callback with the new, typed value.
+	 * @param el {HTMLInputElement|HTMLElement}
+	 * @param callback {function(val:*)}	 */
+	watchInput(el, callback) {
+		let tagName = el.tagName.toLowerCase();
+		let isContentEditable =el.hasAttribute('contenteditable') && el.getAttribute('contenteditable') !== 'false';
+		let isTextArea = tagName==='textarea';
+
+
+		let useInputEvent = isTextArea || isContentEditable || (
+			tagName === 'input' &&
+			!['button', 'color', 'file', 'hidden', 'image', 'radio', 'reset', 'submit'].includes(el.getAttribute('type'))
+		);
+
+
+		// It's better to do it on input than change, b/c input fires first.
+		// Then if user code adds and event listener on input, this one will fire first and have the value already set.
+		if (useInputEvent) { // TODO: Input type="number" is typable but also dispatches change event on up/down click.
+			el.addEventListener('input', ()=> {
+
+				let type = el.getAttribute('type') || '';
+
+				// Convert input type="number" to a float.
+				let val = isContentEditable ? el.innerHTML : el.value;
+				if (type === 'number' || type === 'range')
+					val = parseFloat(val);
+				else if (type === 'datetime-local' || type === 'datetime')
+					val = new Date(val);
+				else if (el.type === 'checkbox')
+					val = el.checked;
+
+				callback(val);
+
+			}, true); // We bind to the event capture phase, so we can update values before it calls onchange and other event listeners added by the user.
+		}
+		else {
+			el.addEventListener('change', () => {
+				// TODO: Convert value to boolean for checkbox.  File input type.
+				let val;
+				if (tagName === 'select' && el.hasAttribute('multiple'))
+					val = Array.from(el.children).filter(el => el.selected).map(opt => opt.value);
+				else
+					val = isContentEditable ? el.innerHTML : el.value;
+
+				callback(val);
+
+
+			}, true);
+		}
 	}
 }
 

@@ -48,7 +48,7 @@ export default class VElement {
 	 * @type {string|null} */
 	//staticCode = null;
 
-	/** @type {object<string, string>} */
+	/** @type {Object<string, string>} */
 	scope = {};
 
 	/** @type {int} DOM index of the first DOM child created by this VExpression within parent. */
@@ -201,7 +201,7 @@ export default class VElement {
 		let isContentEditable =this.el.hasAttribute('contenteditable') && this.el.getAttribute('contenteditable') !== 'false';
 		let isTextArea = tagName==='textarea';
 
-		// 2B. Form field two way binding.
+		// 2B. Form field two-way binding.
 		// Listening for user to type in form field.
 		if (hasValue) {
 			let value = this.attributes.value;
@@ -209,51 +209,13 @@ export default class VElement {
 
 			// Don't grab value from input if we can't reverse the expression.
 			if (isSimpleExpr) {
-				let useInputEvent = isTextArea || isContentEditable || (
-					tagName === 'input' &&
-						!['button', 'color', 'file', 'hidden', 'image', 'radio', 'reset', 'submit'].includes(this.el.getAttribute('type'))
-				);
-
 				let scope = {'this': this.xel, ...this.scope};
 
-				// It's better to do it on input than change, b/c input fires first.
-				// Then if user code adds and event listener on input, this one will fire first and have the value already set.
-				if (useInputEvent) { // TODO: Input type="number" is typable but also dispatches change event on up/down click.
-					this.el.addEventListener('input', ()=> {
-
-						let type = this.el.getAttribute('type') || '';
-
-						// Convert input type="number" to a float.
-						let val = isContentEditable ? this.el.innerHTML : this.el.value;
-						if (type === 'number' || type === 'range')
-							val = parseFloat(val);
-						else if (type === 'datetime-local' || type === 'datetime')
-							val = new Date(val);
-						else if (this.el.type === 'checkbox')
-							val = this.el.checked;
-
-						if (delve(scope, value[0].watchPaths[0]) !== val) {
-							delve(scope, value[0].watchPaths[0], val); // TODO: Watchless if updating the original value.
-						}
-					}, true); // We bind to the event capture phase so we can update values before it calls onchange and other event listeners added by the user.
-				}
-				else {
-					this.el.addEventListener('change', () => {
-						// TODO: Convert value to boolean for checkbox.  File input type.
-						let val;
-						if (tagName === 'select' && this.el.hasAttribute('multiple')) {
-							let val = Array.from(this.el.children).filter(el => el.selected).map(opt => opt.value);
-							// if (!Array.isArray(delve(scope, value[0].watchPaths[0])))
-							// 	val = val[0];
-							delve(scope, value[0].watchPaths[0], val);
-						}
-
-						else
-							val = isContentEditable ? this.el.innerHTML : this.el.value;
-
-						delve(scope, value[0].watchPaths[0], val);
-					}, true);
-				}
+				// Update the value when the input changes:
+				Utils.watchInput(this.el, val => {
+					if (delve(scope, value[0].watchPaths[0]) !== val)
+						delve(scope, value[0].watchPaths[0], val); // TODO: Watchless if updating the original value.
+				});
 			}
 		}
 
