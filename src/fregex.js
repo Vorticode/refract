@@ -11,7 +11,7 @@
  */
 export default function fregex(...rules) {
 	rules = prepare(rules);
-	return tokens => {
+	let result = tokens => {
 		let i = 0;
 		for (let rule of rules) {
 			let used = rule(tokens.slice(i));
@@ -23,6 +23,11 @@ export default function fregex(...rules) {
 		}
 		return i; // returns number of tokens used.
 	}
+	//#IFDEV
+	result.debug = 'and(' + rules.map(r => r.debug || r).join(', ') + ')';
+	//#ENDIF
+	return result;
+
 }
 
 /**
@@ -30,7 +35,7 @@ export default function fregex(...rules) {
  * TODO: Automatically treat an array given to an and() as an or() ? */
 fregex.or = (...rules) => {
 	rules = prepare(rules);
-	return tokens => {
+	let result = tokens => {
 		for (let rule of rules) {
 			let used = rule(tokens);
 			if (used !== false)
@@ -38,15 +43,24 @@ fregex.or = (...rules) => {
 		}
 		return false;
 	}
+	//#IFDEV
+	result.debug = 'or(' + rules.map(r => r.debug || r).join(', ') + ')';
+	//#ENDIF
+	return result;
 }
 
 
 /**
- * Equivalent of /!(abc)/ */
+ * Equivalent of /!(a&b&c)/ */
 fregex.not = (...rules) => {
 	let f = fregex(rules); // re-use
-	return tokens =>
+	let result = tokens =>
 		f(tokens) === false ? 0 : false; // If it matches, return false, otherwise advance 0.
+
+	//#IFDEV
+	result.debug = 'not(' + rules.map(r => r.debug || r).join(', ') + ')';
+	//#ENDIF
+	return result;
 };
 
 /**
@@ -54,12 +68,18 @@ fregex.not = (...rules) => {
  * Equivalent to /[^abc]/ */
 fregex.nor = (...rules) => {
 	rules = prepare(rules);
-	return tokens => {
+	let result = tokens => {
 		for (let rule of rules)
 			if (rule(tokens) > 0) // rule(tokens) returns the number used.
 				return false;
 		return 1;
 	};
+	//#IFDEV
+	result.debug = 'nor(' + rules.map(r => r.debug || r).join(', ') + ')';
+	//#ENDIF
+	return result;
+
+
 }
 
 
@@ -67,17 +87,21 @@ fregex.nor = (...rules) => {
  * Consume either zero or one of the sequences given. */
 fregex.zeroOrOne = (...rules) => {
 	let f = fregex(rules);
-	return tokens => {
+	let result = tokens => {
 		let used = f(tokens);
 		if (used === false)
 			return 0; // don't fail if no match.
 		return used;
 	}
+	//#IFDEV
+	result.debug = 'zeroOrOne(' + rules.map(r => r.debug || r).join(', ') + ')';
+	//#ENDIF
+	return result;
 };
 
 fregex.xOrMore = (x, ...rules) => {
 	let f = fregex(rules); // re-use
-	return (tokens) => {
+	let result = (tokens) => {
 		let total = 0;
 		for (let i=0; tokens.length; i++) {
 			let used = f(tokens);
@@ -88,6 +112,12 @@ fregex.xOrMore = (x, ...rules) => {
 		}
 		return total;
 	}
+
+	//#IFDEV
+	result.debug = x+'OrMore(' + rules.map(r => r.debug || r).join(', ') + ')';
+	//#ENDIF
+
+	return result;
 };
 
 fregex.zeroOrMore = (...rules) => fregex.xOrMore(0, ...rules);
@@ -125,7 +155,7 @@ fregex.matchAll = (pattern, haystack, limit=Infinity, startIndex=0) => {
 // Experimental
 fregex.lookAhead = (...rules) => {
 	rules = prepare(rules);
-	return tokens => {
+	let result = tokens => {
 		for (let rule of rules) {
 			let used = rule(tokens);
 			if (used === false)
@@ -133,6 +163,12 @@ fregex.lookAhead = (...rules) => {
 		}
 		return 0;
 	}
+
+	//#IFDEV
+	result.debug = 'lookAhead(' + rules.map(r => r.debug || r).join(', ') + ')';
+	//#ENDIF
+
+	return result;
 }
 
 /**
@@ -143,8 +179,9 @@ fregex.lookAhead = (...rules) => {
 fregex.end = tokens => {
 	return tokens.length ? false : 0;
 };
-
-
+//#IFDEV
+fregex.end.debug = 'end';
+//#ENDIF
 
 
 /**
@@ -179,6 +216,10 @@ var prepare = rules => {
 
 		else
 			result[i] = rules[i];
+
+		//#IFDEV
+		result[i].debug = rule.debug || JSON.stringify(rule);
+		//#ENDIF
 	}
 
 	return result;
