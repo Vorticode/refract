@@ -267,6 +267,7 @@ var Parse = {
 		// // Has extra tokens at the end.  Therefore this isn't a simple map expr.
 		// // e.g. this.array.map(x=>x+1).reduce(...)
 		// if (mapEnd + 1 < tokens.length) {
+
 		// 	funcTokens = funcTokens.slice(...functionIndices);
 		// 	debugger;
 		// 	return [null, null];
