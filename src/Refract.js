@@ -5,7 +5,7 @@ import fregex from './fregex.js';
 import Parse from './Parse.js';
 import VElement from './VElement.js';
 import VExpression from "./VExpression.js";
-import createEl from './createEl.js'; // TODO: This is erroneously still included when minified b/c rollup includes the //#IFDEV blocks.
+import createEl from './createEl.js'; // TODO: This is erroneously still included when minified b/c rollup includes the //# IFDEV blocks.
 import Html from "./Html.js";
 
 /**
@@ -465,7 +465,6 @@ export default class Refract extends HTMLElement {
 					return eval(\`(function(\${params}) {\${code}})\`);
 				};
 				let compiled = ${this.name}.preCompile(${this.name});
-				//console.log(compiled.code);
 				${this.name} = eval('('+compiled.code+')');		
 				${this.name}.decorate(${this.name}, compiled);
 				delete window.RefractCurrentClass;

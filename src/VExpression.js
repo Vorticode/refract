@@ -175,9 +175,7 @@ export default class VExpression {
 
 		result.isHash = this.isHash;
 
-		//#IFDEV
 		result.code = this.code;
-		//#ENDIF
 
 		return result;
 	}
@@ -525,10 +523,8 @@ export default class VExpression {
 		result.attrName = attrName;
 		scope = (scope || []).slice(); // copy
 
-
-		//#IFDEV
 		result.code = tokens.slice(1, -1).join(''); // So we can quickly see what a VExpression is in the debugger.
-		//#ENDIF
+
 
 		// remove enclosing ${ }
 		let isHash = tokens[0] == '#{';

@@ -1,7 +1,5 @@
 
 //#IFDEV
-import delve from "./delve.js";
-
 class RefractError extends Error {
 	constructor(msg) {
 		super(msg);

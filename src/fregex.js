@@ -179,6 +179,7 @@ fregex.lookAhead = (...rules) => {
 fregex.end = tokens => {
 	return tokens.length ? false : 0;
 };
+
 //#IFDEV
 fregex.end.debug = 'end';
 //#ENDIF
@@ -188,7 +189,6 @@ fregex.end.debug = 'end';
  * Allow matching on functions, object properties, and strings.
  * @param rules
  * @returns {function[]} */
-let count = 0;
 var prepare = rules => {
 	if (Array.isArray(rules[0]) && rules.length === 1)
 		rules = rules[0];
