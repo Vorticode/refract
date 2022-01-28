@@ -146,11 +146,8 @@ export default class VElement {
 		}
 
 
-		let isContentEditable = this.attributes['contenteditable'] && (this.attributes['contenteditable']+'') !== 'false';
-		let isText = this.el.tagName === 'TEXTAREA' || this.attributes['contenteditable'] && (this.attributes['contenteditable']+'') !== 'false';
 
 
-		let count = 0;
 
 		// 2. Shadow DOM
 		for (let name in this.attributes)
@@ -158,6 +155,7 @@ export default class VElement {
 				this.el.attachShadow({mode: this.el.getAttribute('shadow') || 'open'});
 
 		// 3. Slot content
+		let count = 0;
 		if (tagName === 'slot') {
 			let slotChildren = VElement.fromHtml(this.xel.slotHtml, Object.keys(this.scope), this);
 			for (let vChild of slotChildren) {
@@ -167,10 +165,8 @@ export default class VElement {
 			}
 		}
 
-
-
-
 		// 4. Recurse through children
+		let isText = this.el.tagName === 'TEXTAREA' || this.attributes['contenteditable'] && (this.attributes['contenteditable']+'') !== 'false';
 		for (let vChild of this.vChildren) {
 			if (isText && (vChild instanceof VExpression))
 				throw new Error('<textarea> and contenteditable cannot have expressions as children.  Use value=${this.variable} instead.');
@@ -180,7 +176,7 @@ export default class VElement {
 			count += vChild.apply(this.el);
 		}
 
-		// 5. Other Attributes
+		// 5. Attributes (besides shadow)
 		for (let name in this.attributes) {
 			let value = this.attributes[name];
 			for (let attrPart of value)
@@ -224,38 +220,33 @@ export default class VElement {
 		}
 
 
+		// 6. Form field two-way binding.
+		// Listening for user to type in form field.
+		let hasValue = ('value' in this.attributes && tagName !== 'option');
+		if (hasValue) {
+			let value = this.attributes.value;
+			let isSimpleExpr = value.length === 1 && value[0] && value[0].type === 'simple';
 
+			// Don't grab value from input if we can't reverse the expression.
+			if (isSimpleExpr) {
+				let createFunction = ((this.xel && this.xel.constructor) || window.RefractCurrentClass).createFunction;
+				let assignFunc = createFunction(...Object.keys(this.scope), 'val', value[0].code + '=val;').bind(this.xel);
 
-
-
-			// 6. Form field two-way binding.
-			// Listening for user to type in form field.
-			let hasValue = ('value' in this.attributes && tagName !== 'option');
-			if (hasValue || isContentEditable) {
-				let value = this.attributes.value || (isContentEditable && this.vChildren);
-				let isSimpleExpr = value.length === 1 && value[0] && value[0].type === 'simple';
-
-				// Don't grab value from input if we can't reverse the expression.
-				if (isSimpleExpr) {
-					let createFunction = ((this.xel && this.xel.constructor) || window.RefractCurrentClass).createFunction;
-					let assignFunc = createFunction(...Object.keys(this.scope), 'val', value[0].code + '=val;').bind(this.xel);
-
-					// Update the value when the input changes:
-					Utils.watchInput(this.el, (val, e) => {
-						Refract.eventSource = e.target;
-						assignFunc(...Object.values(this.scope), val);
-						Refract.eventSource = null;
-					});
-				}
+				// Update the value when the input changes:
+				Utils.watchInput(this.el, (val, e) => {
+					Refract.eventSource = e.target;
+					assignFunc(...Object.values(this.scope), val);
+					Refract.eventSource = null;
+				});
 			}
+		}
 
-			// 7. Set initial value for select from value="" attribute.
-			// List of input types:
-			// https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#input_types
-			let isTextArea = tagName === 'textarea';
-			if (hasValue) // This should happen after the children are added, e.g. for select <options>
-				// TODO: Do we only need to do this for select boxes b/c we're waiting for their children?  Other input types are handled above in step 2.
-				setInputValue(this.xel, this.el, this.attributes.value, this.scope, isTextArea || isContentEditable);
+		// 7. Set initial value for select from value="" attribute.
+		// List of input types:
+		// https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#input_types
+		if (hasValue) // This should happen after the children are added, e.g. for select <options>
+			// TODO: Do we only need to do this for select boxes b/c we're waiting for their children?  Other input types are handled above in step 2.
+			setInputValue(this.xel, this.el, this.attributes.value, this.scope);
 
 
 
