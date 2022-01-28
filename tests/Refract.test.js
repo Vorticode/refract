@@ -1,9 +1,9 @@
 import {assert, assertEquals, Testimony} from './lib/Testimony.js';
 Testimony.enableJsDom();
 
-import Refract from './../dist/Refract.js';
+//import Refract from './../dist/Refract.js';
 //import Refract from './../dist/Refract.min.js';
-//import Refract from './../src/Refract.js';
+import Refract from './../src/Refract.js';
 import createEl from '../src/createEl.js';
 
 Refract.elsCreated = [];
@@ -1427,6 +1427,8 @@ Deno.test('Refract.nested.loop', () => {
 	assertEquals(a.outerHTML, `<a-100><x-b100 fruit="Apple"><b>Apple</b></x-b100><x-b100 fruit="Cherry"><b>Cherry</b></x-b100></a-100>`);
 });
 
+
+// Form
 Deno.test('Refract.form.inputExpr', () => {
 
 	class A extends Refract {
@@ -1596,6 +1598,53 @@ Deno.test('Refract.form.SelectMultiple', () => {
 	assertEquals(a.select.children[1].selected, true);
 });
 
+
+Deno.test('Refract.form.contenteditable', () => {
+
+	class A extends Refract {
+		value = 'Apple';
+		html = `<a-160><div contenteditable id="input" value="${this.value}"></a-160>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	assertEquals(a.input.textContent, 'Apple');
+
+	// Set class value.
+	a.value = 'Banana';
+	assertEquals(a.input.textContent, 'Banana');
+
+	// Set input value
+	a.input.textContent = 'Cherry';
+	a.input.dispatchEvent(new Event('input'));
+	assertEquals(a.value, 'Cherry');
+});
+
+
+Deno.test('Refract.form.contenteditableExpr', () => {
+
+	class A extends Refract {
+		value = 'Apple';
+		html = `<a-170><div contenteditable id="input">${this.value}</a-170>`;
+	}
+	eval(A.compile());
+
+	// We forbid having expressions as children of editable text:
+	let err;
+	try {
+		let a = new A();
+	}
+	catch (e) {
+		err = e;
+	}
+	assert(err);
+	assertEquals(err.message.includes('expressions as children'), true);
+
+});
+
+
+
+// Events
 Deno.test('Refract.events.basic', () => {
 	var clicked = {};
 	class E extends Refract {
@@ -1762,7 +1811,7 @@ Deno.test('Refract._debugRender', () => {
 	class A extends Refract {
 		fruits = [];
 		html = `
-			<x-135>
+			<a-415>
 				hi
 				<b name="${this.a}" title="b">test</b>
 				${this.fruits.map(fruit =>
@@ -1771,7 +1820,7 @@ Deno.test('Refract._debugRender', () => {
 				${this.fruits.map(fruit =>
 					fruit.order // TODO: This should be parsed and render as a sub-expression.
 				)}
-			</x-135>`;
+			</a-415>`;
 	}
 	eval(A.compile());
 
@@ -1784,7 +1833,7 @@ Deno.test('Refract.misc.formInputDeep', () => {
 
 	class A extends Refract {
 		deep = { value: 'Apple'};
-		html = `<a-155><input id="input" value="${this.deep.value}"></a-155>`;
+		html = `<a-420><input id="input" value="${this.deep.value}"></a-420>`;
 	}
 	eval(A.compile());
 
@@ -1808,7 +1857,7 @@ Deno.test('Refract.misc.TwoVars', () => {
 	class A extends Refract {
 		a = 1;
 		b = 2;
-		html = `<a-160>${this.a + this.b}</a-160>`;
+		html = `<a-430>${this.a + this.b}</a-430>`;
 	}
 	eval(A.compile());
 

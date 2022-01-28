@@ -54,7 +54,7 @@ export default {
 	/**
 	 * When the input's value changes, call the callback with the new, typed value.
 	 * @param el {HTMLInputElement|HTMLElement}
-	 * @param callback {function(val:*)}	 */
+	 * @param callback {function(val:*, event)}	 */
 	watchInput(el, callback) {
 		let tagName = el.tagName;
 		let isContentEditable =el.hasAttribute('contenteditable') && el.getAttribute('contenteditable') !== 'false';
@@ -70,7 +70,7 @@ export default {
 		// It's better to do it on input than change, b/c input fires first.
 		// Then if user code adds and event listener on input, this one will fire first and have the value already set.
 		if (useInputEvent) { // TODO: Input type="number" is typable but also dispatches change event on up/down click.
-			el.addEventListener('input', ()=> {
+			el.addEventListener('input', e=> {
 
 				let type = el.getAttribute('type') || '';
 
@@ -83,12 +83,12 @@ export default {
 				else if (el.type === 'checkbox')
 					val = el.checked;
 
-				callback(val);
+				callback(val, e);
 
 			}, true); // We bind to the event capture phase, so we can update values before it calls onchange and other event listeners added by the user.
 		}
 		else {
-			el.addEventListener('change', () => {
+			el.addEventListener('change', e => {
 				// TODO: Convert value to boolean for checkbox.  File input type.
 				let val;
 				if (tagName === 'SELECT' && el.hasAttribute('multiple'))
@@ -96,7 +96,7 @@ export default {
 				else
 					val = isContentEditable ? el.innerHTML : el.value;
 
-				callback(val);
+				callback(val, e);
 
 
 			}, true);

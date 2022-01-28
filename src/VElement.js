@@ -125,7 +125,7 @@ export default class VElement {
 
 			//newEl.style.display = 'none';
 			if (oldEl) {  // Replacing existing element
-				oldEl.parentNode.insertBefore(newEl,oldEl);
+				oldEl.parentNode.insertBefore(newEl, oldEl);
 				oldEl.remove();
 			} else {// if (parent)
 
@@ -146,8 +146,41 @@ export default class VElement {
 		}
 
 
-		// 2. Set Attributes
-		let hasValue = ('value' in this.attributes && tagName !== 'option');
+		let isContentEditable = this.attributes['contenteditable'] && (this.attributes['contenteditable']+'') !== 'false';
+		let isText = this.el.tagName === 'TEXTAREA' || this.attributes['contenteditable'] && (this.attributes['contenteditable']+'') !== 'false';
+
+
+		let count = 0;
+
+		// 2. Shadow DOM
+		for (let name in this.attributes)
+			if (name === 'shadow' && !this.el.shadowRoot)
+				this.el.attachShadow({mode: this.el.getAttribute('shadow') || 'open'});
+
+		// 3. Slot content
+		if (tagName === 'slot') {
+			let slotChildren = VElement.fromHtml(this.xel.slotHtml, Object.keys(this.scope), this);
+			for (let vChild of slotChildren) {
+				vChild.scope = {...this.scope}
+				vChild.startIndex = count;
+				count += vChild.apply(this.el);
+			}
+		}
+
+
+
+
+		// 4. Recurse through children
+		for (let vChild of this.vChildren) {
+			if (isText && (vChild instanceof VExpression))
+				throw new Error('<textarea> and contenteditable cannot have expressions as children.  Use value=${this.variable} instead.');
+
+			vChild.scope = {...this.scope} // copy
+			vChild.startIndex = count;
+			count += vChild.apply(this.el);
+		}
+
+		// 5. Other Attributes
 		for (let name in this.attributes) {
 			let value = this.attributes[name];
 			for (let attrPart of value)
@@ -157,7 +190,7 @@ export default class VElement {
 					expr.scope = this.scope; // Share scope with attributes.
 					expr.watch(() => {
 						if (name === 'value')
-							setInputValue(this.xel, this.el, value, this.scope, isTextArea || isContentEditable);
+							setInputValue(this.xel, this.el, value, this.scope);
 
 						else {
 							let value2 = VElement.evalVAttributeAsString(this.xel, value, this.scope);
@@ -167,7 +200,8 @@ export default class VElement {
 				}
 
 			// TODO: This happens again for inputs in step 5 below:
-			VElement.setVAttribute(this.xel, this.el, name, value, this.scope);
+			let value2 = VElement.evalVAttributeAsString(this.xel, value, this.scope);
+			this.el.setAttribute(name, value2);
 
 
 			// Id
@@ -187,65 +221,43 @@ export default class VElement {
 					func(event, this.el, ...Object.values(this.scope));
 				}
 			}
-
-			// Shadow DOM
-			else if (name==='shadow' && !this.el.shadowRoot)
-				this.el.attachShadow({mode: this.el.getAttribute('shadow') || 'open'});
 		}
 
 
 
-		// 2B. Form field two-way binding.
-		// Listening for user to type in form field.
-		if (hasValue) {
-			let value = this.attributes.value;
-			let isSimpleExpr = value.length === 1 && value[0] && value[0].type === 'simple';
-
-			// Don't grab value from input if we can't reverse the expression.
-			if (isSimpleExpr) {
-				let scope = {'this': this.xel, ...this.scope};
 
 
-				let createFunction = ((this.xel && this.xel.constructor) || window.RefractCurrentClass).createFunction;
-				let assignFunc = createFunction(...Object.keys(this.scope), 'val', value[0].code + '=val;').bind(this.xel);
 
-				// Update the value when the input changes:
-				Utils.watchInput(this.el, val => {
-					assignFunc(...Object.values(this.scope), val);
-					//if (delve(scope, value[0].watchPaths[0]) !== val)
-					//	delve(scope, value[0].watchPaths[0], val); // TODO: Watchless if updating the original value.
-				});
+			// 6. Form field two-way binding.
+			// Listening for user to type in form field.
+			let hasValue = ('value' in this.attributes && tagName !== 'option');
+			if (hasValue || isContentEditable) {
+				let value = this.attributes.value || (isContentEditable && this.vChildren);
+				let isSimpleExpr = value.length === 1 && value[0] && value[0].type === 'simple';
+
+				// Don't grab value from input if we can't reverse the expression.
+				if (isSimpleExpr) {
+					let createFunction = ((this.xel && this.xel.constructor) || window.RefractCurrentClass).createFunction;
+					let assignFunc = createFunction(...Object.keys(this.scope), 'val', value[0].code + '=val;').bind(this.xel);
+
+					// Update the value when the input changes:
+					Utils.watchInput(this.el, (val, e) => {
+						Refract.eventSource = e.target;
+						assignFunc(...Object.values(this.scope), val);
+						Refract.eventSource = null;
+					});
+				}
 			}
-		}
 
-		// 3. Slot content
-		let count = 0;
-		if (tagName === 'slot') {
-			let slotChildren = VElement.fromHtml(this.xel.slotHtml, Object.keys(this.scope), this);
-			for (let vChild of slotChildren) {
-				vChild.scope = {...this.scope}
-				vChild.startIndex = count;
-				window.inSlot = true;
-				count += vChild.apply(this.el);
-				window.inSlot = false;
-			}
-		}
+			// 7. Set initial value for select from value="" attribute.
+			// List of input types:
+			// https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#input_types
+			let isTextArea = tagName === 'textarea';
+			if (hasValue) // This should happen after the children are added, e.g. for select <options>
+				// TODO: Do we only need to do this for select boxes b/c we're waiting for their children?  Other input types are handled above in step 2.
+				setInputValue(this.xel, this.el, this.attributes.value, this.scope, isTextArea || isContentEditable);
 
-		// 4. Recurse through children
-		for (let vChild of this.vChildren) {
-			vChild.scope = {...this.scope} // copy
-			vChild.startIndex = count;
-			count += vChild.apply(this.el);
-		}
 
-		// 5. Set initial value for select from value="" attribute.
-		// List of input types:
-		// https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#input_types
-		let isContentEditable =this.el.hasAttribute('contenteditable') && this.el.getAttribute('contenteditable') !== 'false';
-		let isTextArea = tagName==='textarea';
-	    if (hasValue) // This should happen after the children are added, e.g. for select <options>
-	    	// TODO: Do we only need to do this for select boxes b/c we're waiting for their children?  Other input types are handled above in step 2.
-		    setInputValue(this.xel, this.el, this.attributes.value, this.scope, isTextArea || isContentEditable);
 
 
 		if (tagName === 'svg')
@@ -344,18 +356,6 @@ export default class VElement {
 				result.push(Refract.htmlDecode(attrPart)); // decode because this will be passed to setAttribute()
 		}
 		return result.map(Utils.toString).join('');
-	}
-
-	/**
-	 * @deprecated.  Just call setAttribute with evalVAttributeAsString()
-	 * @param xel {Refract}
-	 * @param el {HTMLElement}
-	 * @param attrName {string}
-	 * @param scope {object}
-	 * @param attrParts {(VExpression|string)[]} */
-	static setVAttribute(xel, el, attrName, attrParts, scope={}) {
-		let value = VElement.evalVAttributeAsString(xel, attrParts, scope);
-		el.setAttribute(attrName, value);
 	}
 
 	/**
@@ -474,13 +474,23 @@ export default class VElement {
 }
 
 // TODO: Pair this with Utils.watchInput() ?
-function setInputValue(ref, el, value, scope, isText) {
+function setInputValue(ref, el, value, scope) {
+
+	// Don't update input elements if they triggered the event.
+	if (el === Refract.eventSource)
+		return;
+
+
+	let isText = el.tagName === 'TEXTAREA'
+		|| (el.hasAttribute('contenteditable') && el.getAttribute('contenteditable') !== 'false');
+
 	if (isText || el.tagName === 'INPUT') {
 
-
 		let val = VElement.evalVAttributeAsString(ref, value, scope);
-		if (isText)
-			el.innerHTML = val;
+		if (isText) {
+			//if (el.innerHTML !== val) // Is this needed? Replacing a value can reset the cursor position.
+				el.innerHTML = val;
+		}
 		else if (el.type === 'checkbox')
 			el.checked = ['1', 'true'].includes((val+'').toLowerCase());
 		else
