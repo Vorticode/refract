@@ -146,9 +146,6 @@ export default class VElement {
 		}
 
 
-
-
-
 		// 2. Shadow DOM
 		for (let name in this.attributes)
 			if (name === 'shadow' && !this.el.shadowRoot)
@@ -234,9 +231,9 @@ export default class VElement {
 
 				// Update the value when the input changes:
 				Utils.watchInput(this.el, (val, e) => {
-					Refract.eventSource = e.target;
+					Refract.currentEvent = e;
 					assignFunc(...Object.values(this.scope), val);
-					Refract.eventSource = null;
+					Refract.currentEvent = null;
 				});
 			}
 		}
@@ -247,8 +244,6 @@ export default class VElement {
 		if (hasValue) // This should happen after the children are added, e.g. for select <options>
 			// TODO: Do we only need to do this for select boxes b/c we're waiting for their children?  Other input types are handled above in step 2.
 			setInputValue(this.xel, this.el, this.attributes.value, this.scope);
-
-
 
 
 		if (tagName === 'svg')
@@ -468,7 +463,7 @@ export default class VElement {
 function setInputValue(ref, el, value, scope) {
 
 	// Don't update input elements if they triggered the event.
-	if (el === Refract.eventSource)
+	if (Refract.currentEvent && el === Refract.currentEvent.target)
 		return;
 
 

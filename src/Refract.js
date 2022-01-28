@@ -9,7 +9,8 @@ import createEl from './createEl.js'; // TODO: This is erroneously still include
 import Html from "./Html.js";
 
 /**
- * @property createFunction {function} Created temporarily during compilation. */
+ * @property createFunction {function} Created temporarily during compilation.
+ * @property Refract.elsCreated*/
 export default class Refract extends HTMLElement {
 
 	/**
@@ -31,6 +32,10 @@ export default class Refract extends HTMLElement {
 	 * Used by VElement.apply() to keep track of whether we're within an svg tag.
 	 * @type {boolean} */
 	static inSvg = false;
+
+	/**
+	 * @type {Event} If within an event, this is the  */
+	static currentEvent;
 
 	/** @type {string} */
 	slotHtml = '';

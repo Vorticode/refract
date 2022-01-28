@@ -49,7 +49,7 @@ var Parse = {
 	},
 
 	/**
-	 * Recursively replace #{...} with ${Refract.htmlEncode(...)}
+	 * Recursively replace #{...} with ${ClassName.htmlEncode(...)}
 	 * @param tokens {Token[]}
 	 * @param mode
 	 * @param className
