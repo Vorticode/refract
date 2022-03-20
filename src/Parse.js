@@ -68,7 +68,7 @@ var Parse = {
 				isHash = true;
 			}
 			else
-				result.push(token+'');
+				result.push(token);
 		}
 
 		if (isHash) { // Add the closing paren around htmlEncode

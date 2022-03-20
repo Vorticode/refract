@@ -122,6 +122,14 @@ Deno.test('Parse.findFunction.arrow6', () => {
 	assertEquals(tokens.slice(...result).join(''), '(a) => a+1');
 });
 
+Deno.test('Parse.findFunction.arrow7', () => {
+	let code = '() => a+1;';
+	let tokens = lex(htmljs, code, 'js');
+
+	let result = Parse.findFunction(tokens);
+	assertEquals(tokens.slice(...result).join(''), '() => a+1');
+});
+
 Deno.test('Parse.findFunction.func', () => {
 	let code = 'b=3;function(a) { return a+1 }; b=4;';
 	let tokens = lex(htmljs, code, 'js');

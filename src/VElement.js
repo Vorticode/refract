@@ -7,7 +7,6 @@ htmljs.allowHashTemplates = true;
 import {div} from "./Html.js";
 import Utils from "./utils.js";
 
-
 /**
  * A virtual representation of an Element.
  * Supports expressions (VExpression) as attributes and children that can be evaluated later. */
@@ -53,6 +52,9 @@ export default class VElement {
 	/** @type {int} DOM index of the first DOM child created by this VExpression within parent. */
 	startIndex = 0;
 
+	/**
+	 * @param tagName {string}
+	 * @param attributes {Object<string, string>} */
 	constructor(tagName, attributes) {
 		this.tagName = tagName || '';
 		this.attributes = attributes || {};
@@ -207,9 +209,11 @@ export default class VElement {
 				// Get the createFunction() from the class if it's already been instantiated.  Else use Refract's temporary createfunction().
 				// This lets us use other variabls defiend in the same scope as the class that extends Refract.
 				let createFunction = ((this.xel && this.xel.constructor) || window.RefractCurrentClass).createFunction;
+
+				let code = this.el.getAttribute(name);
+				this.el.removeAttribute(name); // Prevent original attribute being executed, without `this` and `el` in scope.
 				this.el[name] = event => { // e.g. el.onclick = ...
 					let args = ['event', 'el', ...Object.keys(this.scope)];
-					let code = this.el.getAttribute(name);
 					let func = createFunction(...args, code).bind(this.xel); // Create in same scope as parent class.
 					func(event, this.el, ...Object.values(this.scope));
 				}
@@ -219,15 +223,15 @@ export default class VElement {
 
 		// 6. Form field two-way binding.
 		// Listening for user to type in form field.
-		let hasValue = ('value' in this.attributes && tagName !== 'option');
+		let hasValue = (('value' in this.attributes)&& tagName !== 'option');
 		if (hasValue) {
-			let value = this.attributes.value;
-			let isSimpleExpr = value.length === 1 && value[0] && value[0].type === 'simple';
+			let valueExprs = this.attributes.value;
+			let isSimpleExpr = valueExprs.length === 1 && (valueExprs[0] instanceof VExpression) && valueExprs[0].type === 'simple';
 
 			// Don't grab value from input if we can't reverse the expression.
 			if (isSimpleExpr) {
 				let createFunction = ((this.xel && this.xel.constructor) || window.RefractCurrentClass).createFunction;
-				let assignFunc = createFunction(...Object.keys(this.scope), 'val', value[0].code + '=val;').bind(this.xel);
+				let assignFunc = createFunction(...Object.keys(this.scope), 'val', valueExprs[0].code + '=val;').bind(this.xel);
 
 				// Update the value when the input changes:
 				Utils.watchInput(this.el, (val, e) => {
@@ -237,6 +241,26 @@ export default class VElement {
 				});
 			}
 		}
+
+		/*
+		// New as of Feb 2022.
+		// If I can make a preprocessor add data-value-expr to any input fields within complex (or all) expressions,
+		// then I can know I should bind to them.  Even if the origional ${} expression has already been evaluated.
+		if ('data-value-expr' in this.attributes) {
+
+			let expr = this.attributes['data-value-expr'][0];
+			let createFunction = ((this.xel && this.xel.constructor) || window.RefractCurrentClass).createFunction;
+			let assignFunc = createFunction(...Object.keys(this.scope), 'val', expr + '=val;').bind(this.xel);
+
+			Utils.watchInput(this.el, (val, e) => {
+				Refract.currentEvent = e;
+				assignFunc(...Object.values(this.scope), val);
+				Refract.currentEvent = null;
+			});
+
+		}
+		*/
+
 
 		// 7. Set initial value for select from value="" attribute.
 		// List of input types:
@@ -457,6 +481,29 @@ export default class VElement {
 		result.index = index;
 		return result;
 	}
+
+	/**
+	 * TODO: This should:
+	 * Find every instance of value="${this.val"} and instert an adjacent attribute:  data-value-expr="this.val"
+	 * value="${this.values[name]}" becomes data-value-expr="this.values['${name}']"
+	 *
+	 * These expressions are then read again later in VElement.apply()
+	 *
+	 * @param tokens {Token[]}
+	 * @returns {Token[]}
+	static markValueAttributes(tokens) {
+
+		// let valueAttrs = fregex.matchAll(['value', '='], tokens);
+		//
+		//
+		// for (let token of tokens) {
+		// 	if (token.tokens)
+		// 		this.markValueAttributes(token.tokens);
+		// }
+
+
+		return tokens;
+	} */
 }
 
 // TODO: Pair this with Utils.watchInput() ?

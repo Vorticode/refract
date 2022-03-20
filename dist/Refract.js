@@ -709,7 +709,7 @@ var Parse = {
 	},
 
 	/**
-	 * Recursively replace #{...} with ${Refract.htmlEncode(...)}
+	 * Recursively replace #{...} with ${ClassName.htmlEncode(...)}
 	 * @param tokens {Token[]}
 	 * @param mode
 	 * @param className
@@ -728,7 +728,7 @@ var Parse = {
 				isHash = true;
 			}
 			else
-				result.push(token+'');
+				result.push(token);
 		}
 
 		if (isHash) { // Add the closing paren around htmlEncode
@@ -1161,12 +1161,14 @@ class RefractError extends Error {
 //#ENDIF
 
 
-
+/** @deprecated */
 var removeProxy = obj => (obj && obj.$removeProxy) || obj;
 
 
 
 var Utils = {
+
+	removeProxy,
 
 	arrayEq(a, b) {
 		if (a.length !== b.length)
@@ -1207,7 +1209,7 @@ var Utils = {
 	/**
 	 * When the input's value changes, call the callback with the new, typed value.
 	 * @param el {HTMLInputElement|HTMLElement}
-	 * @param callback {function(val:*)}	 */
+	 * @param callback {function(val:*, event)}	 */
 	watchInput(el, callback) {
 		let tagName = el.tagName;
 		let isContentEditable =el.hasAttribute('contenteditable') && el.getAttribute('contenteditable') !== 'false';
@@ -1223,7 +1225,7 @@ var Utils = {
 		// It's better to do it on input than change, b/c input fires first.
 		// Then if user code adds and event listener on input, this one will fire first and have the value already set.
 		if (useInputEvent) { // TODO: Input type="number" is typable but also dispatches change event on up/down click.
-			el.addEventListener('input', ()=> {
+			el.addEventListener('input', e=> {
 
 				let type = el.getAttribute('type') || '';
 
@@ -1236,12 +1238,12 @@ var Utils = {
 				else if (el.type === 'checkbox')
 					val = el.checked;
 
-				callback(val);
+				callback(val, e);
 
 			}, true); // We bind to the event capture phase, so we can update values before it calls onchange and other event listeners added by the user.
 		}
 		else {
-			el.addEventListener('change', () => {
+			el.addEventListener('change', e => {
 				// TODO: Convert value to boolean for checkbox.  File input type.
 				let val;
 				if (tagName === 'SELECT' && el.hasAttribute('multiple'))
@@ -1249,7 +1251,7 @@ var Utils = {
 				else
 					val = isContentEditable ? el.innerHTML : el.value;
 
-				callback(val);
+				callback(val, e);
 
 
 			}, true);
@@ -1453,7 +1455,7 @@ let handler = {
 	},
 
 	/**
-	 * Find all paths to the objects field from every root object.
+	 * Find all paths to the object's field from every root object.
 	 * @param obj {object}
 	 * @param field {string}
 	 * @returns {[object, string][]} Array of root object and watched path. */
@@ -2315,7 +2317,7 @@ class VExpression {
 	 * @param parent {HTMLElement}
 	 * @param el {HTMLElement} Unused.
 	 * @return {int} Number of elements created. d*/
-	apply(parent=null, el=null) {
+	apply(parent=null, el=null, bind=true) {
 		//#IFDEV
 		if (this.attrName)
 			throw new Error("Cannot apply an VExpression that's for an attribute.  Use evalVAttribute() or .exec.apply() instead.");
@@ -2343,7 +2345,7 @@ class VExpression {
 		for (let group of this.vChildren) {
 			for (let vChild of group) {
 				vChild.startIndex = startIndex;
-				let num = vChild.apply(this.parent, null);
+				let num = vChild.apply(this.parent, null, bind);
 				startIndex += num;
 				count += num;
 			}
@@ -2818,7 +2820,6 @@ class VExpression {
 
 lexHtmlJs.allowHashTemplates = true;
 
-
 /**
  * A virtual representation of an Element.
  * Supports expressions (VExpression) as attributes and children that can be evaluated later. */
@@ -2864,6 +2865,9 @@ class VElement {
 	/** @type {int} DOM index of the first DOM child created by this VExpression within parent. */
 	startIndex = 0;
 
+	/**
+	 * @param tagName {string}
+	 * @param attributes {Object<string, string>} */
 	constructor(tagName, attributes) {
 		this.tagName = tagName || '';
 		this.attributes = attributes || {};
@@ -2936,7 +2940,7 @@ class VElement {
 
 			//newEl.style.display = 'none';
 			if (oldEl) {  // Replacing existing element
-				oldEl.parentNode.insertBefore(newEl,oldEl);
+				oldEl.parentNode.insertBefore(newEl, oldEl);
 				oldEl.remove();
 			} else {// if (parent)
 
@@ -2957,8 +2961,34 @@ class VElement {
 		}
 
 
-		// 2. Set Attributes
-		let hasValue = ('value' in this.attributes && tagName !== 'option');
+		// 2. Shadow DOM
+		for (let name in this.attributes)
+			if (name === 'shadow' && !this.el.shadowRoot)
+				this.el.attachShadow({mode: this.el.getAttribute('shadow') || 'open'});
+
+		// 3. Slot content
+		let count = 0;
+		if (tagName === 'slot') {
+			let slotChildren = VElement.fromHtml(this.xel.slotHtml, Object.keys(this.scope), this);
+			for (let vChild of slotChildren) {
+				vChild.scope = {...this.scope};
+				vChild.startIndex = count;
+				count += vChild.apply(this.el);
+			}
+		}
+
+		// 4. Recurse through children
+		let isText = this.el.tagName === 'TEXTAREA' || this.attributes['contenteditable'] && (this.attributes['contenteditable']+'') !== 'false';
+		for (let vChild of this.vChildren) {
+			if (isText && (vChild instanceof VExpression))
+				throw new Error('<textarea> and contenteditable cannot have expressions as children.  Use value=${this.variable} instead.');
+
+			vChild.scope = {...this.scope}; // copy
+			vChild.startIndex = count;
+			count += vChild.apply(this.el);
+		}
+
+		// 5. Attributes (besides shadow)
 		for (let name in this.attributes) {
 			let value = this.attributes[name];
 			for (let attrPart of value)
@@ -2968,7 +2998,7 @@ class VElement {
 					expr.scope = this.scope; // Share scope with attributes.
 					expr.watch(() => {
 						if (name === 'value')
-							setInputValue(this.xel, this.el, value, this.scope, isTextArea || isContentEditable);
+							setInputValue(this.xel, this.el, value, this.scope);
 
 						else {
 							let value2 = VElement.evalVAttributeAsString(this.xel, value, this.scope);
@@ -2978,7 +3008,8 @@ class VElement {
 				}
 
 			// TODO: This happens again for inputs in step 5 below:
-			VElement.setVAttribute(this.xel, this.el, name, value, this.scope);
+			let value2 = VElement.evalVAttributeAsString(this.xel, value, this.scope);
+			this.el.setAttribute(name, value2);
 
 
 			// Id
@@ -2991,72 +3022,65 @@ class VElement {
 				// Get the createFunction() from the class if it's already been instantiated.  Else use Refract's temporary createfunction().
 				// This lets us use other variabls defiend in the same scope as the class that extends Refract.
 				let createFunction = ((this.xel && this.xel.constructor) || window.RefractCurrentClass).createFunction;
+
+				let code = this.el.getAttribute(name);
+				this.el.removeAttribute(name); // Prevent original attribute being executed, without `this` and `el` in scope.
 				this.el[name] = event => { // e.g. el.onclick = ...
 					let args = ['event', 'el', ...Object.keys(this.scope)];
-					let code = this.el.getAttribute(name);
 					let func = createFunction(...args, code).bind(this.xel); // Create in same scope as parent class.
 					func(event, this.el, ...Object.values(this.scope));
 				};
 			}
-
-			// Shadow DOM
-			else if (name==='shadow' && !this.el.shadowRoot)
-				this.el.attachShadow({mode: this.el.getAttribute('shadow') || 'open'});
 		}
 
 
-
-		// 2B. Form field two-way binding.
+		// 6. Form field two-way binding.
 		// Listening for user to type in form field.
+		let hasValue = (('value' in this.attributes)&& tagName !== 'option');
 		if (hasValue) {
-			let value = this.attributes.value;
-			let isSimpleExpr = value.length === 1 && value[0] && value[0].type === 'simple';
+			let valueExprs = this.attributes.value;
+			let isSimpleExpr = valueExprs.length === 1 && (valueExprs[0] instanceof VExpression) && valueExprs[0].type === 'simple';
 
 			// Don't grab value from input if we can't reverse the expression.
 			if (isSimpleExpr) {
-				({'this': this.xel, ...this.scope});
-
-
 				let createFunction = ((this.xel && this.xel.constructor) || window.RefractCurrentClass).createFunction;
-				let assignFunc = createFunction(...Object.keys(this.scope), 'val', value[0].code + '=val;').bind(this.xel);
+				let assignFunc = createFunction(...Object.keys(this.scope), 'val', valueExprs[0].code + '=val;').bind(this.xel);
 
 				// Update the value when the input changes:
-				Utils.watchInput(this.el, val => {
+				Utils.watchInput(this.el, (val, e) => {
+					Refract.currentEvent = e;
 					assignFunc(...Object.values(this.scope), val);
-					//if (delve(scope, value[0].watchPaths[0]) !== val)
-					//	delve(scope, value[0].watchPaths[0], val); // TODO: Watchless if updating the original value.
+					Refract.currentEvent = null;
 				});
 			}
 		}
 
-		// 3. Slot content
-		let count = 0;
-		if (tagName === 'slot') {
-			let slotChildren = VElement.fromHtml(this.xel.slotHtml, Object.keys(this.scope), this);
-			for (let vChild of slotChildren) {
-				vChild.scope = {...this.scope};
-				vChild.startIndex = count;
-				window.inSlot = true;
-				count += vChild.apply(this.el);
-				window.inSlot = false;
-			}
-		}
+		/*
+		// New as of Feb 2022.
+		// If I can make a preprocessor add data-value-expr to any input fields within complex (or all) expressions,
+		// then I can know I should bind to them.  Even if the origional ${} expression has already been evaluated.
+		if ('data-value-expr' in this.attributes) {
 
-		// 4. Recurse through children
-		for (let vChild of this.vChildren) {
-			vChild.scope = {...this.scope}; // copy
-			vChild.startIndex = count;
-			count += vChild.apply(this.el);
-		}
+			let expr = this.attributes['data-value-expr'][0];
+			let createFunction = ((this.xel && this.xel.constructor) || window.RefractCurrentClass).createFunction;
+			let assignFunc = createFunction(...Object.keys(this.scope), 'val', expr + '=val;').bind(this.xel);
 
-		// 5. Set initial value for select from value="" attribute.
+			Utils.watchInput(this.el, (val, e) => {
+				Refract.currentEvent = e;
+				assignFunc(...Object.values(this.scope), val);
+				Refract.currentEvent = null;
+			});
+
+		}
+		*/
+
+
+		// 7. Set initial value for select from value="" attribute.
 		// List of input types:
 		// https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#input_types
-		let isContentEditable =this.el.hasAttribute('contenteditable') && this.el.getAttribute('contenteditable') !== 'false';
-		let isTextArea = tagName==='textarea';
-	    if (hasValue) // This should happen after the children are added, e.g. for select <options>
-	    	// TODO: Do we only need to do this for select boxes b/c we're waiting for their children?  Other input types are handled above in step 2.
-		    setInputValue(this.xel, this.el, this.attributes.value, this.scope, isTextArea || isContentEditable);
+		if (hasValue) // This should happen after the children are added, e.g. for select <options>
+			// TODO: Do we only need to do this for select boxes b/c we're waiting for their children?  Other input types are handled above in step 2.
+			setInputValue(this.xel, this.el, this.attributes.value, this.scope);
 
 
 		if (tagName === 'svg')
@@ -3155,18 +3179,6 @@ class VElement {
 				result.push(Refract.htmlDecode(attrPart)); // decode because this will be passed to setAttribute()
 		}
 		return result.map(Utils.toString).join('');
-	}
-
-	/**
-	 * @deprecated.  Just call setAttribute with evalVAttributeAsString()
-	 * @param xel {Refract}
-	 * @param el {HTMLElement}
-	 * @param attrName {string}
-	 * @param scope {object}
-	 * @param attrParts {(VExpression|string)[]} */
-	static setVAttribute(xel, el, attrName, attrParts, scope={}) {
-		let value = VElement.evalVAttributeAsString(xel, attrParts, scope);
-		el.setAttribute(attrName, value);
 	}
 
 	/**
@@ -3282,16 +3294,49 @@ class VElement {
 		result.index = index;
 		return result;
 	}
+
+	/**
+	 * TODO: This should:
+	 * Find every instance of value="${this.val"} and instert an adjacent attribute:  data-value-expr="this.val"
+	 * value="${this.values[name]}" becomes data-value-expr="this.values['${name}']"
+	 *
+	 * These expressions are then read again later in VElement.apply()
+	 *
+	 * @param tokens {Token[]}
+	 * @returns {Token[]}
+	static markValueAttributes(tokens) {
+
+		// let valueAttrs = fregex.matchAll(['value', '='], tokens);
+		//
+		//
+		// for (let token of tokens) {
+		// 	if (token.tokens)
+		// 		this.markValueAttributes(token.tokens);
+		// }
+
+
+		return tokens;
+	} */
 }
 
 // TODO: Pair this with Utils.watchInput() ?
-function setInputValue(ref, el, value, scope, isText) {
+function setInputValue(ref, el, value, scope) {
+
+	// Don't update input elements if they triggered the event.
+	if (Refract.currentEvent && el === Refract.currentEvent.target)
+		return;
+
+
+	let isText = el.tagName === 'TEXTAREA'
+		|| (el.hasAttribute('contenteditable') && el.getAttribute('contenteditable') !== 'false');
+
 	if (isText || el.tagName === 'INPUT') {
 
-
 		let val = VElement.evalVAttributeAsString(ref, value, scope);
-		if (isText)
-			el.innerHTML = val;
+		if (isText) {
+			//if (el.innerHTML !== val) // Is this needed? Replacing a value can reset the cursor position.
+				el.innerHTML = val;
+		}
 		else if (el.type === 'checkbox')
 			el.checked = ['1', 'true'].includes((val+'').toLowerCase());
 		else
@@ -3363,7 +3408,8 @@ function createEl(html, trim=true, doc=document) {
 lexHtmlJs.allowHashTemplates = true;
 
 /**
- * @property createFunction {function} Created temporarily during compilation. */
+ * @property createFunction {function} Created temporarily during compilation.
+ * @property Refract.elsCreated*/
 class Refract extends HTMLElement {
 
 	/**
@@ -3385,6 +3431,10 @@ class Refract extends HTMLElement {
 	 * Used by VElement.apply() to keep track of whether we're within an svg tag.
 	 * @type {boolean} */
 	static inSvg = false;
+
+	/**
+	 * @type {Event} If within an event, this is the  */
+	static currentEvent;
 
 	/** @type {string} */
 	slotHtml = '';
@@ -3639,6 +3689,9 @@ class Refract extends HTMLElement {
 			let innerTokens = template.tokens.slice(1, -1); // skip open and close quotes.
 			if (innerTokens[0].type === 'text' && !innerTokens[0].trim().length)
 				innerTokens = innerTokens.slice(1); // Skip initial whitespace.
+
+			//let tokens2 = VElement.markValueAttributes(innerTokens);
+
 			result.virtualElement = VElement.fromTokens(innerTokens, [], null, 1)[0];
 		}
 
@@ -3680,7 +3733,7 @@ class Refract extends HTMLElement {
 					'//Begin Refract injected code.',
 					...result.constructorArgs.map(argName=>
 						[`if (this.hasAttribute('${argName}')) {`,
-						`   ${argName} = this.getAttribute('${argName}');`,
+						`   ${argName} = this.constructor.htmlDecode(this.getAttribute('${argName}'));`,
 						`   try { ${argName} = JSON.parse(${argName}) } catch(e) {};`,
 						'}'] // [above] Parse attrib as json if it's valid json.
 					).flat(),

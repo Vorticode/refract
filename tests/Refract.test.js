@@ -1536,6 +1536,106 @@ Deno.test('Refract.form.inputExprDereference', () => {
 	assertEquals(a.values[1], 'four');
 });
 
+
+
+
+
+
+
+
+
+
+
+
+Deno.test('Refract.form._inputExprComplex', () => {
+
+	// Below, when name is resolved inside the loop, I need to watch it just like a regular variable.
+	// Right now it's all just resolved as a single expression, and after it returns its html string,
+	// we no longer know what var it's supposed to watch for changes.
+
+	// What if in a preprocessing step with the tokens, we add a data-value-expr to anything with a value="${}" attribute that saves the expression?
+	// Then below, we can bind each VElement's value to that path.
+	class A extends Refract {
+		values = {name: 'apple'};
+		html = `
+			<a-237>
+				${Object.keys(this.values).map(name => 
+					`<input value="${this.values.name}" data-value-expr="this.values.name">`
+				)}
+			</a-237>`;
+	}
+	eval(A.compile());
+
+	//console.log(A.virtualElement);
+
+	let a = new A();
+	document.body.append(a);
+
+	a.firstElementChild.value = 'cherry';
+	a.firstElementChild.dispatchEvent(new Event('input'));
+	console.log(a.values);
+	//assertEquals(a.values.name, 'cherry');
+});
+
+
+Deno.test('Refract.form._inputExprComplex2', () => {
+
+	class A extends Refract {
+		values = {name: 'apple', type: 'fruit'};
+		html = `
+			<a-238>
+				${Object.keys(this.values).map(name =>
+					`<input value="${this.values[name]}" data-value-expr="this.values['${name}']">`
+				)}
+			</a-238>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	document.body.append(a);
+
+	a.firstElementChild.value = 'cherry';
+	a.firstElementChild.dispatchEvent(new Event('input'));
+	console.log(a.values);
+	//assertEquals(a.values.name, 'cherry');
+});
+
+Deno.test('Refract.form._inputExprComplex3', () => {
+
+	class A extends Refract {
+		values = {name: 'apple', type: 'fruit'};
+		indices = ['name', 'type'];
+		index = name;
+		html = `
+			<a-239>
+				${Object.keys(this.values).map(name =>
+					`<input value="${this.values[name]}" data-value-expr="this.values[this.indices[this.index]]">`
+				)}
+			</a-239>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	document.body.append(a);
+
+	a.firstElementChild.value = 'cherry';
+	a.firstElementChild.dispatchEvent(new Event('input'));
+	console.log(a.values);
+	//assertEquals(a.values.name, 'cherry');
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
 Deno.test('Refract.form.select', () => {
 
 	class A extends Refract {
@@ -1598,7 +1698,6 @@ Deno.test('Refract.form.SelectMultiple', () => {
 	assertEquals(a.select.children[1].selected, true);
 });
 
-
 Deno.test('Refract.form.contenteditable', () => {
 
 	class A extends Refract {
@@ -1619,7 +1718,6 @@ Deno.test('Refract.form.contenteditable', () => {
 	a.input.dispatchEvent(new Event('input'));
 	assertEquals(a.value, 'Cherry');
 });
-
 
 Deno.test('Refract.form.contenteditableExpr', () => {
 
@@ -1647,6 +1745,7 @@ Deno.test('Refract.form.contenteditableExpr', () => {
 // Events
 Deno.test('Refract.events.basic', () => {
 	var clicked = {};
+	let count = 0;
 	class E extends Refract {
 		onClick(event, el) {
 			clicked.event = event;
@@ -1655,16 +1754,18 @@ Deno.test('Refract.events.basic', () => {
 
 		html = `
 			<e-1>
-				<div id="btn" onclick="this.onClick(event, el)">hi</div>
+				<div id="btn" onclick="count++; this.onClick(event, el)">hi</div>
 			</e-1>`;
 	}
 	E = eval(E.compile());
 	let e = new E();
 	e.btn.dispatchEvent(new MouseEvent('click', {view: window, bubbles: true, cancelable: true}));
 
+	assertEquals(count, 1);
 	assertEquals(clicked.event.type, 'click')
 	assertEquals(clicked.el, e.btn);
 });
+
 
 Deno.test('Refract.events.Loop', () => {
 	var clicked = {};

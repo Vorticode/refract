@@ -135,7 +135,7 @@ let handler = {
 	},
 
 	/**
-	 * Find all paths to the objects field from every root object.
+	 * Find all paths to the object's field from every root object.
 	 * @param obj {object}
 	 * @param field {string}
 	 * @returns {[object, string][]} Array of root object and watched path. */

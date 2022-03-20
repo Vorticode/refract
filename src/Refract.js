@@ -290,6 +290,9 @@ export default class Refract extends HTMLElement {
 			let innerTokens = template.tokens.slice(1, -1); // skip open and close quotes.
 			if (innerTokens[0].type === 'text' && !innerTokens[0].trim().length)
 				innerTokens = innerTokens.slice(1); // Skip initial whitespace.
+
+			//let tokens2 = VElement.markValueAttributes(innerTokens);
+
 			result.virtualElement = VElement.fromTokens(innerTokens, [], null, 1)[0];
 		}
 
@@ -331,7 +334,7 @@ export default class Refract extends HTMLElement {
 					'//Begin Refract injected code.',
 					...result.constructorArgs.map(argName=>
 						[`if (this.hasAttribute('${argName}')) {`,
-						`   ${argName} = this.getAttribute('${argName}');`,
+						`   ${argName} = this.constructor.htmlDecode(this.getAttribute('${argName}'));`,
 						`   try { ${argName} = JSON.parse(${argName}) } catch(e) {};`,
 						'}'] // [above] Parse attrib as json if it's valid json.
 					).flat(),

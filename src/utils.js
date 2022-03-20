@@ -8,12 +8,14 @@ class RefractError extends Error {
 //#ENDIF
 
 
-
+/** @deprecated */
 var removeProxy = obj => (obj && obj.$removeProxy) || obj;
 
 
 
 export default {
+
+	removeProxy,
 
 	arrayEq(a, b) {
 		if (a.length !== b.length)
