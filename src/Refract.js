@@ -286,18 +286,29 @@ export default class Refract extends HTMLElement {
 			let template = htmlAssign.filter(t=>t.tokens || t.type==='string')[0]; // only the template token has sub-tokens.
 
 			// B. Parse html
-			if (template.tokens)
+
+			// B1 Template
+			if (template.tokens) {
 				var innerTokens = template.tokens.slice(1, -1); // skip open and close quotes.
+
+				// Minifiers will sometimes replace these literal characters with their escaped versions:
+				innerTokens = innerTokens.map(t => {
+					let t2 = t.replace(/\\`/g, "`")
+						.replace(/\\r/g, "\r")
+						.replace(/\\n/g, "\n")
+						.replace(/\\t/g, "\t");
+					return Object.assign(t2, {type: t.type, tokens: t.tokens, mode:t.mode});
+				});
+			}
+
+			// b2 Non-template
 			else { // TODO: Is there better a way to unescape "'hello \'everyone'" type strings than eval() ?
-				let code = (template+'').slice(1, -1).replace(/\\'/g, "'");
-				console.log(code);
+				let code=eval(template+'');
 				innerTokens = lex(htmljs, code, 'template');
 			}
 
 			if (innerTokens[0].type === 'text' && !innerTokens[0].trim().length)
 				innerTokens = innerTokens.slice(1); // Skip initial whitespace.
-
-			//let tokens2 = VElement.markValueAttributes(innerTokens);
 
 			result.virtualElement = VElement.fromTokens(innerTokens, [], null, 1)[0];
 		}
@@ -306,7 +317,7 @@ export default class Refract extends HTMLElement {
 		// 3. Get the constructorArgs and inject new code.
 		{
 			let constr = fregex.matchFirst(['constructor', Parse.ws, '('], tokens, constructorIdx);
-			let injectIndex, injectCode;
+			let injectIndex, injectLines, injectCode;
 
 			// Modify existing constructor
 			if (constr) { // is null if no match found.
@@ -335,28 +346,31 @@ export default class Refract extends HTMLElement {
 					throw new Error(`Class ${self.name} constructor() { ... } is missing call to super().`);
 				//#ENDIF
 
-				injectIndex = sup.index + sup.length;
-				injectCode = [
-					'//Begin Refract injected code.',
-					...result.constructorArgs.map(argName=>
-						[`if (this.hasAttribute('${argName}')) {`,
-						`   ${argName} = this.constructor.htmlDecode(this.getAttribute('${argName}'));`,
-						`   try { ${argName} = JSON.parse(${argName}) } catch(e) {};`,
-						'}'] // [above] Parse attrib as json if it's valid json.
-					).flat(),
-					`if (!this.virtualElement) {`, // If not already created by a super-class
-					`\tthis.virtualElement = this.constructor.virtualElement.clone(this);`,
-					`\tthis.virtualElement.apply(null, this);`,
-					`}`,
-					'//End Refract injected code.'
-				].join('\r\n\t\t\t');
 
+				injectIndex = sup.index + sup.length;
+				let nextToken = tokens[injectIndex];
+				//console.log(tokens.slice(injectIndex-3, injectIndex+3));
+				injectLines = [
+					nextToken==',' ? ',' : ';',
+					`(()=>{`, // We wrap this in a function b/c some minifiers will strangely rewrite the super call into another expression.
+						...result.constructorArgs.map(argName=>
+							[`if (this.hasAttribute('${argName}')) {`,
+							`   ${argName} = this.constructor.htmlDecode(this.getAttribute('${argName}'));`,
+							`   try { ${argName} = JSON.parse(${argName}) } catch(e) {};`,
+							'}'] // [above] Parse attrib as json if it's valid json.
+						).flat(),
+						`if (!this.virtualElement) {`, // If not already created by a super-class
+						`\tthis.virtualElement = this.constructor.virtualElement.clone(this);`,
+						`\tthis.virtualElement.apply(null, this);`,
+						`}`,
+					`})()`
+				];
 			}
 
 			// Create new constructor
 			else {
 				injectIndex = fregex.matchFirst(['{'], tokens).index+1;
-				injectCode = [
+				injectLines = [
 					'//Begin Refract injected code.',
 					`constructor() {`,
 					`\tsuper();`,
@@ -365,11 +379,18 @@ export default class Refract extends HTMLElement {
 					`\t\tthis.virtualElement.apply(null, this);`,
 					'\t}',
 					'}',
-					'//End Refract injected code.'
-				].join('\r\n\t\t');
+				];
 			}
+			injectCode = '\r\n\t\t\t' + [
+				'//Begin Refract injected code.',
+				...injectLines,
+				'//End Refract injected code.'
+			].join('\r\n\t\t')
+				+ '\r\n';
 
-			tokens.splice(injectIndex, 0, '\r\n\t\t\t' + injectCode);
+
+			// This final line return is needed to prevent minifiers from breaking it.
+			tokens.splice(injectIndex, 0, injectCode);
 			result.code = tokens.join('');
 		}
 

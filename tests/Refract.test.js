@@ -32,6 +32,30 @@ Deno.test('Refract.basic.nonTemplate', () => {
 	assertEquals(a.children.length, 0);
 });
 
+Deno.test('Refract.basic.escaped', () => {
+	class A extends Refract {
+		html = `\r\n\t<x-16>everyone's happy</x-16>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	assertEquals(a.outerHTML, `<x-16>everyone's happy</x-16>`);
+	assertEquals(a.children.length, 0);
+});
+
+
+Deno.test('Refract.basic.nonTemplateEscaped', () => {
+	class A extends Refract {
+		html = '\r\n\t<x-17>everyone\'s happy</x-17>';
+	}
+	eval(A.compile());
+
+	let a = new A();
+	assertEquals(a.outerHTML, '<x-17>everyone\'s happy</x-17>');
+	assertEquals(a.children.length, 0);
+});
+
+
 Deno.test('Refract.basic.constructor', () => {
 	let constructorCalled = 0;
 
@@ -269,19 +293,19 @@ Deno.test('Refract.expr.varDeep2', () => {
 
 	class A extends Refract {
 		fruits = [{name: 'Apple'}, {name: 'Banana'}];
-		html = `<x-16>${this.fruits[0].name}</x-16>`;
+		html = `<x-160>${this.fruits[0].name}</x-160>`;
 	}
 	eval(A.compile());
 	let a = new A();
 
 	a.fruits[0].name = 'Cherry';
-	assertEquals(a.outerHTML, '<x-16>Cherry</x-16>');
+	assertEquals(a.outerHTML, '<x-160>Cherry</x-160>');
 
 	a.fruits[0] = {name: 'Dragonfruit'};
-	assertEquals(a.outerHTML, '<x-16>Dragonfruit</x-16>');
+	assertEquals(a.outerHTML, '<x-160>Dragonfruit</x-160>');
 
 	a.fruits = [{name: 'Elderberry'}];
-	assertEquals(a.outerHTML, '<x-16>Elderberry</x-16>');
+	assertEquals(a.outerHTML, '<x-160>Elderberry</x-160>');
 });
 
 Deno.test('Refract.expr.var2', () => {
