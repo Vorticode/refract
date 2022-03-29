@@ -8,7 +8,7 @@ export default {
 	/**
 	 * Convert html entities like &lt; to their literal values like <.
 	 * @param {string} html
-	 * @returns {string} */
+	 * @return {string} */
 	decode(html) {
 		if (!html)
 			return '';

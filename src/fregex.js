@@ -130,7 +130,7 @@ fregex.oneOrMore = (...rules) => fregex.xOrMore(1, ...rules);
  * @param pattern
  * @param {array} haystack
  * @param {int} startIndex
- * @returns {*[]} A slice of the items in haystack that match.
+ * @return {*[]} A slice of the items in haystack that match.
  *     with an added index property designating the index of the match within the haystack array. */
 fregex.matchFirst = (pattern, haystack, startIndex=0) => {
 	let result = fregex.matchAll(pattern, haystack, 1, startIndex);
@@ -175,7 +175,7 @@ fregex.lookAhead = (...rules) => {
  * Experimental
  * Matches the end of the tokens.
  * @param tokens
- * @returns {number|boolean} */
+ * @return {number|boolean} */
 fregex.end = tokens => {
 	return tokens.length ? false : 0;
 };
@@ -188,7 +188,7 @@ fregex.end.debug = 'end';
 /**
  * Allow matching on functions, object properties, and strings.
  * @param rules
- * @returns {function[]} */
+ * @return {function[]} */
 var prepare = rules => {
 	if (Array.isArray(rules[0]) && rules.length === 1)
 		rules = rules[0];

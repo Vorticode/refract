@@ -280,7 +280,7 @@ export default class VElement {
 	/**
 	 * @param xel {Refract}
 	 * @param vParent {VElement|VExpression}
-	 * @returns {VElement} */
+	 * @return {VElement} */
 	clone(xel, vParent) {
 		let result = new VElement(this.tagName);
 		result.xel = xel || this.xel;
@@ -333,7 +333,7 @@ export default class VElement {
 	 * @param ref {Refract}
 	 * @param attrParts {(VExpression|string)[]}
 	 * @param scope {object}
-	 * @returns {*|string} */
+	 * @return {*|string} */
 	static evalVAttribute(ref, attrParts, scope={}) {
 		let result = attrParts.map(expr =>
 			expr instanceof VExpression ? expr.exec.apply(ref, Object.values(scope)) : expr
@@ -373,7 +373,7 @@ export default class VElement {
 	 * @param html {string|string[]} Tokens will be removed from the beginning of the array as they're processed.
 	 * @param scopeVars {string[]}
 	 * @param vParent {VElement|VExpression}
-	 * @returns {(VElement|VExpression|string)[]} */
+	 * @return {(VElement|VExpression|string)[]} */
 	static fromHtml(html, scopeVars=[], vParent=null) {
 		let tokens = lex(htmljs, [html].flat().join(''), 'template');
 		return VElement.fromTokens(tokens, scopeVars, vParent);
@@ -386,7 +386,7 @@ export default class VElement {
 	 * @param vParent {VElement|VExpression?}
 	 * @param limit {int|boolean=} Find no more than this many items.
 	 * @param index {int=} used internally.
-	 * @returns {(VElement|VExpression|string)[]}
+	 * @return {(VElement|VExpression|string)[]}
 	 *     Array with a .index property added, to keep track of what token we're on. */
 	static fromTokens(tokens, scopeVars=[], vParent=null, limit=false, index=0) {
 		if (!tokens.length)

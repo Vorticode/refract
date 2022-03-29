@@ -12,12 +12,23 @@ Refract.elsCreated = [];
  * Comment test. */
 Deno.test('Refract.basic.empty', () => {
 	class A extends Refract {
-		html = `<x-1></x-1>`;
+		html = `<x-10></x-10>`;
 	}
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, '<x-1></x-1>');
+	assertEquals(a.outerHTML, '<x-10></x-10>');
+	assertEquals(a.children.length, 0);
+});
+
+Deno.test('Refract.basic.nonTemplate', () => {
+	class A extends Refract {
+		html = '<x-15>everyone\'s happy</x-15>';
+	}
+	eval(A.compile());
+
+	let a = new A();
+	assertEquals(a.outerHTML, '<x-15>everyone\'s happy</x-15>');
 	assertEquals(a.children.length, 0);
 });
 

@@ -15,7 +15,9 @@ var removeProxy = obj => (obj && obj.$removeProxy) || obj;
 
 export default {
 
-	removeProxy,
+	removeProxy(obj) {
+		return (obj && obj.$removeProxy) || obj;
+	},
 
 	arrayEq(a, b) {
 		if (a.length !== b.length)
@@ -38,7 +40,7 @@ export default {
 	 * Find object values by keys that start with prefix.
 	 * @param obj {object}
 	 * @param prefix {string}
-	 * @returns {boolean} */
+	 * @return {boolean} */
 	hasKeyStartingWith_(obj, prefix) {
 		for (let key in obj)
 			if (key.startsWith(prefix))
@@ -110,13 +112,13 @@ export default {
 /**
  * Return the array as a quoted csv string.
  * @param array {string[]}
- * @returns {string} */
+ * @return {string} */
 var csv = array => JSON.stringify(array).slice(1, -1); // slice() to remove starting and ending [].
 
 
 /**
  * @param obj {*}
- * @returns {boolean} */
+ * @return {boolean} */
 var isObj = obj => obj && typeof obj === 'object'; // Make sure it's not null, since typof null === 'object'.
 
 
@@ -125,7 +127,7 @@ var isObj = obj => obj && typeof obj === 'object'; // Make sure it's not null, s
  * TODO: This is used by watchproxy and should be moved there?
  * @param obj {*}
  * @param visited {WeakSet=} Used internally.
- * @returns {*} */
+ * @return {*} */
 var removeProxies = (obj, visited) => {
 	if (obj === null || obj === undefined)
 		return obj;

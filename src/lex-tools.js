@@ -5,7 +5,7 @@
  * @param regex {RegExp|string}
  * @param mode {string}
  * @oaram callaback {?function(string|string[])}
- * @returns {function(code:string):([string, int] | undefined)} */
+ * @return {function(code:string):([string, int] | undefined)} */
 export var descendIf = (regex, mode, callback) => code => {
 	if (regex instanceof RegExp) {
 		let match = code.match(regex) || [];
@@ -26,7 +26,7 @@ export var descendIf = (regex, mode, callback) => code => {
 /**
  * Ascend out of the current mode (to the previous mode) if the string starts with the given regex.
  * @param regex {RegExp|string}
- * @returns {function(code:string):([string, int] | undefined)} */
+ * @return {function(code:string):([string, int] | undefined)} */
 export var ascendIf = regex => code => {
 	if (regex instanceof RegExp) {
 		let match = code.match(regex) || [];

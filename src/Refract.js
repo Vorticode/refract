@@ -9,8 +9,7 @@ import createEl from './createEl.js'; // TODO: This is erroneously still include
 import Html from "./Html.js";
 
 /**
- * @property createFunction {function} Created temporarily during compilation.
- * @property Refract.elsCreated*/
+ * @property createFunction {function} Created temporarily during compilation. */
 export default class Refract extends HTMLElement {
 
 	/**
@@ -65,7 +64,7 @@ export default class Refract extends HTMLElement {
 		 *
 		 * @param child {(VExpression|VElement|string)[]|VExpression|VElement|string}
 		 * @param inlineText {string}
-		 * @returns {string} */
+		 * @return {string} */
 		let renderItem = (child, inlineText) => {
 
 			if (Array.isArray(child)) {
@@ -94,7 +93,7 @@ export default class Refract extends HTMLElement {
 
 		/**
 		 * @param ve {VElement}
-		 * @returns {string} */
+		 * @return {string} */
 		let renderVEl = ve =>
 			`<div style="color: #f40">
 				<div>
@@ -109,7 +108,7 @@ export default class Refract extends HTMLElement {
 
 		/**
 		 * @param vexpr {VExpression}
-		 * @returns {string} */
+		 * @return {string} */
 		let renderVExpr = vexpr => {
 			if (vexpr.type==='loop')
 				return `
@@ -164,7 +163,7 @@ export default class Refract extends HTMLElement {
 		 *
 		 * @param child {(VExpression|VElement|string)[]|VExpression|VElement|string}
 		 * @param inlineText {string}
-		 * @returns {string} */
+		 * @return {string} */
 		let renderItem = (child, inlineText) => {
 			if (Array.isArray(child)) {
 				let result = [];
@@ -189,7 +188,7 @@ export default class Refract extends HTMLElement {
 
 		/**
 		 * @param ve {VElement}
-		 * @returns {string} */
+		 * @return {string} */
 		let renderVEl = ve =>
 			`<div style="color: #f40">
 				<div>
@@ -204,7 +203,7 @@ export default class Refract extends HTMLElement {
 
 		/**
 		 * @param vexpr {VExpression}
-		 * @returns {string} */
+		 * @return {string} */
 		let renderVExpr = vexpr => {
 			if (vexpr.type==='loop')
 				return `
@@ -276,7 +275,7 @@ export default class Refract extends HTMLElement {
 					break;
 			}
 
-			let htmlMatch = fregex.matchFirst(['html', Parse.ws, '=', Parse.ws, {type: 'template'}, Parse.ws, fregex.zeroOrOne(';')], tokens, htmlIdx);
+			let htmlMatch = fregex.matchFirst(['html', Parse.ws, '=', Parse.ws, fregex.or({type: 'template'}, {type: 'string'}), Parse.ws, fregex.zeroOrOne(';')], tokens, htmlIdx);
 			//#IFDEV
 			if (!htmlMatch)
 				throw new Error(`Class ${self.name} is missing an html property with a template value.`);
@@ -284,10 +283,17 @@ export default class Refract extends HTMLElement {
 
 			// Remove the html property, so that when classes are constructed it's not evaluated as a regular template string.
 			let htmlAssign = tokens.splice(htmlMatch.index, htmlMatch.length);
-			let template = htmlAssign.filter(t=>t.tokens)[0]; // only the template token has sub-tokens.
+			let template = htmlAssign.filter(t=>t.tokens || t.type==='string')[0]; // only the template token has sub-tokens.
 
 			// B. Parse html
-			let innerTokens = template.tokens.slice(1, -1); // skip open and close quotes.
+			if (template.tokens)
+				var innerTokens = template.tokens.slice(1, -1); // skip open and close quotes.
+			else { // TODO: Is there better a way to unescape "'hello \'everyone'" type strings than eval() ?
+				let code = (template+'').slice(1, -1).replace(/\\'/g, "'");
+				console.log(code);
+				innerTokens = lex(htmljs, code, 'template');
+			}
+
 			if (innerTokens[0].type === 'text' && !innerTokens[0].trim().length)
 				innerTokens = innerTokens.slice(1); // Skip initial whitespace.
 

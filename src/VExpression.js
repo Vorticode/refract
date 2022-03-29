@@ -152,7 +152,7 @@ export default class VExpression {
 	 * @param xel {Refract?}
 	 * @param vParent {VElement?}
 	 * @param parent {HTMLElement?}
-	 * @returns {VExpression} */
+	 * @return {VExpression} */
 	clone(xel=null, vParent=null, parent=null) {
 		let result = new VExpression();
 		result.watchPaths = this.watchPaths;
@@ -181,7 +181,7 @@ export default class VExpression {
 	}
 
 	/**
-	 * @returns {string|string[]} */
+	 * @return {string|string[]} */
 	evaluate() {
 		return this.exec.apply(this.xel, Object.values(this.scope));
 	}
@@ -511,7 +511,7 @@ export default class VExpression {
 	 *     that trace back to a this.property in the parent Refract, instead of from any variable or js identifier.
 	 * @param vParent {VElement|VExpression}
 	 * @param attrName {string?} If set, this VExpression is part of an attribute, otherwise it creates html child nodes.
-	 * @returns {VExpression} */
+	 * @return {VExpression} */
 	static fromTokens(tokens, scope, vParent, attrName) {
 		let result = new VExpression();
 		result.vParent = vParent;

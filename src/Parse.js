@@ -140,7 +140,7 @@ var Parse = {
 	 * Loop through the tokens and find the start of a function.
 	 * @param tokens {Token[]}
 	 * @param start {int}
-	 * @returns {int|null} */
+	 * @return {int|null} */
 	findFunctionStart(tokens, start=0) {
 		for (let i=start, token; token=tokens[i]; i++) {
 			if (token == 'function')
@@ -167,7 +167,7 @@ var Parse = {
 	 * Finds the last token of a function, not including a trailing semicolon.
 	 * @param tokens {Token[]}
 	 * @param start {int} Must be the index of the first token of the function.
-	 * @returns {int|null} */
+	 * @return {int|null} */
 	findFunctionEnd(tokens, start) {
 		let isArrow = tokens[start] != 'function';
 		let depth = 0, groups = isArrow && tokens[start] != '(' ? 1 : 2;
