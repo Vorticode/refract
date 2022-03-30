@@ -7,7 +7,7 @@ import VElement from './VElement.js';
 import VExpression from "./VExpression.js";
 import createEl from './createEl.js'; // TODO: This is erroneously still included when minified b/c rollup includes the //# IFDEV blocks.
 import Html from "./Html.js";
-
+import utils from "./utils.js";
 /**
  * @property createFunction {function} Created temporarily during compilation. */
 export default class Refract extends HTMLElement {
@@ -249,7 +249,10 @@ export default class Refract extends HTMLElement {
 
 		// 1. Parse into tokens
 		let code = self.toString();
+		//let old = htmljs.allowUnknownTagTokens;
+		//htmljs.allowUnknownTagTokens = true;
 		let tokens = lex(htmljs, code);
+		//htmljs.allowUnknownTagTokens = old;
 		tokens = removeComments(tokens);
 		let htmlIdx = 0, constructorIdx=0;
 
@@ -289,25 +292,16 @@ export default class Refract extends HTMLElement {
 
 			// B1 Template
 			if (template.tokens) {
-				var innerTokens = template.tokens.slice(1, -1); // skip open and close quotes.
-
-				// Minifiers will sometimes replace these literal characters with their escaped versions:
-				innerTokens = innerTokens.map(t => {
-					let t2 = t.replace(/\\`/g, "`")
-						.replace(/\\r/g, "\r")
-						.replace(/\\n/g, "\n")
-						.replace(/\\t/g, "\t");
-					return Object.assign(t2, {type: t.type, tokens: t.tokens, mode:t.mode});
-				});
+				var innerTokens = template.tokens.slice(1, -1);
 			}
 
 			// b2 Non-template
 			else { // TODO: Is there better a way to unescape "'hello \'everyone'" type strings than eval() ?
-				let code=eval(template+'');
+				let code = eval(template+'');
 				innerTokens = lex(htmljs, code, 'template');
 			}
 
-			if (innerTokens[0].type === 'text' && !innerTokens[0].trim().length)
+			if (innerTokens[0].type === 'text' && !utils.unescapeTemplate(innerTokens[0]).trim().length)
 				innerTokens = innerTokens.slice(1); // Skip initial whitespace.
 
 			result.virtualElement = VElement.fromTokens(innerTokens, [], null, 1)[0];

@@ -54,6 +54,10 @@ export default {
 		return val+'';
 	},
 
+	unescapeTemplate(text) {
+		return text.replace(/\\r/g, '\r').replace(/\\n/g, '\n').replace(/\\t/g, '\t');
+	},
+
 
 	/**
 	 * When the input's value changes, call the callback with the new, typed value.

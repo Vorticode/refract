@@ -1,5 +1,5 @@
 import {descendIf, ascendIf} from "./lex-tools.js";
-
+import utils from './utils.js';
 /**
  * Grammar for html/js code, including js templates.
  * TODO: This could potentially be made much faster if we indexed by the first char.
@@ -69,8 +69,7 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 		}
 	};
 
-	let tag = { // html open tag
-		whitespace: /^[ \r\n\t\v\f\xa0]+/,
+	let tagCommon = { // html open tag
 		attribute: /^[\-_$\w\xA0-\uFFFF:]+/i,
 		string: code =>
 			descendIf("'", 'squote')(code) ||
@@ -216,10 +215,19 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 
 			// Continue until end of text.
 			// supports both ${} and #{} template expressions.
-			text: code => [code.match(
-				lexHtmlJs.allowHashTemplates // https://stackoverflow.com/a/977294
-					? /^(?:\\#{|\\\${|\s|(?!(#{|\${|`|<[\w\xA0-\uFFFF!:/-]|$)).)+/
-					: /^(?:\\\${|\s|(?!(\${|`|<[\w\xA0-\uFFFF!:/-]|$)).)+/) || []][0],
+			text: code => {
+				let regex = lexHtmlJs.allowHashTemplates // https://stackoverflow.com/a/977294
+						? /^(?:\\#{|\\\${|\s|(?!(#{|\${|`|<[\w\xA0-\uFFFF!:/-]|$)).)+/
+						: /^(?:\\\${|\s|(?!(\${|`|<[\w\xA0-\uFFFF!:/-]|$)).)+/;
+
+				let matches = code.match(regex);
+				if (matches) {
+					let result = matches[0];
+					result = utils.unescapeTemplate(result);
+					result = Object.assign(result, {originalLength: matches[0].length});
+					return [result];
+				}
+			}
 		},
 
 		// Comment within a `template` tag.
@@ -231,12 +239,24 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 					? /^[\s\S]+?(?=-->|[$#]{|$)/
 					: /^[\s\S]+?(?=-->|\${|$)/) || []][0],
 		},
-		tag,
+		tag: {
+			whitespace: /^[ \r\n\t\v\f\xa0]+/,
+			...tagCommon
+		},
 
 		templateTag: { // html tag within template.
+			whitespace: code => {
+				let matches = code.match(/^( |\r|\n|\t|\v|\f|\xa0|\\r|\\n|\\t|\\v|\\f|\\xa0)+/);
+				if (matches) {
+					let result = matches[0];
+					result = utils.unescapeTemplate(result);
+					result = Object.assign(result, {originalLength: matches[0].length});
+					return [result];
+				}
+			},
 			expr,
 			templateEnd, // A ` quote to end the template.
-			...tag,
+			...tagCommon,
 		},
 
 		// TODO: template end with `

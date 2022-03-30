@@ -18,41 +18,41 @@ Deno.test('Refract.basic.empty', () => {
 
 	let a = new A();
 	assertEquals(a.outerHTML, '<x-10></x-10>');
-	assertEquals(a.children.length, 0);
+	assertEquals(a.childNodes.length, 0);
 });
 
 Deno.test('Refract.basic.nonTemplate', () => {
 	class A extends Refract {
-		html = '<x-15>everyone\'s happy</x-15>';
+		html = '<x-15>everyone\'s <b \t>happy</b></x-15>';
 	}
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, '<x-15>everyone\'s happy</x-15>');
-	assertEquals(a.children.length, 0);
+	assertEquals(a.outerHTML, '<x-15>everyone\'s <b>happy</b></x-15>');
+	assertEquals(a.childNodes.length, 2);
 });
 
 Deno.test('Refract.basic.escaped', () => {
 	class A extends Refract {
-		html = `\r\n\t<x-16>everyone's happy</x-16>`;
+		html = `\r\n\t<x-16>everyone's ${`<b \t>happy</b>`}</x-16>`;
 	}
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-16>everyone's happy</x-16>`);
-	assertEquals(a.children.length, 0);
+	assertEquals(a.outerHTML, `<x-16>everyone's <b>happy</b></x-16>`);
+	assertEquals(a.childNodes.length, 2);
 });
 
 
 Deno.test('Refract.basic.nonTemplateEscaped', () => {
 	class A extends Refract {
-		html = '\r\n\t<x-17>everyone\'s happy</x-17>';
+		html = '\r\n\t<x-17>everyone\'s ${`<b \t>happy</b>`}</x-17>';
 	}
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, '<x-17>everyone\'s happy</x-17>');
-	assertEquals(a.children.length, 0);
+	assertEquals(a.outerHTML, '<x-17>everyone\'s <b>happy</b></x-17>');
+	assertEquals(a.childNodes.length, 2);
 });
 
 
