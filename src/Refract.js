@@ -252,6 +252,7 @@ export default class Refract extends HTMLElement {
 		//let old = htmljs.allowUnknownTagTokens;
 		//htmljs.allowUnknownTagTokens = true;
 		let tokens = lex(htmljs, code);
+
 		//htmljs.allowUnknownTagTokens = old;
 		tokens = removeComments(tokens);
 		let htmlIdx = 0, constructorIdx=0;
@@ -277,8 +278,12 @@ export default class Refract extends HTMLElement {
 				if (htmlIdx && constructorIdx)
 					break;
 			}
-
-			let htmlMatch = fregex.matchFirst(['html', Parse.ws, '=', Parse.ws, fregex.or({type: 'template'}, {type: 'string'}), Parse.ws, fregex.zeroOrOne(';')], tokens, htmlIdx);
+			let htmlMatch = fregex.matchFirst([
+				'html', Parse.ws, '=', Parse.ws,
+				fregex.or({type: 'template'}, {type: 'string'}),
+				Parse.ws,
+				fregex.zeroOrOne(';')
+			], tokens, htmlIdx);
 			//#IFDEV
 			if (!htmlMatch)
 				throw new Error(`Class ${self.name} is missing an html property with a template value.`);
@@ -301,7 +306,7 @@ export default class Refract extends HTMLElement {
 				innerTokens = lex(htmljs, code, 'template');
 			}
 
-			if (innerTokens[0].type === 'text' && !utils.unescapeTemplate(innerTokens[0]).trim().length)
+			if (innerTokens[0].type === 'text' && !utils.unescapeTemplate(innerTokens[0].text).trim().length)
 				innerTokens = innerTokens.slice(1); // Skip initial whitespace.
 
 			result.virtualElement = VElement.fromTokens(innerTokens, [], null, 1)[0];

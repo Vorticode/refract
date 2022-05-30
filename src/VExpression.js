@@ -523,12 +523,12 @@ export default class VExpression {
 		result.attrName = attrName;
 		scope = (scope || []).slice(); // copy
 
-		result.code = tokens.slice(1, -1).join(''); // So we can quickly see what a VExpression is in the debugger.
+		result.code = tokens.slice(1, -1).map(t=>t.text).join(''); // So we can quickly see what a VExpression is in the debugger.
 
 
 		// remove enclosing ${ }
-		let isHash = tokens[0] == '#{';
-		if ((tokens[0] == '${' || isHash) && tokens[tokens.length-1] == '}') {
+		let isHash = tokens[0].text == '#{';
+		if ((tokens[0].text == '${' || isHash) && tokens[tokens.length-1].text == '}') {
 			result.isHash = isHash;
 			tokens = tokens.slice(1, -1); // Remove ${ and }
 		}
@@ -582,6 +582,7 @@ export default class VExpression {
 			// Later, scope object will be matched with param names to call this function.
 			// We call replacehashExpr() b/c we're valuating a whole string of code all at once, and the nested #{} aren't
 			// understood by the vanilla JavaScript that executes the template string.
+
 			tokens = Parse.replaceHashExpr(tokens, null, Class.name);
 
 			/**
@@ -593,8 +594,8 @@ export default class VExpression {
 			//console.log(tokens.join(''));
 
 			// Trim required.  B/c if there's a line return after return, the function will return undefined!
-			let body = tokens.join('');
-			if (tokens[0] != '{')
+			let body = tokens.map(t=>t.text).join('');
+			if (tokens[0].text != '{')
 				body = 'return (' + body.trim() + ')';
 			result.exec = Class.createFunction(...scope, body);
 		}

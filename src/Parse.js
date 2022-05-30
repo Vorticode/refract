@@ -61,9 +61,9 @@ var Parse = {
 			// TODO: Completely recreate the original tokens, instead of just string versions of them:
 			if (token.tokens) {
 				let tokens = Parse.replaceHashExpr(token.tokens, token.mode, className);
-				result.push(Object.assign(tokens.join(''), {type: token.type, tokens, mode: token.mode}));
+				result.push({text: tokens.map(t=>t.text).join(''), type: token.type, tokens, mode: token.mode});
 			}
-			else if (token == '#{' && token.type == 'expr') {
+			else if (token.text == '#{' && token.type == 'expr') {
 				result.push('${', className, '.', 'htmlEncode', '(');
 				isHash = true;
 			}
@@ -220,18 +220,19 @@ var Parse = {
 	 * @return {Token[]} */
 	escape$(tokens) {
 
-		let fstart = this.findFunctionStart(tokens);
-		for (let i=0, token; token=tokens[i]; i++) {
+		let result = tokens.map(t=>({...t}));// copy each
+		let fstart = this.findFunctionStart(result);
+		for (let i=0, token; token=result[i]; i++) {
 
 			if (i===fstart) {
-				i = this.findFunctionEnd(tokens, i);
-				fstart = this.findFunctionStart(tokens, i);
+				i = this.findFunctionEnd(result, i);
+				fstart = this.findFunctionStart(result, i);
 			}
 
 			if (token.type === 'template')
-				tokens[i] = '`'+ token.slice(1, -1).replace(/\${/g, '\\${').replace(/`/g, '\\`') + '`';
+				result[i].text = '`'+ token.text.slice(1, -1).replace(/\${/g, '\\${').replace(/`/g, '\\`') + '`';
 		}
-		return tokens
+		return result;
 	},
 
 	/**

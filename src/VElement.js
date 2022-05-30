@@ -398,7 +398,7 @@ export default class VElement {
 
 			// Text node
 			if (token.type === 'text')
-				result.push(new VText(token));
+				result.push(new VText(token.text));
 
 			// Expression child
 			else if (token.type === 'expr')
@@ -416,10 +416,10 @@ export default class VElement {
 
 				for (let j=0, tagToken; (tagToken = tagTokens[j]); j++) {
 					if (j === 0)
-						vel.tagName = tagToken.slice(1);
+						vel.tagName = tagToken.text.slice(1);
 
 					else if (tagToken.type === 'attribute') {
-						attrName = tagToken;
+						attrName = tagToken.text;
 						vel.attributes[attrName] = []; // Attribute w/o value, or without value yet.
 					}
 
@@ -433,7 +433,7 @@ export default class VElement {
 								if (exprToken.type === 'expr')
 									attrValues.push(VExpression.fromTokens(exprToken.tokens, scopeVars, vParent, attrName));
 								else // string:
-									attrValues.push(exprToken +'');
+									attrValues.push(exprToken.text);
 							}
 						else if (tagToken.type === 'expr') // expr not in string.
 							attrValues.push(VExpression.fromTokens(tagToken.tokens, scopeVars, vParent, attrName));
@@ -451,7 +451,7 @@ export default class VElement {
 						vel.attributeExpressions.push(VExpression.fromTokens(tagToken.tokens, scopeVars, vParent));
 				}
 
-				let isSelfClosing = tagTokens[tagTokens.length-1] == '/>' ||
+				let isSelfClosing = tagTokens[tagTokens.length-1].text == '/>' ||
 					['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source',
 						'track', 'wbr', 'command', 'keygen', 'menuitem'].includes(vel.tagName);
 					// TODO: What svg elements are self-closing?

@@ -224,8 +224,10 @@ import utils from './utils.js';
 				if (matches) {
 					let result = matches[0];
 					result = utils.unescapeTemplate(result);
-					result = Object.assign(result, {originalLength: matches[0].length});
-					return [result];
+					//result = Object.assign(result, {originalLength: matches[0].length});
+					// if (result.length !== matches[0].length)
+					// 	debugger;
+					return [result, undefined, matches[0].length];
 				}
 			}
 		},
@@ -248,8 +250,8 @@ import utils from './utils.js';
 				if (matches) {
 					let result = matches[0];
 					result = utils.unescapeTemplate(result);
-					result = Object.assign(result, {originalLength: matches[0].length});
-					return [result];
+					//result = Object.assign(result, {originalLength: matches[0].length});
+					return [result, undefined, matches[0].length];
 				}
 			},
 			expr,
