@@ -1,4 +1,4 @@
-
+// TODO: Move this into Html.js?
 let cache = {}; // TODO: Cache should exist per-document?
 let divCache = new WeakMap();
 let templateCache = new WeakMap();

@@ -582,7 +582,6 @@ export default class VExpression {
 			// Later, scope object will be matched with param names to call this function.
 			// We call replacehashExpr() b/c we're valuating a whole string of code all at once, and the nested #{} aren't
 			// understood by the vanilla JavaScript that executes the template string.
-
 			tokens = Parse.replaceHashExpr(tokens, null, Class.name);
 
 			/**

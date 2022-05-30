@@ -278,6 +278,7 @@ export default class Refract extends HTMLElement {
 				if (htmlIdx && constructorIdx)
 					break;
 			}
+
 			let htmlMatch = fregex.matchFirst([
 				'html', Parse.ws, '=', Parse.ws,
 				fregex.or({type: 'template'}, {type: 'string'}),

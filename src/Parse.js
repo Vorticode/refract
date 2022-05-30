@@ -1,5 +1,5 @@
 import fregex from "./fregex.js";
-
+import {Token} from './lex.js';
 
 let varExpressionCache = {};
 
@@ -64,7 +64,7 @@ var Parse = {
 				result.push({text: tokens.map(t=>t.text).join(''), type: token.type, tokens, mode: token.mode});
 			}
 			else if (token.text == '#{' && token.type == 'expr') {
-				result.push('${', className, '.', 'htmlEncode', '(');
+				result.push(new Token('${'), new Token(className), new Token('.'), new Token('htmlEncode'), new Token('('));
 				isHash = true;
 			}
 			else
@@ -78,7 +78,7 @@ var Parse = {
 			else if (mode === 'dquote')
 				extra = [',', `'"'`];
 
-			result.splice(result.length - 1, 0, ...extra, ')');
+			result.splice(result.length - 1, 0, ...extra, new Token(')'));
 		}
 
 

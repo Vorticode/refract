@@ -56,6 +56,23 @@ function toString() {
 	return this.text
 }
 
+export class Token {
+
+	constructor(text, type, mode) {
+		this.text = text;
+		this.type = type;
+		this.mode = mode;
+	}
+
+	valueOf() {
+		return this.text
+	}
+
+	toString() {
+		return this.text
+	}
+}
+
 // TODO:
 
 /**
