@@ -4,13 +4,32 @@ import lex from "./../src/lex.js";
 import htmljs from "./../src/lex-htmljs.js";
 
 
+/**
+ * Convert an array of Token to an array of strings.
+ * Also works with an array of arrays, to arbitrary depth, converting each Token to a string of its text property.
+ * @param array {Token[]|Token[][]}
+ * @returns {string[]|string[][]} */
+function tokensToText(array) {
+	let result = [];
+	for (let i in array)
+		if (Array.isArray(array[i]))
+			result[i] = tokensToText(array[i]);
+		else {
+			result[i] = array[i].text;
+			if (array[i].tokens)
+				result[i] = Object.assign(result[i], {tokens: tokensToText(array[i].tokens)});
+		}
+	return result;
+}
+
+
 
 Deno.test('Parse.singleVar', () => {
 	let code = 'fruit';
 	let tokens = lex(htmljs, code, 'js');
 
 	let pathTokens = Parse.varExpressions_(tokens, ['fruit']);
-	assertEquals(pathTokens,	[['fruit']]);
+	assertEquals(tokensToText(pathTokens), [['fruit']]);
 
 });
 
@@ -21,6 +40,7 @@ Deno.test('Parse.thisVars', () => {
 	let tokens = lex(htmljs, code, 'js');
 
 	let pathTokens = Parse.varExpressions_(tokens);
+	pathTokens = tokensToText(pathTokens);
 	assertEquals(pathTokens,	[['this', '.', 'one']]);
 });
 
@@ -31,6 +51,8 @@ Deno.test('Parse.multipleVars', () => {
 	let tokens = lex(htmljs, code, 'js');
 
 	let pathTokens = Parse.varExpressions_(tokens, ['test']);
+	pathTokens = tokensToText(pathTokens);
+
 	assertEquals(pathTokens,
 		[
 			['this', '.', 'one'],
@@ -45,6 +67,7 @@ Deno.test('Parse.duplicate', () => {
 	let tokens = lex(htmljs, code, 'js');
 
 	let pathTokens = Parse.varExpressions_(tokens, ['one']);
+	pathTokens = tokensToText(pathTokens);
 	assertEquals(pathTokens,
 		[ // Make sure we don't match the "one.two" within "this.one.two."
 			['this', '.', 'one', '.', 'two'],
@@ -79,7 +102,9 @@ Deno.test('Parse.findFunction.arrow1', () => {
 	let tokens = lex(htmljs, code, 'js');
 
 	let result = Parse.findFunction(tokens);
-	assertEquals(tokens.slice(...result).join(''), 'a => a+1');
+
+
+	assertEquals(tokensToText(tokens.slice(...result)).join(''), 'a => a+1');
 });
 
 Deno.test('Parse.findFunction.arrow2', () => {
@@ -87,7 +112,7 @@ Deno.test('Parse.findFunction.arrow2', () => {
 	let tokens = lex(htmljs, code, 'js');
 
 	let result = Parse.findFunction(tokens);
-	assertEquals(tokens.slice(...result).join(''), 'a => (a+1)');
+	assertEquals(tokensToText(tokens.slice(...result)).join(''), 'a => (a+1)');
 });
 
 Deno.test('Parse.findFunction.arrow3', () => {
@@ -95,7 +120,7 @@ Deno.test('Parse.findFunction.arrow3', () => {
 	let tokens = lex(htmljs, code, 'js');
 
 	let result = Parse.findFunction(tokens);
-	assertEquals(tokens.slice(...result).join(''), 'a => a+1');
+	assertEquals(tokensToText(tokens.slice(...result)).join(''), 'a => a+1');
 });
 
 Deno.test('Parse.findFunction.arrow4', () => {
@@ -103,7 +128,7 @@ Deno.test('Parse.findFunction.arrow4', () => {
 	let tokens = lex(htmljs, code, 'js');
 
 	let result = Parse.findFunction(tokens);
-	assertEquals(tokens.slice(...result).join(''), 'a => { return a+1 }');
+	assertEquals(tokensToText(tokens.slice(...result)).join(''), 'a => { return a+1 }');
 });
 
 Deno.test('Parse.findFunction.arrow5', () => {
@@ -111,7 +136,7 @@ Deno.test('Parse.findFunction.arrow5', () => {
 	let tokens = lex(htmljs, code, 'js');
 
 	let result = Parse.findFunction(tokens);
-	assertEquals(tokens.slice(...result).join(''), 'a => { return {a:1} }');
+	assertEquals(tokensToText(tokens.slice(...result)).join(''), 'a => { return {a:1} }');
 });
 
 Deno.test('Parse.findFunction.arrow6', () => {
@@ -119,7 +144,7 @@ Deno.test('Parse.findFunction.arrow6', () => {
 	let tokens = lex(htmljs, code, 'js');
 
 	let result = Parse.findFunction(tokens);
-	assertEquals(tokens.slice(...result).join(''), '(a) => a+1');
+	assertEquals(tokensToText(tokens.slice(...result)).join(''), '(a) => a+1');
 });
 
 Deno.test('Parse.findFunction.arrow7', () => {
@@ -127,7 +152,7 @@ Deno.test('Parse.findFunction.arrow7', () => {
 	let tokens = lex(htmljs, code, 'js');
 
 	let result = Parse.findFunction(tokens);
-	assertEquals(tokens.slice(...result).join(''), '() => a+1');
+	assertEquals(tokensToText(tokens.slice(...result)).join(''), '() => a+1');
 });
 
 Deno.test('Parse.findFunction.func', () => {
@@ -135,7 +160,7 @@ Deno.test('Parse.findFunction.func', () => {
 	let tokens = lex(htmljs, code, 'js');
 
 	let result = Parse.findFunction(tokens);
-	assertEquals(tokens.slice(...result).join(''), 'function(a) { return a+1 }');
+	assertEquals(tokensToText(tokens.slice(...result)).join(''), 'function(a) { return a+1 }');
 });
 
 
@@ -147,7 +172,7 @@ Deno.test('Parse.findFunctionArgs.arrow1', () => {
 	let tokens = lex(htmljs, code, 'js');
 
 	let result = Parse.findFunctionArgs(tokens);
-	assertEquals(tokens.slice(...result).join(''), 'a');
+	assertEquals(tokensToText(tokens.slice(...result)).join(''), 'a');
 });
 
 Deno.test('Parse.findFunctionArgs.arrow2', () => {
@@ -155,7 +180,7 @@ Deno.test('Parse.findFunctionArgs.arrow2', () => {
 	let tokens = lex(htmljs, code, 'js');
 
 	let result = Parse.findFunctionArgs(tokens);
-	assertEquals(tokens.slice(...result).join(''), 'a');
+	assertEquals(tokensToText(tokens.slice(...result)).join(''), 'a');
 });
 
 Deno.test('Parse.findFunctionArgs.arrow3', () => {
@@ -163,7 +188,7 @@ Deno.test('Parse.findFunctionArgs.arrow3', () => {
 	let tokens = lex(htmljs, code, 'js');
 
 	let result = Parse.findFunctionArgs(tokens);
-	assertEquals(tokens.slice(...result).join(''), 'a, b');
+	assertEquals(tokensToText(tokens.slice(...result)).join(''), 'a, b');
 });
 
 Deno.test('Parse.findFunctionArgs.arrow4', () => {
@@ -171,7 +196,7 @@ Deno.test('Parse.findFunctionArgs.arrow4', () => {
 	let tokens = lex(htmljs, code, 'js');
 
 	let result = Parse.findFunctionArgs(tokens);
-	assertEquals(tokens.slice(...result).join(''), 'a=1');
+	assertEquals(tokensToText(tokens.slice(...result)).join(''), 'a=1');
 });
 
 Deno.test('Parse.findFunctionArgs.arrow5', () => {
@@ -179,7 +204,7 @@ Deno.test('Parse.findFunctionArgs.arrow5', () => {
 	let tokens = lex(htmljs, code, 'js');
 
 	let result = Parse.findFunctionArgs(tokens);
-	assertEquals(tokens.slice(...result).join(''), 'a={}, b');
+	assertEquals(tokensToText(tokens.slice(...result)).join(''), 'a={}, b');
 });
 
 Deno.test('Parse.findFunctionArgs.arrow6', () => {
@@ -187,7 +212,7 @@ Deno.test('Parse.findFunctionArgs.arrow6', () => {
 	let tokens = lex(htmljs, code, 'js');
 
 	let result = Parse.findFunctionArgs(tokens);
-	assertEquals(tokens.slice(...result).join(''), 'a=x=> {return (x+1)},b');
+	assertEquals(tokensToText(tokens.slice(...result)).join(''), 'a=x=> {return (x+1)},b');
 });
 
 Deno.test('Parse.findFunctionArgs.func', () => {
@@ -195,5 +220,5 @@ Deno.test('Parse.findFunctionArgs.func', () => {
 	let tokens = lex(htmljs, code, 'js');
 
 	let result = Parse.findFunctionArgs(tokens);
-	assertEquals(tokens.slice(...result).join(''), 'a');
+	assertEquals(tokensToText(tokens.slice(...result)).join(''), 'a');
 });

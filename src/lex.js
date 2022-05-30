@@ -1,4 +1,57 @@
 /**
+ * @param current {string}
+ * @param before {string}
+ * @param pattern
+ * @param prevTokens {Token[]}
+ * @return [token:string, matchType] */
+function matchToken(current, before, pattern, prevTokens) {
+	let token, matchType;
+	if (pattern instanceof RegExp)
+		token = (current.match(pattern) || [])[0];
+	else if (typeof pattern === 'function')
+		[token, matchType] = pattern(current, before, prevTokens) || [];
+
+	else if (Array.isArray(pattern)) {
+		for (let item of pattern)
+			if (current.startsWith(item)) {
+				token = item;
+				break;
+			}
+	}
+	else if (current.startsWith(pattern))
+		token = pattern;
+
+	return [token, matchType]
+}
+
+function findFastMatch(grammar, mode, current) {
+	let pattern;
+	let fm = grammar.fastMatch[mode];
+	if (fm) {
+		let i = 0;
+		pattern = fm;
+		do {
+			let letter = current[i];
+			pattern = pattern[letter];
+			//console.log(i, letter);
+			i++;
+		} while (pattern && (typeof pattern === 'object' && pattern.constructor == Object))
+
+
+	}
+	return pattern;
+}
+
+/**
+ * Allow tokens to be compared to strings with ==.
+ * @example
+ * var token = {text: 'return', valueOf};
+ * token == 'return' // true, b/c we use double equals.
+ * @returns {string} */
+function valueOf() { return this.text }
+
+
+/**
  * Parse code into tokens according to rules in a grammar.
  *
  * @typedef GrammarRule {(
@@ -8,8 +61,7 @@
  * )}
  *
  * @typedef Token{
- *     string |
- *     {type:string, mode:string, line:int, col:int, ?tokens:Token[]}
+ *     {text: string, type:string, mode:string, line:int, col:int, ?tokens:Token[], ?originalLength:int}
  * }
  *
  * @param grammar {Object<string, GrammarRule|GrammarRule[]>}.  An object of rules objects, where the key is the mode to use.
@@ -50,32 +102,31 @@ export default function lex(grammar, code, mode=null, line=1, col=1, index=0) {
 
 	result = [];
 	while (index < code.length) {
-		let current = code.slice(index);
+		let before = code.slice(0, index);
+		let current = code.slice(index), token = undefined;
+
+		// MatchType is a string to go into a new mode, -1 to leave a mode, or undefined to stay in the same mode.
+		let matchType = undefined;
+
 
 		// 1. Identify token
-		let matchType = undefined, token = undefined;
-		for (var [type, pattern] of Object.entries(grammar[mode])) {
-			//let start = performance.now();
-			if (pattern instanceof RegExp)
-				token = (current.match(pattern) || [])[0];
-			else if (typeof pattern === 'function')
-				[token, matchType] = pattern(current, code.slice(0, index), result) || [];
-			
-			else if (Array.isArray(pattern)) {
-				for (let item of pattern)
-					if (current.startsWith(item)) {
-						token = item;
-						break;
-					}
-			}
-			else if (current.startsWith(pattern))
-				token = pattern;
-			if (token !== undefined)
-				break;
 
-			// let time = performance.now() - start;
-			// types[mode + '.' + type] = types[mode + '.' + type] + time || time;
+
+		// TODO: Enable fastMatch:
+		// let pattern = findFastMatch(grammar, mode, current);
+		// if (pattern)
+		// 	[token, matchType] = matchToken(current, before, pattern, result);
+
+		// Benchmarking shows this is by far the slowest part.
+		if (!token) {
+			//console.log(mode, current);
+			for (var [type, pattern2] of Object.entries(grammar[mode])) {
+				[token, matchType] = matchToken(current, before, pattern2, result);
+				if (token !== undefined)
+					break;
+			}
 		}
+
 		//#IFDEV
 		if (token === undefined) {
 			let before = code.slice(Math.max(index - 15, 0), index);
@@ -87,18 +138,19 @@ export default function lex(grammar, code, mode=null, line=1, col=1, index=0) {
 
 		// 2. Ascend or descend
 		let newMode = (matchType && matchType !== -1) ? matchType : mode;
-		token = Object.assign(token, {type, mode: newMode, line, col});
-		let length = token.originalLength || token.length;
+		let tokenObj = {text: token, type, mode: newMode, line, col, valueOf};
+		let length = token.originalLength || token.length; // How much of the code string that was consumed.
 
 		if (matchType === -1) // Ascend out of a sub-mode.
-			return [...result, token];
+			return [...result, tokenObj];
 
 		else if (matchType) { // Descend into new mode
-			let tokens = [token, ...lex(grammar, code, matchType, line, col+length, index+length)].filter(t=>t.length);
-			token = Object.assign(tokens.join(''), {type, tokens, mode, line, col});
-			length = tokens.reduce((p, c) => p + (c.originalLength || c.length), 0);
+			let tokens = [tokenObj, ...lex(grammar, code, matchType, line, col+length, index+length)].filter(t=>t.text.length);
+			length = tokens.reduce((p, c) => p + (c.originalLength || c.text.length), 0);
+
+			tokenObj = {text: code.slice(index, index+length), type, tokens, mode, line, col, valueOf};
 			if (length !== token.length)
-				token.originalLength = length;
+				tokenObj.originalLength = length;
 		}
 
 
@@ -107,7 +159,7 @@ export default function lex(grammar, code, mode=null, line=1, col=1, index=0) {
 
 			// 3. Process token
 			index += length;
-			result.push(token);
+			result.push(tokenObj);
 
 			// 4. Increment line/col number.
 			line += (token.match(/\n/g) || []).length; // count line returns

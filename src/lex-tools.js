@@ -4,7 +4,7 @@
  * Go into the mode if the string starts with the given regex.
  * @param regex {RegExp|string}
  * @param mode {string}
- * @oaram callaback {?function(string|string[])}
+ * @param callback {?function(string|string[])}
  * @return {function(code:string):([string, int] | undefined)} */
 export var descendIf = (regex, mode, callback) => code => {
 	if (regex instanceof RegExp) {

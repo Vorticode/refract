@@ -111,6 +111,7 @@ import utils from './utils.js';
 	 * A grammar for parsing js and html within js templates, for use with lex.js. */
 	var lexHtmlJs = {
 
+
 		js: {
 			whitespace,
 			ln, // Separate from whitespace because \n can be used instead of semicolon to separate js statements.
@@ -204,7 +205,6 @@ import utils from './utils.js';
 			commentEnd: ascendIf('-->'),
 			commentBody: /^[\s\S]+?(?=-->|$)/,
 		},
-
 		template: { // template within javascript
 			script,
 			expr,
@@ -229,7 +229,6 @@ import utils from './utils.js';
 				}
 			}
 		},
-
 		// Comment within a `template` tag.
 		templateComment: { // Like htmlComment, but allows expressions.
 			expr,
@@ -243,7 +242,6 @@ import utils from './utils.js';
 			whitespace: /^[ \r\n\t\v\f\xa0]+/,
 			...tagCommon
 		},
-
 		templateTag: { // html tag within template.
 			whitespace: code => {
 				let matches = code.match(/^( |\r|\n|\t|\v|\f|\xa0|\\r|\\n|\\t|\\v|\\f|\\xa0)+/);
@@ -258,7 +256,6 @@ import utils from './utils.js';
 			templateEnd, // A ` quote to end the template.
 			...tagCommon,
 		},
-
 		// TODO: template end with `
 		squote: { // single quote string within tag.  Used for both js strings and html attributes.
 			expr,
@@ -289,6 +286,53 @@ import utils from './utils.js';
 		allowHashTemplates: false,
 		allowUnknownTagTokens: false
 	};
+
+	// A fast lookup table based on starting characters.
+	// This isn't finished.
+	lexHtmlJs.fastMatch = {
+		// template: {
+		// 	'$': lexHtmlJs.template.expr,
+		// 	'#': lexHtmlJs.template.expr,
+		// 	'<': {
+		// 		'a-z': lexHtmlJs.template.openTag,
+		// 		'!': lexHtmlJs.template.comment,
+		// 	}
+		// },
+		html: {
+			'<': {
+				'/': lexHtmlJs.html.closeTag,
+				'a-z': lexHtmlJs.html.openTag,
+				'!': lexHtmlJs.html.comment,
+			}
+		},
+
+		tag: {
+			'a-z': lexHtmlJs.tag.attribute,
+			' ': lexHtmlJs.tag.whitespace,
+			'\t': lexHtmlJs.tag.whitespace,
+			'"': lexHtmlJs.tag.string,
+			"'": lexHtmlJs.tag.string,
+			">": lexHtmlJs.tag.tagEnd,
+			"/": lexHtmlJs.tag.tagEnd,
+			'=': lexHtmlJs.tag.equals,
+		},
+		dquote: {
+			'"': lexHtmlJs.dquote.quote
+		}
+	};
+
+	function expandFastMatch(obj) {
+		for (let name of obj) {
+			if (name === 'a-z')
+
+			if (name.length > 1) {
+				for (let letter of name)
+					obj[letter] = obj[name];
+				delete obj[name];
+			}
+
+		}
+	}
 }
 
 export default lexHtmlJs;

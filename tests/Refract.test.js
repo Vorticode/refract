@@ -2006,3 +2006,22 @@ Deno.test('Refract.misc.TwoVars', () => {
 	a.a = 2;
 	assertEquals(a.innerHTML, '5');
 });
+
+
+Deno.test('Refract.benchmark.10kOptions', () => {
+	const num = 100_000;
+
+	class A extends Refract {
+		items = Array(num).fill(1);
+		html = `<a-500><select id="select">${this.items.map(item => `<option>#{item}</option>`)}</select></a-500>`;
+	}
+	eval(A.compile());
+
+	let start = new Date();
+	let a = new A();
+	let time = new Date() - start;
+	console.log(time);
+
+	assertEquals(a.select.childNodes.length, num);
+
+});

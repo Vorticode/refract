@@ -4,10 +4,31 @@ import jsHtml from './../src/lex-htmljs.js';
 import htmljs from "../src/lex-htmljs.js";
 import lexHtmlJs from "./../src/lex-htmljs.js";
 
+
+/**
+ * Convert an array of Token to an array of strings.
+ * Also works with an array of arrays, to arbitrary depth, converting each Token to a string of its text property.
+ * @param array {Token[]|Token[][]}
+ * @returns {string[]|string[][]} */
+function tokensToText(array) {
+	if (!array)
+		return undefined;
+	let result = [];
+	for (let i in array)
+		if (Array.isArray(array[i]))
+			result[i] = tokensToText(array[i]);
+		else {
+			result[i] = array[i].text;
+			result[i] = Object.assign(result[i], {tokens: tokensToText(array[i].tokens), type: array[i].type, mode: array[i].mode});
+		}
+	return result;
+}
+
+
 Deno.test('lex.js', () => {
 	let code = 'var a = 3';
 	let tokens = lex(jsHtml, code);
-	assertEquals(tokens, ['var', ' ', 'a', ' ', '=', ' ', '3']);
+	assertEquals(tokens.map(t=>t.text), ['var', ' ', 'a', ' ', '=', ' ', '3']);
 	assertEquals(tokens.map(t=>t.type), ['keyword','whitespace','identifier','whitespace','operator','whitespace','number']);
 	assertEquals(tokens.map(t=>t.mode), ['js','js','js','js','js','js','js']);
 });
@@ -15,21 +36,21 @@ Deno.test('lex.js', () => {
 Deno.test('lex.comment', () => {
 	let code = 'var a = 3;// comment\nline2';
 	let tokens = lex(jsHtml, code);
-	assertEquals(tokens, ['var',' ','a',' ','=',' ','3',';','// comment','\n','line2']);
+	assertEquals(tokens.map(t=>t.text), ['var',' ','a',' ','=',' ','3',';','// comment','\n','line2']);
 	assertEquals(tokens.map(t=>t.type), ['keyword','whitespace','identifier','whitespace','operator','whitespace','number','semicolon','comment','ln','identifier']);
 });
 
 Deno.test('lex.comment2', () => {
 	let code = 'var a;\n// comment\nline2';
 	let tokens = lex(jsHtml, code);
-	assertEquals(tokens, ['var',' ','a',';','\n','// comment','\n','line2']);
+	assertEquals(tokens.map(t=>t.text), ['var',' ','a',';','\n','// comment','\n','line2']);
 	assertEquals(tokens.map(t=>t.type), ['keyword','whitespace','identifier','semicolon','ln','comment','ln','identifier']);
 });
 
 Deno.test('lex.comment3', () => {
 	let code = 'var a;\n/*comment1\nline2\r\nline3*/\nline2/*comment2*/';
 	let tokens = lex(jsHtml, code);
-	assertEquals(tokens, ['var',' ','a',';','\n','/*comment1\nline2\r\nline3*/','\n','line2','/*comment2*/']);
+	assertEquals(tokens.map(t=>t.text), ['var',' ','a',';','\n','/*comment1\nline2\r\nline3*/','\n','line2','/*comment2*/']);
 	assertEquals(tokens.map(t=>t.type), ['keyword','whitespace','identifier','semicolon','ln','comment','ln','identifier','comment']);
 });
 
@@ -37,25 +58,25 @@ Deno.test('lex.template', () => {
 	let code = 'var a=`hello ${name}`;';
 	let tokens = lex(jsHtml, code);
 	// Javascript level
-	assertEquals(tokens, ['var', ' ', 'a', '=', '`hello ${name}`', ';']);
+	assertEquals(tokens.map(t=>t.text), ['var', ' ', 'a', '=', '`hello ${name}`', ';']);
 	assertEquals(tokens.map(t=>t.type), ['keyword','whitespace','identifier','operator','template','semicolon']);
 	assertEquals(tokens.map(t=>t.mode), ['js','js','js','js','js','js']);
 
 	// Template string
-	assertEquals(tokens[4].tokens, ['`', 'hello ', '${name}', '`']);
+	assertEquals(tokens[4].tokens.map(t=>t.text), ['`', 'hello ', '${name}', '`']);
 	assertEquals(tokens[4].tokens[0].mode, 'template');
 	assertEquals(tokens[4].tokens.map(t=>t.type), ["template","text","expr","templateEnd"]);
 	assertEquals(tokens[4].tokens.map(t=>t.mode), ['template','template','template','template']);
 
 	// Js inside template string.
-	assertEquals(tokens[4].tokens[2].tokens, ['${','name','}']);
+	assertEquals(tokens[4].tokens[2].tokens.map(t=>t.text), ['${','name','}']);
 	assertEquals(tokens[4].tokens[2].tokens[0].mode, 'js');
 });
 
 Deno.test('lex.identifier', () => {
 	let code = 'formula=3'; // Make sure it doesn't match the keyword "for"
 	let tokens = lex(jsHtml, code);
-	assertEquals(tokens, ['formula', '=', '3']);
+	assertEquals(tokens.map(t=>t.text), ['formula', '=', '3']);
 });
 
 Deno.test('lex.templateHash', () => {
@@ -64,14 +85,14 @@ Deno.test('lex.templateHash', () => {
 	let code = 'var a=`hello #{name}`;';
 	let tokens = lex(jsHtml, code);
 	// Javascript level
-	assertEquals(tokens, ['var', ' ', 'a', '=', '`hello #{name}`', ';']);
+	assertEquals(tokens.map(t=>t.text), ['var', ' ', 'a', '=', '`hello #{name}`', ';']);
 
 	// Template string
-	assertEquals(tokens[4].tokens, ['`', 'hello ', '#{name}', '`']);
+	assertEquals(tokens[4].tokens.map(t=>t.text), ['`', 'hello ', '#{name}', '`']);
 	assertEquals(tokens[4].tokens[0].mode, 'template');
 
 	// Js inside template string.
-	assertEquals(tokens[4].tokens[2].tokens, ['#{','name','}']);
+	assertEquals(tokens[4].tokens[2].tokens.map(t=>t.text), ['#{','name','}']);
 	assertEquals(tokens[4].tokens[2].tokens[0].mode, 'js');
 
 	jsHtml.allowHashTemplates = old;
@@ -81,11 +102,11 @@ Deno.test('lex.template-escape', () => {
 	let code = 'var a=`hello \\${name}`;'; // Same as \$ instide a template string.
 	let tokens = lex(jsHtml, code);
 	// Javascript level
-	assertEquals(tokens, ['var', ' ', 'a', '=', '`hello \\' +
+	assertEquals(tokens.map(t=>t.text), ['var', ' ', 'a', '=', '`hello \\' +
 	'${name}`', ';']);
 
 	// Template string
-	assertEquals(tokens[4].tokens, ['`', 'hello \\${name}', '`']); // It's not split into "hello" and ${name}
+	assertEquals(tokens[4].tokens.map(t=>t.text), ['`', 'hello \\${name}', '`']); // It's not split into "hello" and ${name}
 	assertEquals(tokens[4].tokens[0].mode, 'template');
 });
 
@@ -95,10 +116,10 @@ Deno.test('lex.template-hash-escape', () => {
 	let code = 'var a=`hello \\#{name}`;';
 	let tokens = lex(jsHtml, code);
 	// Javascript level
-	assertEquals(tokens, ['var', ' ', 'a', '=', '`hello \\#{name}`', ';']);
+	assertEquals(tokens.map(t=>t.text), ['var', ' ', 'a', '=', '`hello \\#{name}`', ';']);
 
 	// Template string
-	assertEquals(tokens[4].tokens, ['`', 'hello \\#{name}', '`']);
+	assertEquals(tokens[4].tokens.map(t=>t.text), ['`', 'hello \\#{name}', '`']);
 
 	// Js inside template string.
 	assertEquals(tokens[4].tokens[2].tokens, undefined);
@@ -106,11 +127,8 @@ Deno.test('lex.template-hash-escape', () => {
 
 Deno.test('lex.template-brace-depth', () => {
 	let code = '<div>${{a: `a`})}</div>';
-
 	let tokens = lex(jsHtml, code, 'template');
-	console.log(tokens); // TODO
-
-	assertEquals(tokens, ['<div>', '${{a: `a`})}', '</div>']);
+	assertEquals(tokensToText(tokens), ['<div>', '${{a: `a`})}', '</div>']);
 });
 
 Deno.test('lex.template-brace-depth2', () => {
@@ -118,7 +136,7 @@ Deno.test('lex.template-brace-depth2', () => {
 	let tokens = lex(jsHtml, code);
 	// Test braceDepth
 	// TOOD: test.
-	console.log(tokens);
+	tokens = tokensToText(tokens);
 
 	assertEquals(tokens, ['`a ${{b: `${{c: 3}}`}}`', '.', 'length']);
 	assertEquals(tokens[0].tokens, ['`', 'a ', '${{b: `${{c: 3}}`}}', '`']);
@@ -130,6 +148,7 @@ Deno.test('lex.template-brace-depth2', () => {
 Deno.test('lex.template-tag-expr', () => {
 	let code = 'var a=`hello <b class="one ${class}">world</b>!`;';
 	let tokens = lex(jsHtml, code);
+	tokens = tokensToText(tokens);
 
 	// Javascript level
 	assertEquals(tokens, ['var',' ','a','=','`hello <b class="one ${class}">world</b>!`',';']);
@@ -170,6 +189,7 @@ Deno.test('lex.template-multiple', () => {
 	let code = '${this.$one}#${this.$two}';
 
 	let tokens = lex(jsHtml, code, 'template');
+	tokens = tokensToText(tokens);
 	console.log(tokens); // TODO
 
 });
@@ -181,6 +201,7 @@ Deno.test('lex.template-multiple2', () => {
 	let code = '#{this.$one} # #{this.$two} # #{this.three}';
 
 	let tokens = lex(jsHtml, code, 'template');
+	tokens = tokensToText(tokens);
 	assertEquals(tokens, ['#{this.$one}', ' # ', '#{this.$two}', ' # ', '#{this.three}']);
 
 	jsHtml.allowHashTemplates = old;
@@ -198,6 +219,7 @@ Deno.test('lex.template-misc', () => {
 Deno.test('lex.template-script-tag', () => {
 	let code = '${var a=`<script>var b=1<3</script>`}';
 	let tokens = lex(jsHtml, code, 'template');
+	tokens = tokensToText(tokens);
 
 	let js = tokens[0].tokens;
 	assertEquals(js, ['${', 'var', ' ', 'a', '=', '`<script>var b=1<3</script>`', '}']);
@@ -218,6 +240,7 @@ Deno.test('lex.template-script-tag2', () => {
 	let code = '${`<div>${var a=`<script>var b=1<3</script>`}</div>`}';
 
 	let tokens = lex(jsHtml, code, 'template');
+	tokens = tokensToText(tokens);
 	console.log(tokens.tokens); // TODO
 
 });
@@ -225,6 +248,7 @@ Deno.test('lex.template-script-tag2', () => {
 Deno.test('lex.regex', () => {
 	let code = 'a=/^\\/(\\\\\\\\|\\\\\\/|\\[\\^\\/]|\\[[^]]]|[^/])+\\/[agimsx]*/';
 	let tokens = lex(jsHtml, code, 'js');
+	tokens = tokensToText(tokens);
 	assertEquals(tokens, ['a', '=', '/^\\/(\\\\\\\\|\\\\\\/|\\[\\^\\/]|\\[[^]]]|[^/])+\\/[agimsx]*/']);
 	assertEquals(tokens[2].type, 'regex');
 });
@@ -232,6 +256,7 @@ Deno.test('lex.regex', () => {
 Deno.test('lex.regex2', () => {
 	let code = `/[/]+/g; b='/'`;
 	let tokens = lex(jsHtml, code, 'js');
+	tokens = tokensToText(tokens);
 	assertEquals(tokens, ['/[/]+/g', ';', ' ', 'b', '=', "'/'"]);
 	assertEquals(tokens[0].type, 'regex');
 });
@@ -240,6 +265,7 @@ Deno.test('lex.html-self-closing', () => {
 	let code = '<img/>';
 
 	let tokens = lex(jsHtml, code, 'html');
+	tokens = tokensToText(tokens);
 	assertEquals(tokens[0].tokens, ['<img', '/>']);
 	assertEquals(tokens[0].tokens.map(t=>t.type), ['openTag', 'tagEnd']);
 	assertEquals(tokens[0].tokens.map(t=>t.mode), ['tag', 'tag']);
@@ -249,6 +275,7 @@ Deno.test('lex.html-comment', () => {
 	let code = '<div><!-- \r\ncomment --></div>';
 
 	let tokens = lex(jsHtml, code, 'html');
+	tokens = tokensToText(tokens);
 
 	assertEquals(tokens, ['<div>', '<!-- \r\ncomment -->', '</div>']);
 	assertEquals(tokens.map(t=>t.type), ['openTag', 'comment', 'closeTag']);
@@ -259,6 +286,7 @@ Deno.test('lex.comment-expr', () => {
 	let code = '`<div><!-- ${a} --></div>`';
 
 	let tokens = lex(jsHtml, code, 'js');
+	tokens = tokensToText(tokens);
 
 	assertEquals(tokens[0].tokens[2].tokens, ['<!--', ' ', '${a}', ' ', '-->']);
 	assertEquals(tokens[0].tokens[2].tokens.map(t=>t.type), ['comment', 'commentBody', 'expr', 'commentBody', 'commentEnd']);
@@ -270,6 +298,7 @@ Deno.test('lex.attr', () => {
 	let old = lexHtmlJs.allowHashTemplates;
 	lexHtmlJs.allowHashTemplates = true;
 	let tokens = lex(jsHtml, code, 'template');
+	tokens = tokensToText(tokens);
 	lexHtmlJs.allowHashTemplates = old;
 
 	console.log(tokens[0]);
@@ -290,6 +319,7 @@ Deno.test('lex.unclosed-tag', () => {
 	let code = `<p>text`;
 
 	let tokens = lex(jsHtml, code, 'html');
+	tokens = tokensToText(tokens);
 
 	assertEquals(tokens, ['<p>', 'text']);
 	assertEquals(tokens.map(t=>t.type), ['openTag', 'text']);
@@ -299,6 +329,7 @@ Deno.test('lex.unclosed-comment', () => {
 	let code = `<!--text`;
 
 	let tokens = lex(jsHtml, code, 'html');
+	tokens = tokensToText(tokens);
 
 	assertEquals(tokens, ['<!--text']);
 	assertEquals(tokens[0].tokens, ['<!--', 'text']);
@@ -308,6 +339,7 @@ Deno.test('lex.unclosed-comment', () => {
 Deno.test('lex.badHtml1', () => {
 	let code = "a = `Template <${3}>`;";
 	let tokens = lex(htmljs, code, 'js');
+	tokens = tokensToText(tokens);
 	console.log(tokens);
 });
 
@@ -315,6 +347,7 @@ Deno.test('lex.badHtml2', () => {
 
 	let code = "a = `Template <$3}>`;";
 	let tokens = lex(htmljs, code, 'js');
+	tokens = tokensToText(tokens);
 	console.log(tokens); // TODO
 
 
@@ -323,15 +356,30 @@ Deno.test('lex.badHtml2', () => {
 Deno.test('lex.badHtml3', () => {
 	let code = "a = `Template <${3>`;";
 	let tokens = lex(htmljs, code, 'js');
+	tokens = tokensToText(tokens);
 	console.log(tokens); // TODO
 });
 
 Deno.test('lex.php', () => {
 	var code = `<?php print 1?-->`;
 	let tokens = lex(htmljs, code, 'html');
+	tokens = tokensToText(tokens);
 	assertEquals(tokens, ['<?php print 1?-->']);
 	assertEquals(tokens[0].type, 'text');
 
 
+});
+
+
+Deno.test('lex.benchmark.100kOptions', () => {
+	const num = 100_000;
+	const code = `<select id="select">${Array(num).fill(`<option>item</option>`).join('')}</select>`;
+
+	let start = new Date();
+
+	let tokens = lex(htmljs, code, 'html');
+	let time = new Date() - start;
+	console.log(time);
+	console.log(tokens);
 });
 
