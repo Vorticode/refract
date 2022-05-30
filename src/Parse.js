@@ -74,9 +74,9 @@ var Parse = {
 		if (isHash) { // Add the closing paren around htmlEncode
 			let extra = [];
 			if (mode === 'squote') // Escape quotes if we're inside an attribute
-				extra = [',', `"'"`];
+				extra = [new Token(','), new Token(`"'"`)];
 			else if (mode === 'dquote')
-				extra = [',', `'"'`];
+				extra = [new Token(','), new Token(`'"'`)];
 
 			result.splice(result.length - 1, 0, ...extra, new Token(')'));
 		}
