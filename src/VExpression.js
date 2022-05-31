@@ -110,7 +110,7 @@ export default class VExpression {
 	 * @param parent {HTMLElement}
 	 * @param el {HTMLElement} Unused.
 	 * @return {int} Number of elements created. d*/
-	apply(parent=null, el=null, bind=true) {
+	apply(parent=null, el=null) {
 		//#IFDEV
 		if (this.attrName)
 			throw new Error("Cannot apply an VExpression that's for an attribute.  Use evalVAttribute() or .exec.apply() instead.");
@@ -138,7 +138,7 @@ export default class VExpression {
 		for (let group of this.vChildren) {
 			for (let vChild of group) {
 				vChild.startIndex = startIndex;
-				let num = vChild.apply(this.parent, null, bind);
+				let num = vChild.apply(this.parent, null);
 				startIndex += num;
 				count += num;
 			}

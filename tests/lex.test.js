@@ -380,6 +380,5 @@ Deno.test('lex.benchmark.100kOptions', () => {
 	let tokens = lex(htmljs, code, 'html');
 	let time = new Date() - start;
 	console.log(time);
-	console.log(tokens);
 });
 
