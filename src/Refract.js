@@ -9,7 +9,8 @@ import createEl from './createEl.js'; // TODO: This is erroneously still include
 import Html from "./Html.js";
 import utils from "./utils.js";
 /**
- * @property createFunction {function} Created temporarily during compilation. */
+ * @property createFunction {function} Created temporarily during compilation.
+ * @property styleId {int} */
 export default class Refract extends HTMLElement {
 
 	/**

@@ -1965,11 +1965,24 @@ Deno.test('Refract._debugRender', () => {
 	document.body.appendChild(el);
 });
 
+
+Deno.test('Refract.scopedStyle', () => {
+
+	class A extends Refract {
+		html = `<a-440><style>:host { background: red }</style></a-440>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	console.log(a.outerHTML)
+});
+
+
 Deno.test('Refract.misc.formInputDeep', () => {
 
 	class A extends Refract {
 		deep = { value: 'Apple'};
-		html = `<a-420><input id="input" value="${this.deep.value}"></a-420>`;
+		html = `<a-520><input id="input" value="${this.deep.value}"></a-520>`;
 	}
 	eval(A.compile());
 
@@ -1993,7 +2006,7 @@ Deno.test('Refract.misc.TwoVars', () => {
 	class A extends Refract {
 		a = 1;
 		b = 2;
-		html = `<a-430>${this.a + this.b}</a-430>`;
+		html = `<a-530>${this.a + this.b}</a-530>`;
 	}
 	eval(A.compile());
 
@@ -2013,7 +2026,7 @@ Deno.test('Refract.benchmark.10kOptions', () => {
 
 	class A extends Refract {
 		items = Array(num).fill(1);
-		html = `<a-500><select id="select">${this.items.map(item => `<option>#{item}</option>`)}</select></a-500>`;
+		html = `<a-600><select id="select">${this.items.map(item => `<option>#{item}</option>`)}</select></a-600>`;
 	}
 	eval(A.compile());
 

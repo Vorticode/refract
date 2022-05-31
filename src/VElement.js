@@ -164,18 +164,31 @@ export default class VElement {
 			}
 		}
 
-		// 4. Recurse through children
+		// 4. Use scoped styles.
+		if (this.tagName === 'style') {
+			this.xel.constructor.styleId = (this.xel.constructor.styleId || 0) + 1;
+			this.xel.dataset.style = this.xel.constructor.styleId;
+			if (this.vChildren.length) {
+				let rTag = this.xel.tagName.toLowerCase();
+				for (let node of this.vChildren)
+					if (node.text)
+						node.text =
+							node.text.replace(new RegExp(rTag+'|:host', 'g'), rTag + '[data-style="' +  this.xel.constructor.styleId + '"]');
+			}
+		}
+
+		// 5. Recurse through children
 		let isText = this.el.tagName === 'TEXTAREA' || this.attributes['contenteditable'] && (this.attributes['contenteditable']+'') !== 'false';
 		for (let vChild of this.vChildren) {
 			if (isText && (vChild instanceof VExpression))
-				throw new Error('<textarea> and contenteditable cannot have expressions as children.  Use value=${this.variable} instead.');
+				throw new Error('textarea and contenteditable cannot have expressions as children.  Use value=${this.variable} instead.');
 
 			vChild.scope = {...this.scope} // copy
 			vChild.startIndex = count;
 			count += vChild.apply(this.el);
 		}
 
-		// 5. Attributes (besides shadow)
+		// 6. Attributes (besides shadow)
 		for (let name in this.attributes) {
 			let value = this.attributes[name];
 			for (let attrPart of value)
@@ -221,7 +234,7 @@ export default class VElement {
 		}
 
 
-		// 6. Form field two-way binding.
+		// 7. Form field two-way binding.
 		// Listening for user to type in form field.
 		let hasValue = (('value' in this.attributes)&& tagName !== 'option');
 		if (hasValue) {
@@ -262,7 +275,7 @@ export default class VElement {
 		*/
 
 
-		// 7. Set initial value for select from value="" attribute.
+		// 8. Set initial value for select from value="" attribute.
 		// List of input types:
 		// https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#input_types
 		if (hasValue) // This should happen after the children are added, e.g. for select <options>

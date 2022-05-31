@@ -140,7 +140,7 @@ export default function lex(grammar, code, mode=null, line=1, col=1, index=0) {
 		// 1. Identify token
 
 
-		// TODO: Enable fastMatch:
+		// TODO: Enable fastMatch.  This makes it about 30% faster, with the potential for more.
 		// let pattern = findFastMatch(grammar, mode, current);
 		// if (pattern)
 		// 	[token, matchType] = matchToken(current, before, pattern, result);
