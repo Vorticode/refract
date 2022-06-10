@@ -435,8 +435,7 @@ var Testimony = {
 			}
 
 
-			for (let tr of trs)
-				parentEl.appendChild(tr);
+			parentEl.append(...trs);
 		}
 	},
 

@@ -41,10 +41,6 @@ export default class VExpression {
 	 * @type {?function} */
 	exec = null;
 
-	/**
-	 * @deprecated for loopParamNames
-	 * @type {?string} Used only with type='loop'.  The name of the argument passed to a function to generate a single child. */
-
 	/** @type {string[]} */
 	loopParamNames = [];
 
@@ -248,7 +244,7 @@ export default class VExpression {
 
 
 		let result = [];
-		if (this.type!=='loop') { // simple or complex
+		if (this.type !== 'loop') { // simple or complex
 			//#IFDEV
 			if (!this.xel)
 				throw new Error();
@@ -258,15 +254,17 @@ export default class VExpression {
 				.flat().map(h=>h===undefined?'':h); // undefined becomes empty string
 
 			if (this.isHash) // #{...} template
-				result = [htmls.map(html => new VText(html))]; // TODO: Don't join all the text nodes.  It creates index issues.
-			else
+				result = [htmls.map(html => new VText(html))]; // We don't join all the text nodes b/c it creates index issues.
+			else {
+				let scopeVarNames = Object.keys(this.scope);
 				for (let html of htmls) {
 					html += ''; // can be a number.
 					if (html.length) {
-						let vels = VElement.fromHtml(html, Object.keys(this.scope), this).flat();
+						let vels = VElement.fromHtml(html, scopeVarNames, this).flat();
 						result.push(vels);
 					}
 				}
+			}
 
 		} else { // loop
 			let array = this.evaluate();
@@ -278,12 +276,14 @@ export default class VExpression {
 			let i = 0;
 			for (let item of array) {
 				let group = [];
+				let params = [array[i], i, array];
 				for (let template of this.loopItemEls) {
 					let vel = template.clone(this.xel, this);
 					vel.scope = {...this.scope}
 
-					let params = [array[i], i, array];
-					for (let j in this.loopParamNames)
+					// Assign values to the parameters of the function given to .map() that's used to loop.
+					let len2 = this.loopParamNames.length;
+					for (let j=0; j<len2; j++) // Benchmarking shows this loop is about 2% faster than for...in.
 						vel.scope[this.loopParamNames[j]] = params[j];
 
 					group.push(vel);

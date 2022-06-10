@@ -1391,6 +1391,7 @@ Deno.test('Refract.loop.ifNested2', () => {
 	assertEquals(Refract.elsCreated, ['<p>', 'Cat2 will Frolic.']);
 });
 
+// Nested
 Deno.test('Refract.nested.basic', () => {
 
 	class B extends Refract {
@@ -1399,19 +1400,19 @@ Deno.test('Refract.nested.basic', () => {
 			super();
 			this.name = name;
 		}
-		html = `<x-b90>${this.name}</x-b90>`;
+		html = `<b-90>${this.name}</b-90>`;
 	}
 	B = eval(B.compile());
 
 
 	class A extends Refract {
-		html = `<a-90><x-b90 name="Apple"></x-b90></a-90>`;
+		html = `<a-90><b-90 name="Apple"></b-90></a-90>`;
 	}
 	eval(A.compile());
 
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<a-90><x-b90 name="Apple">Apple</x-b90></a-90>`);
+	assertEquals(a.outerHTML, `<a-90><b-90 name="Apple">Apple</b-90></a-90>`);
 });
 
 Deno.test('Refract.nested.passOBj', () => {
@@ -1485,6 +1486,59 @@ Deno.test('Refract.nested.loop', () => {
 
 	a.fruits.splice(1, 1);
 	assertEquals(a.outerHTML, `<a-100><x-b100 fruit="Apple"><b>Apple</b></x-b100><x-b100 fruit="Cherry"><b>Cherry</b></x-b100></a-100>`);
+});
+
+Deno.test('Refract.nested.childProp', () => {
+
+	class B extends Refract {
+		name = '';
+
+		constructor(name) {
+			super();
+			this.name = name;
+		}
+		html = `<b-105>${this.name}</b-105>`;
+	}
+	B = eval(B.compile());
+
+
+	class A extends Refract {
+		html = `<a-105><b-105 id="b" name="Apple"></b-105>${this.b.name}</a-105>`;
+	}
+	eval(A.compile());
+
+
+	let a = new A();
+	assertEquals(a.outerHTML, `<a-105><b-105 id="b" name="Apple">Apple</b-105>Apple</a-105>`);
+
+	a.b.name = 'Banana'; // [below] name attribute doesn't change b/c it was a static value passed to the constructor
+	assertEquals(a.outerHTML, `<a-105><b-105 id="b" name="Apple">Banana</b-105>Banana</a-105>`);
+});
+
+Deno.test('Refract.nested._childPropForwardReference', () => {
+
+	class B extends Refract {
+		name = '';
+
+		constructor(name) {
+			super();
+			this.name = name;
+		}
+		html = `<b-107>${this.name}</b-107>`;
+	}
+	B = eval(B.compile());
+
+
+	class A extends Refract { // Fails b/c this.b is not defined until the <b-107 element is added.
+		html = `<a-107>${this.b.name}<b-107 id="b" name="${this.name}"></b-107></a-107>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	assertEquals(a.outerHTML, `<a-107>Apple<b-107 id="b" name="Apple">Apple</b-107></a-107>`);
+
+	a.b.name = 'Banana';
+	assertEquals(a.outerHTML, `<a-107>Banana<b-107 id="b" name="Apple">Banana</b-107></a-107>`);
 });
 
 
@@ -1987,7 +2041,7 @@ Deno.test('Refract._debugRender', () => {
 
 
 	let el = A.debugRender();
-	document.body.appendChild(el);
+	document.body.append(el);
 });
 
 
