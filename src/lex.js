@@ -25,21 +25,25 @@ function matchToken(current, before, pattern, prevTokens) {
 }
 
 function findFastMatch(grammar, mode, current) {
-	let pattern;
-	let fm = grammar.fastMatch[mode];
-	if (fm) {
+	let type;
+	let pattern = grammar.fastMatch[mode];
+	if (pattern) {
 		let i = 0;
-		pattern = fm;
 		do {
 			let letter = current[i];
 			pattern = pattern[letter];
-			//console.log(i, letter);
+			if (pattern && pattern.length) {
+				[pattern, type] = pattern;
+				pattern = pattern[type];
+				break;
+			}
+
 			i++;
-		} while (pattern && (typeof pattern === 'object' && pattern.constructor == Object))
+		} while (pattern)
 
 
 	}
-	return pattern;
+	return [pattern, type];
 }
 
 /**
@@ -58,10 +62,13 @@ function toString() {
 
 export class Token {
 
-	constructor(text, type, mode) {
+	constructor(text, type, mode, line, col, originalLength) {
 		this.text = text;
 		this.type = type;
 		this.mode = mode;
+		this.line = line;
+		this.col = col;
+		this.originalLength = originalLength;
 	}
 
 	valueOf() {
@@ -132,6 +139,7 @@ export default function lex(grammar, code, mode=null, line=1, col=1, index=0) {
 		let current = code.slice(index);
 		let token = undefined;
 		let originalLength = undefined;
+		let pattern, pattern2, type;
 
 		// MatchType is a string to go into a new mode, -1 to leave a mode, or undefined to stay in the same mode.
 		let matchType = undefined;
@@ -141,15 +149,19 @@ export default function lex(grammar, code, mode=null, line=1, col=1, index=0) {
 
 
 		// TODO: Enable fastMatch.  This makes it about 30% faster, with the potential for more.
-		// let pattern = findFastMatch(grammar, mode, current);
-		// if (pattern)
-		// 	[token, matchType] = matchToken(current, before, pattern, result);
+		[pattern, type] = findFastMatch(grammar, mode, current);
+		if (pattern)
+			[token, matchType] = matchToken(current, before, pattern, result);
 
-		// Benchmarking shows this is by far the slowest part.
+		let gmode = grammar[mode];
+
+		// if (!token)
+		// 	console.log(current.slice(0, 20));
+
+
 		if (!token) {
-			//console.log(mode, current);
-			for (var [type, pattern2] of Object.entries(grammar[mode])) {
-				[token, matchType, originalLength] = matchToken(current, before, pattern2, result);
+			for (type in gmode) {
+				[token, matchType, originalLength] = matchToken(current, before, gmode[type], result);
 				if (token !== undefined)
 					break;
 			}

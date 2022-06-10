@@ -164,8 +164,8 @@ export default class VElement {
 			}
 		}
 
-		// 4. Use scoped styles.
-		if (this.tagName === 'style') {
+		// 4. Use scoped styles for non-shadowroot
+		if (this.tagName === 'style' && this.xel.contains(this.el)) {
 			this.xel.constructor.styleId = (this.xel.constructor.styleId || 0) + 1;
 			this.xel.dataset.style = this.xel.constructor.styleId;
 			if (this.vChildren.length) {
@@ -231,6 +231,15 @@ export default class VElement {
 					func(event, this.el, ...Object.values(this.scope));
 				}
 			}
+		}
+
+		// Attribute expressions
+		for (let expr of this.attributeExpressions) {
+			expr.scope = this.scope;
+			expr.apply(this.el)
+			expr.watch(() => {
+				expr.apply(this.el);
+			});
 		}
 
 
@@ -307,7 +316,7 @@ export default class VElement {
 					result.attributes[attrName].push(piece);
 			}
 		}
-		for (let expr of this.attributeExpressions)
+		for (let expr of this.attributeExpressions) // Expresions that create one or more attributes.
 			result.attributeExpressions.push(expr.clone(result.xel, this));
 
 		for (let child of this.vChildren)
@@ -460,8 +469,11 @@ export default class VElement {
 					}
 
 					// Expression that creates attribute(s)
-					else if (tagToken.type === 'expr')
-						vel.attributeExpressions.push(VExpression.fromTokens(tagToken.tokens, scopeVars, vParent));
+					else if (tagToken.type === 'expr') {
+						let expr = VExpression.fromTokens(tagToken.tokens, scopeVars, vParent);
+						expr.attributes = []; // Marks it as being an attribute expression.
+						vel.attributeExpressions.push(expr);
+					}
 				}
 
 				let isSelfClosing = tagTokens[tagTokens.length-1].text == '/>' ||

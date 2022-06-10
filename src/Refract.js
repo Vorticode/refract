@@ -382,7 +382,7 @@ export default class Refract extends HTMLElement {
 					'}',
 				];
 			}
-			injectCode = '\r\n\t\t\t' + [
+			injectCode = '\r\n\t\t' + [
 				'//Begin Refract injected code.',
 				...injectLines,
 				'//End Refract injected code.'

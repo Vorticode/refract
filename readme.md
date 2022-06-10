@@ -285,17 +285,20 @@ class CarBody extends Refract  {
 
 Any valid JavaScript variable can be passed to the embedded class this way, including functions or complex objects.
 
-### Shadow DOM
+### Scoped Styles
 
-Any element with the `shadow` attribute will have its child nodes attached within a [ShadowDOM](https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_shadow_DOM) element.  This allows styles to be embedded that **only** apply to the children of the Element with the `shadow` attribute.  The `:host` selector is used to style the element itself, per the ShadowDOM specification:
+Elements with `style` elements will be rewritten so that any style selectors beginning with `:host` within apply only to the Refract element.  This is done by:
+
+1. Adding a `data-style` attribute to the root element with a custom id.
+2. Replacing any `:host` selectors inside the style with `element-name#style-id`  For example below the `:host` selector would become `fancy-text[data-style="1"]`.
 
 ```javascript
 class FancyText extends Refract {
     html = `
-        <fancy-text shadow>
+        <fancy-text>
             <style>
                 :host { border: 10px dashed red } /* style for <fancy-text> */
-                p { text-shadow: 0 0 5px orange } 
+                :host p { text-shadow: 0 0 5px orange } 
             </style>
             <p>I have a red border and shadow!</p>
         </fancy-text>`;
@@ -303,7 +306,23 @@ class FancyText extends Refract {
 eval(FancyText.compile());
 ```
 
+### Shadow DOM
 
+Any element with the `shadow` attribute will have its child nodes attached within a [ShadowDOM](https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_shadow_DOM) element.  This allows styles to be embedded that **only** apply to the children of the Element with the `shadow` attribute.  The `:host` selector is used to style the element itself, per the ShadowDOM specification.  Unlike scoped styles, this scoping is performed automatically by the browser.
+
+```javascript
+class FancyText extends Refract {
+    html = `
+        <fancy-text shadow>
+            <style>
+                :host { border: 10px dashed red } /* style for <fancy-text> */
+                p { text-shadow: 0 0 5px orange } /* No need for :host prefix */
+            </style>
+            <p>I have a red border and shadow!</p>
+        </fancy-text>`;
+}
+eval(FancyText.compile());
+```
 
 ### Slots
 

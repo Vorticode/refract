@@ -584,6 +584,87 @@ Deno.test('Refract.expr.conditionalFunction2', () => {
 });
 
 
+
+// Attributes:
+Deno.test('Refract.attributes.basic', () => {
+
+	class A extends Refract {
+		title = 'Hello';
+		html =
+			`<x-82 title="${this.title}"></x-82>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	assertEquals(a.outerHTML, `<x-82 title="Hello"></x-82>`);
+
+	a.title = 'Goodbye';
+	assertEquals(a.outerHTML, `<x-82 title="Goodbye"></x-82>`);
+
+	a.title = [1, 2, 3];
+});
+
+Deno.test('Refract.attributes.StyleObject', () => {
+
+	class A extends Refract {
+		styles = '';
+		html = `<x-87><div style="width: 10px; ${this.styles} height: 20px"></div></x-87>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	assertEquals(a.outerHTML, `<x-87><div style="width: 10px;  height: 20px"></div></x-87>`);
+
+	a.styles = {top: 0, left: '3px'};
+	assertEquals(a.outerHTML, `<x-87><div style="width: 10px; top: 0; left: 3px;  height: 20px"></div></x-87>`);
+
+	a.styles = {};
+	assertEquals(a.outerHTML, `<x-87><div style="width: 10px;  height: 20px"></div></x-87>`);
+
+	a.styles = '';
+	assertEquals(a.outerHTML, `<x-87><div style="width: 10px;  height: 20px"></div></x-87>`);
+});
+
+Deno.test('Refract.attributes._Set', () => {
+	class A extends Refract {
+		classes = new Set();
+		html = `<x-85><div class="one ${this.classes}"></div></x-85>`;
+	}
+	eval(A.compile());
+	let a = new A();
+	assertEquals(a.outerHTML, `<x-85><div class="one "></div></x-85>`);
+
+	a.classes.add('two');
+	assertEquals(a.outerHTML, `<x-85><div class="one two"></div></x-85>`);
+
+}); // Fails b/c Watch doesn't intercept Set() methods, so we don't get called on add().
+
+
+Deno.test('Refract.attributes.attributeExpressions', () => {
+
+	class A extends Refract {
+		attr = 'contenteditable';
+		html =
+			`<x-88 ${this.attr}></x-88>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	assertEquals(a.outerHTML, `<x-88 contenteditable=""></x-88>`);
+
+	a.attr = 'disabled';
+	assertEquals(a.outerHTML, `<x-88 disabled=""></x-88>`);
+
+	a.attr = '';
+	assertEquals(a.outerHTML, `<x-88></x-88>`);
+	a.attr = null;
+	assertEquals(a.outerHTML, `<x-88></x-88>`);
+	a.attr = undefined;
+	assertEquals(a.outerHTML, `<x-88></x-88>`);
+
+});
+
+
 // Loop:
 Deno.test('Refract.loop.Push', () => {
 
@@ -1308,62 +1389,6 @@ Deno.test('Refract.loop.ifNested2', () => {
 
 	// It recreates the whole thing because it has to re-evaluate the pet.name.startsWith('C') expression.
 	assertEquals(Refract.elsCreated, ['<p>', 'Cat2 will Frolic.']);
-});
-
-Deno.test('Refract.attributes.basic', () => {
-
-	class A extends Refract {
-		title = 'Hello';
-		html =
-			`<x-82 title="${this.title}"></x-82>`;
-	}
-	eval(A.compile());
-
-	let a = new A();
-	assertEquals(a.outerHTML, `<x-82 title="Hello"></x-82>`);
-
-	a.title = 'Goodbye';
-	assertEquals(a.outerHTML, `<x-82 title="Goodbye"></x-82>`);
-
-	a.title = [1, 2, 3];
-
-});
-
-Deno.test('Refract.attributes.StyleObject', () => {
-
-	class A extends Refract {
-		styles = '';
-		html = `<x-87><div style="width: 10px; ${this.styles} height: 20px"></div></x-87>`;
-	}
-	eval(A.compile());
-
-	let a = new A();
-	assertEquals(a.outerHTML, `<x-87><div style="width: 10px;  height: 20px"></div></x-87>`);
-
-	a.styles = {top: 0, left: '3px'};
-	assertEquals(a.outerHTML, `<x-87><div style="width: 10px; top: 0; left: 3px;  height: 20px"></div></x-87>`);
-
-	a.styles = {};
-	assertEquals(a.outerHTML, `<x-87><div style="width: 10px;  height: 20px"></div></x-87>`);
-
-	a.styles = '';
-	assertEquals(a.outerHTML, `<x-87><div style="width: 10px;  height: 20px"></div></x-87>`);
-});
-
-// Fails b/c Watch doesn't intercept Set() methods, so we don't get called on add().
-
-Deno.test('Refract.attributes._Set', () => {
-	class A extends Refract {
-		classes = new Set();
-		html = `<x-85><div class="one ${this.classes}"></div></x-85>`;
-	}
-	eval(A.compile());
-	let a = new A();
-	assertEquals(a.outerHTML, `<x-85><div class="one "></div></x-85>`);
-
-	a.classes.add('two');
-	assertEquals(a.outerHTML, `<x-85><div class="one two"></div></x-85>`);
-
 });
 
 Deno.test('Refract.nested.basic', () => {

@@ -302,39 +302,64 @@ import utils from './utils.js';
 		// },
 		html: {
 			'<': {
-				'/': lexHtmlJs.html.closeTag,
-				'a-z': lexHtmlJs.html.openTag,
-				'!': lexHtmlJs.html.comment,
-			}
+				'/': [lexHtmlJs.html, 'closeTag'],
+				'a-z0-9': [lexHtmlJs.html, 'openTag'],
+				'!': [lexHtmlJs.html, 'comment'],
+			},
+			'a-z0-9 \t\r\n': [lexHtmlJs.html, 'text']
 		},
 
 		tag: {
-			'a-z': lexHtmlJs.tag.attribute,
-			' ': lexHtmlJs.tag.whitespace,
-			'\t': lexHtmlJs.tag.whitespace,
-			'"': lexHtmlJs.tag.string,
-			"'": lexHtmlJs.tag.string,
-			">": lexHtmlJs.tag.tagEnd,
-			"/": lexHtmlJs.tag.tagEnd,
-			'=': lexHtmlJs.tag.equals,
+			'a-z0-9': [lexHtmlJs.tag, 'attribute'],
+			' \t\r\n': [lexHtmlJs.tag, 'whitespace'],
+			'"': [lexHtmlJs.tag, 'string'],
+			"'": [lexHtmlJs.tag, 'string'],
+			">": [lexHtmlJs.tag, 'tagEnd'],
+			"/": {
+				'>': [lexHtmlJs.tag, 'tagEnd']
+			},
+			'=': [lexHtmlJs.tag, 'equals'],
 		},
 		dquote: {
-			'"': lexHtmlJs.dquote.quote
+			'"': [lexHtmlJs.dquote, 'quote']
 		}
 	};
 
 	function expandFastMatch(obj) {
-		for (let name of obj) {
-			if (name === 'a-z')
+		for (let name in obj) {
+
+
+			if (!obj[name].length) // not an array, recurse:
+				expandFastMatch(obj[name]);
 
 			if (name.length > 1) {
-				for (let letter of name)
-					obj[letter] = obj[name];
-				delete obj[name];
-			}
+				let originalName = name;
 
+				if (name.includes('a-z')) {
+					for (let letter of 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ')
+						obj[letter] = obj[originalName];
+					name = name.replace('a-z', '');
+				}
+				if (name.includes('0-9')) {
+					for (let letter of '0123456789')
+						obj[letter] = obj[originalName];
+					name = name.replace('0-9', '');
+				}
+
+				if (name.length > 1)
+					for (let letter of name)
+						obj[letter] = obj[originalName];
+
+				delete obj[originalName];
+			}
 		}
+		Object.freeze(obj); // Theoretically makes it faster, but benchmarking doesn't show this.
+
 	}
+	for (let name in lexHtmlJs.fastMatch)
+		expandFastMatch(lexHtmlJs.fastMatch[name]);
+
+	Object.freeze(lexHtmlJs.fastMatch);
 }
 
 export default lexHtmlJs;

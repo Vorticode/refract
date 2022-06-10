@@ -4,8 +4,8 @@ import Parse from './Parse.js';
 import Watch from "./Watch.js";
 import VElement from './VElement.js';
 import VText from "./VText.js";
-import Html from "./Html.js";
-
+import lex from "./lex.js";
+import lexHtmljs from "./lex-htmljs.js";
 
 /**
  * A parsed ${} or #{} expression embedded in an html template ``  */
@@ -14,9 +14,13 @@ export default class VExpression {
 	/** @type {string[][]} Array of watched paths, parsed from the expression. */
 	watchPaths = [];
 
-	/** @type {string|null} Only used when the expression is inside an attribute. */
+	/**
+	 * @type {string|null} Only used when the expression is inside an attribute.
+	 * If it's an empty string, that means it's an attribute expression.  E.g. ${'checked'}*/
 	attrName = null;
 
+	/** @type {string[]|null} If an expression that creates attributes, keep track of them here. */
+	attributes = null;
 
 	/**
 	 * @type {string} simple|complex|loop
@@ -123,28 +127,64 @@ export default class VExpression {
 		if (!('virtualElement' in this.parent) && !this.parent.parentNode)
 			return 0;
 		//#ENDIF
+		if (this.attributes) { // An Expression that creates one or more attributes.
+			for (let attr of this.attributes)
+				parent.removeAttribute(attr);
 
-		// Remove old children.
-		for (let group of this.vChildren)
-			for (let vChild of group.slice()) // Slice because vChild.remove() can alter group, throwing off the index.
-				vChild.remove();
-
-		// Create new children.
-		this.vChildren = this.evaluateToVElements();
-
-		// Add children to parent.
-		let count = 0;
-		let startIndex = this.startIndex;
-		for (let group of this.vChildren) {
-			for (let vChild of group) {
-				vChild.startIndex = startIndex;
-				let num = vChild.apply(this.parent, null);
-				startIndex += num;
-				count += num;
+			let text = this.evaluate();
+			if (text) {
+				let tokens = lex(lexHtmljs, text, 'tag');
+				let lastName = null;
+				for (let token of tokens) {
+					if (token.type === 'attribute') {
+						if (lastName)
+							parent.setAttribute(lastName, '');
+						lastName = token;
+						this.attributes.push(lastName);
+					} else if (token.type === 'string') {
+						parent.setAttribute(lastName, token);
+						lastName = null;
+					}
+				}
+				if (lastName)
+					parent.setAttribute(lastName, '');
 			}
+
+			return 0;
 		}
 
-		return count;
+
+		else if (this.attrName) {
+			//#IFDEV
+			// Make sure we're not applying on an element that's been removed.
+			throw new Error();
+			//#ENDIF
+		}
+
+		else {
+
+			// Remove old children.
+			for (let group of this.vChildren)
+				for (let vChild of group.slice()) // Slice because vChild.remove() can alter group, throwing off the index.
+					vChild.remove();
+
+			// Create new children.
+			this.vChildren = this.evaluateToVElements();
+
+			// Add children to parent.
+			let count = 0;
+			let startIndex = this.startIndex;
+			for (let group of this.vChildren) {
+				for (let vChild of group) {
+					vChild.startIndex = startIndex;
+					let num = vChild.apply(this.parent, null);
+					startIndex += num;
+					count += num;
+				}
+			}
+
+			return count;
+		}
 	}
 
 	/**
@@ -157,6 +197,7 @@ export default class VExpression {
 		let result = new VExpression();
 		result.watchPaths = this.watchPaths;
 		result.attrName = this.attrName;
+		result.attributes = this.attributes;
 
 		result.type = this.type;
 		result.exec = this.exec;
