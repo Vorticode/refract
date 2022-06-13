@@ -1,18 +1,20 @@
 import Utils, { csv, removeProxy } from './utils.js';
 import watchProxy, {WatchUtil} from './watchProxy.js';
 import delve from './delve.js';
+import utils from "./utils.js";
 
 
 /**
  * Allow subscribing only to specific properties of an object.
  * Internally, the property is replaced with a call to Object.defineProperty() that forwards to
- * a proxy created by watchObh() above. */
+ * a proxy created by watchProxy(). */
 class WatchProperties {
 
 	constructor(obj) {
 		this.obj_ = obj;   // Original object being watched.
 		this.fields_ = {}; // Unproxied underlying fields that store the data.
 		                   // This is necessary to store the values of obj_ after defineProperty() is called.
+
 		this.proxy_ = watchProxy(this.fields_, this.notify_.bind(this));
 
 		/** @type {Object<string, function>} A map from a path to the callback subscribed to that path. */
@@ -28,12 +30,27 @@ class WatchProperties {
 	 * @param value {*=}
 	 * @param oldVal {*=} */
 	notify_(action, path, value, oldVal) {
-
-
-		let allCallbacks = [];
-		if (action === 'info')
+		if (action === 'info') // Used with the $subscribers meta-property?
 			return this.subs_;
 
+		let allCallbacks = this.getAllCallbacks(path, action, value, oldVal);
+
+		// Debugging is easier if I added all callbacks to an array, then called them.
+		// It's also necessary to accumulate and call the callbacks this way, because other callbacks can modify the subscribers
+		// and cause some subscriptions to be skipped.
+		for (let [func, args] of allCallbacks)
+			func.apply(this.obj_, args);
+	}
+
+	/**
+	 * Get all functions that should be called when `action` is performed on `path`.
+	 * @param action {string}
+	 * @param path {string[]}
+	 * @param value {*=}
+	 * @param oldVal {*=}
+	 * @return {[function(), *[]]} Function and array of arguments to pass to function. */
+	getAllCallbacks(path, action, value, oldVal) {
+		let result = [];
 		let cpath = csv(path);
 
 		// Traverse up the path looking for anything subscribed.
@@ -46,16 +63,14 @@ class WatchProperties {
 				for (let callback of this.subs_[parentCPath])
 					// "this.obj_" so it has the context of the original object.
 					// We set indirect to true, which data-loop's rebuildChildren() uses to know it doesn't need to do anything.
-					//callback.apply(this.obj_, arguments)
-					allCallbacks.push([callback, [action, path, value, oldVal, this.obj_]]);
+					result.push([callback, [action, path, value, oldVal, this.obj_]]);
 			parentPath.pop();
 		}
 
 		// Notify at the current level:
 		if (cpath in this.subs_)
 			for (let callback of this.subs_[cpath])
-				//callback.apply(this.obj_, arguments);
-				allCallbacks.push([callback, [action, path, value, oldVal, this.obj_]]);
+				result.push([callback, [action, path, value, oldVal, this.obj_]]);
 
 		// Traverse to our current level and downward looking for anything subscribed
 		let newVal = delve(this.obj_, path, delve.dontCreateValue, true);
@@ -64,25 +79,19 @@ class WatchProperties {
 				let subPath = name.slice(cpath.length > 0 ? cpath.length + 1 : cpath.length); // +1 for ','
 				let oldSubPath = JSON.parse('[' + subPath + ']');
 
-				let oldSubVal = removeProxy(delve(oldVal, oldSubPath, delve.dontCreateValue, true));
-				let newSubVal = removeProxy(delve(newVal, oldSubPath, delve.dontCreateValue, true));
+				let oldSubVal = utils.removeProxy(delve(oldVal, oldSubPath, delve.dontCreateValue, true));
+				let newSubVal = utils.removeProxy(delve(newVal, oldSubPath, delve.dontCreateValue, true));
 
 				if (oldSubVal !== newSubVal) {
 					let callbacks = this.subs_[name];
 					if (callbacks.length) {
-						let fullSubPath = JSON.parse('[' + name + ']');
+						let fullSubPath = JSON.parse('[' + name + ']'); // Parse as csv
 						for (let callback of callbacks)  // [below] "this.obj_" so it has the context of the original object.
-							//callback.apply(this.obj_, [action, fullSubPath, newSubVal, oldSubVal, this.obj_]);
-							allCallbacks.push([callback, [action, fullSubPath, newSubVal, oldSubVal, this.obj_]]);
+							result.push([callback, [action, fullSubPath, newSubVal, oldSubVal, this.obj_]]);
 					}
 				}
 			}
-
-		// Debugging is easier if I added all callbacks to an array, then called them.
-		// It's also necessary to accumulate and call the callbacks this way, because other callbacks can modify the subscribers
-		// and cause some subscriptions to be skipped.
-		for (let callback of allCallbacks)
-			callback[0].apply(this.obj_, callback[1]);
+		return result;
 	}
 
 	/**

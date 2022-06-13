@@ -5,6 +5,7 @@ Testimony.enableJsDom();
 //import Refract from './../dist/Refract.min.js';
 import Refract from './../src/Refract.js';
 import createEl from '../src/createEl.js';
+import Watch from "../src/Watch.js";
 
 Refract.elsCreated = [];
 
@@ -1402,7 +1403,7 @@ Deno.test('Refract.nested.basic', () => {
 		}
 		html = `<b-90>${this.name}</b-90>`;
 	}
-	B = eval(B.compile());
+	eval(B.compile());
 
 
 	class A extends Refract {
@@ -1425,7 +1426,7 @@ Deno.test('Refract.nested.passOBj', () => {
 		}
 		html = `<x-b95>${this.fruits2}</x-b95>`;
 	}
-	B = eval(B.compile());
+	eval(B.compile());
 
 
 	class A extends Refract {
@@ -1466,7 +1467,7 @@ Deno.test('Refract.nested.loop', () => {
 		}
 		html = `<x-b100><b>${this.fruit}</b></x-b100>`;
 	}
-	B = eval(B.compile());
+	eval(B.compile());
 
 
 	class A extends Refract {
@@ -1499,7 +1500,7 @@ Deno.test('Refract.nested.childProp', () => {
 		}
 		html = `<b-105>${this.name}</b-105>`;
 	}
-	B = eval(B.compile());
+	eval(B.compile());
 
 
 	class A extends Refract {
@@ -1515,6 +1516,34 @@ Deno.test('Refract.nested.childProp', () => {
 	assertEquals(a.outerHTML, `<a-105><b-105 id="b" name="Apple">Banana</b-105>Banana</a-105>`);
 });
 
+Deno.test('Refract.nested.childProp2', () => {
+	class B extends Refract {
+		name = 'apple';
+
+		update() {
+			this.name = 'banana';
+		}
+
+		html = `<b-1>${this.name}</b-1>`;
+	}
+	eval(B.compile());
+
+	class A extends Refract {
+		html = `<a-1><b-1 id="b"></b-1>${this.b.name}</a-1>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	debugger;
+	console.log(a.b.name);
+
+	a.b.update();
+	console.log(a.outerHTML);
+});
+
+
+
+
 Deno.test('Refract.nested._childPropForwardReference', () => {
 
 	class B extends Refract {
@@ -1526,7 +1555,7 @@ Deno.test('Refract.nested._childPropForwardReference', () => {
 		}
 		html = `<b-107>${this.name}</b-107>`;
 	}
-	B = eval(B.compile());
+	eval(B.compile());
 
 
 	class A extends Refract { // Fails b/c this.b is not defined until the <b-107 element is added.
@@ -1651,16 +1680,6 @@ Deno.test('Refract.form.inputExprDereference', () => {
 });
 
 
-
-
-
-
-
-
-
-
-
-
 Deno.test('Refract.form._inputExprComplex', () => {
 
 	// Below, when name is resolved inside the loop, I need to watch it just like a regular variable.
@@ -1737,16 +1756,6 @@ Deno.test('Refract.form._inputExprComplex3', () => {
 	console.log(a.values);
 	//assertEquals(a.values.name, 'cherry');
 });
-
-
-
-
-
-
-
-
-
-
 
 
 

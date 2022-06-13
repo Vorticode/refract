@@ -2,7 +2,7 @@ import {assert, assertEquals, Testimony} from './lib/Testimony.js';
 Testimony.enableJsDom();
 
 import Watch, {WatchProperties} from "../src/Watch.js";
-import {WatchUtil} from '../src/watchProxy.js';
+import watchProxy, {WatchUtil} from '../src/watchProxy.js';
 
 
 /**
@@ -74,7 +74,7 @@ Deno.test('Watch.removeProxy2', () => {
 });
 
 // Same as WatchProxy.twoLevel, but with watch() instead of watchProxy.
-Deno.test('Watch.twoLevel', () => {
+Deno.test('Watch.nestedUpdate', () => {
 	var a = {
 		b1: {
 			c: 1,
@@ -95,13 +95,38 @@ Deno.test('Watch.twoLevel', () => {
 	};
 	Watch.add(a.b1, ['parent', 'b2'], cb2);
 
-
 	a.b1.parent.b2[0] = 5;
 
 	assertEquals(a.b2[0], 5);
 	assert(called.has('a.b2'));
 	assert(called.has('b1.parent.b2'));
 });
+
+
+
+Deno.test('Watch._nestedUpdateViaFunction', () => {
+	var b = {
+		name: 'apple',
+		update() {
+			this.name = 'banana';
+		}
+	}
+
+	var a = {b};
+
+	var called = [];
+	Watch.add(a, ['b', 'name'], (action, path) => {
+		called.push('a.' + path);
+	});
+
+	Watch.add(a.b, ['name'], (action, path) => {
+		called.push('b.' + path);
+	});
+
+	a.b.update();
+	assertEquals(called, ['a.b.name', 'b.name']);
+});
+
 
 // Test finding proxied items.
 Deno.test('Watch.indexOf', () => {

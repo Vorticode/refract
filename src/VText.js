@@ -27,7 +27,7 @@ export default class VText {
 			if (this.el) { // Setting textContent will handle html entity <>& encoding properly.
 				this.el.textContent = this.text;
 			} else {
-				this.el = document.createTextNode(this.text);
+				this.el = parent.ownerDocument.createTextNode(this.text);
 				parent.insertBefore(this.el, parent.childNodes[this.startIndex]);
 			}
 

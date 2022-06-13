@@ -3,6 +3,7 @@ Testimony.enableJsDom();
 
 import watchProxy, {WatchUtil} from "../src/watchProxy.js";
 import Watch from "../src/Watch.js";
+import Refract from "../src/Refract.js";
 
 function trackGarbage(callback) {
 	// Switch them from WeakMap to Map so we can check the size.

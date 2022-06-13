@@ -187,14 +187,16 @@ import Utils, {removeProxies, isObj, RefractError} from './utils.js';
 
 
 	var WatchUtil = {
-		/** @type {WeakMap<Object, Proxy>} Map from an object to the Proxy of itself. */
+		/** @type {WeakMap<Object, Proxy>} A map from an object to the Proxy of itself. */
 		proxies: new WeakMap(),
 
-		/** @type {WeakMap<Object, Set<Object>>} A map from an object to all of its root objects that have properties pointing to it.. */
+		proxiesReverse: new WeakMap(),
+
+		/** @type {WeakMap<Object, Set<Object>>} A map from an object to all of its root objects that have properties pointing to it. */
 		roots: new WeakMap(),
 
 
-		/** @type {WeakMap<Object, function[]>} A map from roots to the callbacks that should be called when they're changed.. */
+		/** @type {WeakMap<Object, function[]>} A map from roots to the callbacks that should be called when they're changed. */
 		callbacks: new WeakMap(),
 
 		/**
@@ -213,6 +215,7 @@ import Utils, {removeProxies, isObj, RefractError} from './utils.js';
 			if (!proxy) {
 
 				WatchUtil.proxies.set(obj, proxy = new Proxy(obj, handler));
+				WatchUtil.proxiesReverse.set(proxy, obj);
 
 				if (Array.isArray(obj)) {
 					//debugger;
@@ -417,10 +420,10 @@ import Utils, {removeProxies, isObj, RefractError} from './utils.js';
 			//#ENDIF
 
 			// Add root from obj to path.
-			let a = WatchUtil.roots.get(obj);
-			if (!a)
-				WatchUtil.roots.set(obj, a = new Set()); // Wet and not WeakSet because it must be iterable.
-			a.add(root);
+			let pointingToObj = WatchUtil.roots.get(obj);
+			if (!pointingToObj)
+				WatchUtil.roots.set(obj, pointingToObj = new Set()); // Wet and not WeakSet because it must be iterable.
+			pointingToObj.add(root);
 
 			// Get the map from object to paths.
 			let objMap = WatchUtil.paths.get(root);

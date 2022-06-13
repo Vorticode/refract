@@ -11,7 +11,7 @@ import lexHtmljs from "./lex-htmljs.js";
  * A parsed ${} or #{} expression embedded in an html template ``  */
 export default class VExpression {
 
-	/** @type {string[][]} Array of watched paths, parsed from the expression. */
+	/** @type {string[][]} Array of watched paths, parsed from the expression. See also this.watches. */
 	watchPaths = [];
 
 	/**
@@ -32,6 +32,9 @@ export default class VExpression {
 	 * If type==='loop', the first watchPath is the loop array. */
 	type = 'simple';
 
+	/**
+	 * Is this a #{...} expression?
+	 * @type {boolean} */
 	isHash = false;
 
 	/**
@@ -41,7 +44,10 @@ export default class VExpression {
 	 * @type {?function} */
 	exec = null;
 
-	/** @type {string[]} */
+	/**
+	 * Names of the parameters accepted by the function given to array.map().
+	 * E.g. ['item', 'index', 'array'] for array.map((item, index, array) => {...});
+	 * @type {string[]} */
 	loopParamNames = [];
 
 	/**
@@ -85,9 +91,9 @@ export default class VExpression {
 
 
 	/**
-	 *
-	 * @type {[Refract, string[], function][]}
-	 */
+	 * Arguments passed to Watch.add() for this expression.  We track them here so we can later remove them via Watch.remove().
+	 * See also this.watchPaths.
+	 * @type {[Refract, string[], function][]} */
 	watches = [];
 
 	//#IFDEV
@@ -99,7 +105,6 @@ export default class VExpression {
 
 
 	constructor() {
-
 		//#IFDEV
 		//this.stack = (new Error()).stack.split(/\n\s+at /g).slice(1);
 		//#ENDIF

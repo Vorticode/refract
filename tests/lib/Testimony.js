@@ -357,14 +357,14 @@ var Testimony = {
 
 	/**
 	 * Add a test.
-	 * @param a
-	 * @param b */
-	test(a, b) {
+	 * @param name {string}
+	 * @param func {function|Object} */
+	test(name, func) {
 
-		if (typeof b === 'function')
-			Testimony.tests[a] = new Test(a, b);
+		if (typeof func === 'function')
+			Testimony.tests[name] = new Test(name, func);
 		else
-			Testimony.tests[a] = new Test(b.name, b.fn);
+			Testimony.tests[name] = new Test(func.name, func.fn);
 	},
 
 	/**
@@ -405,7 +405,7 @@ var Testimony = {
 						if (Testimony.throwOnFail) {
 							result = result = test.fn();
 							if (result instanceof Promise)
-								await result;
+								result = await result;
 							if (result === undefined)
 								result = true;
 						} else {
@@ -441,8 +441,7 @@ var Testimony = {
 
 	/**
 	 * Used only when running from the command line.
-	 * Define document object to allow us to run all modules from the command line.
-	 */
+	 * Define document object to allow us to run all modules from the command line.  */
 	enableJsDom() {
 		if (!globalThis.document) {
 			(async () => {
@@ -454,6 +453,13 @@ var Testimony = {
 				await new Promise(resolve => setTimeout(resolve, 10));
 			})()
 		}
+	},
+
+	mockElement(html, callback) {
+		let el = createEl('<div>' + html + '</div>').firstChild;
+		document.body.appendChild(el);
+		callback(el, el.ownerDocument);
+		document.body.removeChild(el);
 	}
 
 }
