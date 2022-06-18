@@ -2,6 +2,7 @@ import {assert, assertEquals, Testimony} from './lib/Testimony.js';
 Testimony.enableJsDom();
 
 import Watch, {WatchProperties} from "../src/Watch.js";
+import Watcher from "../src/Watcher.js";
 import watchProxy, {WatchUtil} from '../src/watchProxy.js';
 
 
@@ -30,6 +31,28 @@ function trackGarbage(callback) {
 	Watch.objects = new WeakMap();
 }
 
+
+
+Deno.test('Watcher.init', () => {
+	var o = {a: [0, 1]};
+
+	Watch.add(o,['a'], (action, path, value) => {});
+	assertEquals(o.a.length, 2);
+	assertEquals(o.a[0], 0);
+	assertEquals(o.a[1], 1);
+});
+
+Deno.test('Watcher.set', () => {
+	var o = {a: 1};
+
+	var called = [];
+	Watch.add(o,['a'], (action, path, value) => {
+
+	});
+});
+
+
+// old:
 
 Deno.test('Watch.init', () => {
 	var o = {a: [0, 1]};

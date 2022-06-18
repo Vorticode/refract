@@ -28,6 +28,7 @@ export default class VText {
 				this.el.textContent = this.text;
 			} else {
 				this.el = parent.ownerDocument.createTextNode(this.text);
+				parent = parent.shadowRoot || parent;
 				parent.insertBefore(this.el, parent.childNodes[this.startIndex]);
 			}
 

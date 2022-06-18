@@ -1534,7 +1534,6 @@ Deno.test('Refract.nested.childProp2', () => {
 	eval(A.compile());
 
 	let a = new A();
-	debugger;
 	console.log(a.b.name);
 
 	a.b.update();
@@ -1945,18 +1944,27 @@ Deno.test('Refract.events._Loop2', () => {
 	assertEquals(clicked.fruit, 'Banana');
 });
 
-Deno.test('Refract.shadowDom', () => {
+Deno.test('Refract.shadow.basic', () => {
 	class S extends Refract {
-		html = `
-			<s-1 shadow>
-				<div>hi</div>
-			</s-1>`;
+		html = `<s-1 shadow><div>hi</div></s-1>`;
 	}
 	S = eval(S.compile());
 
 	let s = new S();
 	assert(s.shadowRoot);
 	assertEquals(s.shadowRoot.firstChild.tagName, 'DIV');
+	assertEquals(s.shadowRoot.innerHTML, '<div>hi</div>');
+});
+
+Deno.test('Refract.shadow.text', () => {
+	class S extends Refract {
+		html = `<s-2 shadow><div>hi</div> </s-2>`;
+	}
+	S = eval(S.compile());
+
+	let s = new S();
+	assert(s.shadowRoot);
+	assertEquals(s.shadowRoot.innerHTML, '<div>hi</div> ');
 });
 
 Deno.test('Refract.slot.basic', () => {
@@ -2018,6 +2026,22 @@ Deno.test('Refract.slot.multiple', () => {
 	let a = createEl(`<a-405>test</a-405>`);
 	assertEquals(a.outerHTML,
 		`<a-405><p><slot>test</slot></p><slot>test</slot></a-405>`);
+});
+
+Deno.test('Refract.slot.nested', () => {
+	class B extends Refract {
+		html = `<b-407><slot></slot></b-407>`;
+	}
+	eval(B.compile());
+
+	class A extends Refract {
+		html = `<a-407 shadow><b-407><div>apple</div></b-407></a-407>`;
+	}
+	eval(A.compile());
+
+	let a = createEl(`<a-407></a-407>`);
+	assertEquals(a.innerHTML, ``);
+	assertEquals(a.shadowRoot.innerHTML, `<b-407><slot><div>apple</div></slot></b-407>`);
 });
 
 Deno.test('Refract.slot._named', () => {

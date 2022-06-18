@@ -137,7 +137,6 @@ export default class VElement {
 					// Insert into slot if it has one.  TODO: How to handle named slots here?
 					if (p2 !== this.xel && p2.tagName && p2.tagName.includes('-') && newEl.tagName !== 'SLOT')
 						p2 = p2.querySelector('slot') || p2;
-
 					p2.insertBefore(newEl, p2.childNodes[this.startIndex]);
 				}
 			}

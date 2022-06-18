@@ -1,9 +1,33 @@
-import {RefractError} from "./utils.js";
 import {WatchUtil} from "./watchProxy.js";
+import delve from "./delve.js";
+
+class WatchCallback {
+
+	/** string[] */
+	path;
+
+	/** function(action:string, path:string[], newVal, oldVal) */
+	callback;
+
+	constructor(path, callback) {
+		this.path = path;
+		this.callback = callback;
+	}
+}
 
 /**
  * Replacement for Watch.js and watchProxy.js that isn't used yet.
- * Motivation:  The existing watch code is too complex to debug. */
+ * Motivation:  The existing watch code is too complex to debug.
+ * What's different this time?
+ *
+ * This class wraps every name=> value pair when descending along a path.
+ * It combines all of the various WeakMaps that used to be all over the place.
+ * When we subscribe (add), the subscription is pushed to the bottom-most Watcher's array of callbacks,
+ * but with the original path that was subscribed.
+ *
+ * TODO:
+ * Need defineProperty at the top level or else I won't get any notifications.
+ * */
 export default class Watcher {
 
 	/** @type WeakMap<root:object, string[][]> */
@@ -18,28 +42,40 @@ export default class Watcher {
 	/** @type {object} The original object being watched. */
 	original;
 
-	/** @type {Map<string, function[]>} Map from csv path string to function to call when a property on this object changes. */
+	/** @type {Map<string, WatchCallback[]>} Map from field name to function to call when a property on this object changes. */
 	callbacks = new Map();
 
 	constructor(obj) {
 		if (Watcher.byOriginal.has(obj))
 			throw new Error();
 		this.original = obj;
-		this.fields = {...obj};
+		this.fields = {...obj}; // Is this used?
 		this.proxy = new Proxy(obj, proxyHandler);
 	}
 
 	/**
+	 * @param obj {Object}
 	 * @param path {string[]}
 	 * @param callback {function} */
-	add(path, callback) {
-		let cpath = JSON.encode(path).slice(1, -1);
+	static add(obj, path, callback) {
 
-		let callbacks = this.callbacks.get(cpath);
+		let wc = new WatchCallback(path, callback);
+
+		// TODO: Object.defineProperty()
+
+		// Delve along path to add the subscription to the Watcher for the object at the bottom.
+		let watcher = Watcher.get(obj);
+		if (path.length > 1) {
+			let obj2 = delve(watcher.original, path.slice(0, -1));
+			watcher = Watcher.get(obj2);
+		}
+		let field = path.slice(-1)[0];
+
+		let callbacks = watcher.callbacks.get(field);
 		if (!callbacks)
-			this.callbacks.set(cpath, [callback]);
+			watcher.callbacks.set(field, [wc]);
 		else
-			callbacks.push(callback);
+			callbacks.push(wc);
 	}
 
 	/**
@@ -61,10 +97,10 @@ export default class Watcher {
 	}
 }
 
-/** @type {WeakMap<Proxy, Watcher>} */
+/** @type {WeakMap<Proxy, Watcher>} Map from proxies to their Watcher instances.*/
 Watcher.byProxy = new WeakMap();
 
-/** @type {WeakMap<Object, Watcher>} */
+/** @type {WeakMap<Object, Watcher>} Map from original objects to their Watcher instances. */
 Watcher.byOriginal = new WeakMap();
 
 
@@ -81,6 +117,7 @@ var proxyHandler = {
 
 		// 2. A function
 		// Make sure to call functions on the unproxied version
+		// TODO: Intercept array functions here?
 		if (typeof result === 'function') {
 			let original = Watcher.getOriginal(obj);
 			let result = original[field];
@@ -97,21 +134,6 @@ var proxyHandler = {
 
 			// Remove any proxies.
 			result = Watcher.getOriginal(result);
-			let watcher = Watcher.get(obj);
-
-			// TODO:
-			// Make sure the path from the root to the object's field is tracked:
-			let roots = WatchUtil.getRoots(obj);
-			for (let root of roots) { // Get all paths from the roots to the parent.
-				let parentPaths = WatchUtil.getPaths(root, obj);
-				for (let parentPath of parentPaths) {
-
-					// Combine each path with the field name.
-					WatchUtil.addPath(root, [...parentPath, field], result); // Add to our list of tracked paths.
-				}
-			}
-			// END TODO
-
 			return Watcher.get(result).proxy;
 		}
 
@@ -119,7 +141,29 @@ var proxyHandler = {
 		return result;
 	},
 
-	set(obj, field, newVal) {},
+	set(obj, field, newVal) {
 
-	deleteProperty(obj, field) {}
+		let oldVal = obj[field];
+		obj[field] = newVal;
+
+		let watcher = Watcher.get(obj);
+		for (let callback of watcher.callbacks)
+			callback.callback.call('set', callback.path, newVal, oldVal);
+
+		return true; // Proxy requires us to return true.
+	},
+
+	deleteProperty(obj, field) {
+		let oldVal = obj[field];
+		if (Array.isArray(obj))
+			obj.splice(field, 1);
+		else
+			delete obj[field];
+
+		let watcher = Watcher.get(obj);
+		for (let callback of watcher.callbacks)
+			callback.callback.call('set', callback.path, undefined, oldVal);
+
+		return true; // Proxy requires us to return true.
+	}
 }
