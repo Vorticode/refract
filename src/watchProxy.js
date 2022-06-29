@@ -190,7 +190,7 @@ import Utils, {removeProxies, isObj, RefractError} from './utils.js';
 		/** @type {WeakMap<Object, Proxy>} A map from an object to the Proxy of itself. */
 		proxies: new WeakMap(),
 
-		proxiesReverse: new WeakMap(),
+		//proxiesReverse: new WeakMap(),
 
 		/** @type {WeakMap<Object, Set<Object>>} A map from an object to all of its root objects that have properties pointing to it. */
 		roots: new WeakMap(),
@@ -215,7 +215,7 @@ import Utils, {removeProxies, isObj, RefractError} from './utils.js';
 			if (!proxy) {
 
 				WatchUtil.proxies.set(obj, proxy = new Proxy(obj, handler));
-				WatchUtil.proxiesReverse.set(proxy, obj);
+				//WatchUtil.proxiesReverse.set(proxy, obj);
 
 				if (Array.isArray(obj)) {
 					//debugger;

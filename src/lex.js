@@ -1,29 +1,10 @@
 /**
- * @param current {string}
- * @param before {string}
- * @param pattern
- * @param prevTokens {Token[]}
- * @return [token:string, matchType] */
-function matchToken(current, before, pattern, prevTokens) {
-	let token, matchType, originalLength;
-	if (pattern instanceof RegExp)
-		token = (current.match(pattern) || [])[0];
-	else if (typeof pattern === 'function')
-		[token, matchType, originalLength] = pattern(current, before, prevTokens) || [];
-
-	else if (Array.isArray(pattern)) {
-		for (let item of pattern)
-			if (current.startsWith(item)) {
-				token = item;
-				break;
-			}
-	}
-	else if (current.startsWith(pattern))
-		token = pattern;
-
-	return [token, matchType, originalLength]
-}
-
+ * Use the grammar.fastMatch table to suggest what pattern to use to check for a token.
+ * This is much faster than looping through and trying all patterns.
+ * @param grammar
+ * @param mode
+ * @param current
+ * @returns {(*)[]} */
 function findFastMatch(grammar, mode, current) {
 	let type;
 	let pattern = grammar.fastMatch[mode];
@@ -62,13 +43,14 @@ function toString() {
 
 export class Token {
 
-	constructor(text, type, mode, line, col, originalLength) {
+	constructor(text, type, mode, line, col, originalLength, tokens) {
 		this.text = text;
 		this.type = type;
 		this.mode = mode;
 		this.line = line;
 		this.col = col;
 		this.originalLength = originalLength;
+		this.tokens = tokens;
 	}
 
 	valueOf() {
@@ -80,7 +62,8 @@ export class Token {
 	}
 }
 
-// TODO:
+
+window.slowMatches = {};
 
 /**
  * Parse code into tokens according to rules in a grammar.
@@ -115,7 +98,6 @@ export class Token {
  *
  * @return Token[] */
 export default function lex(grammar, code, mode=null, line=1, col=1, index=0) {
-	//let start = performance.now();
 
 	mode = mode || Object.keys(grammar)[0]; // start in first mode.
 	code = code+'';
@@ -123,12 +105,11 @@ export default function lex(grammar, code, mode=null, line=1, col=1, index=0) {
 	let result;
 
 	// Cache small results
-	let cacheLen = 256;
+	const cacheLen = 256;
 	if (code.length < cacheLen) {
 		var key = mode + '|' + code;
 		result = lexCache[key];
 		if (result) {
-			//callTime += performance.now() - start;
 			return result.slice();
 		}
 	}
@@ -139,7 +120,7 @@ export default function lex(grammar, code, mode=null, line=1, col=1, index=0) {
 		let current = code.slice(index);
 		let token = undefined;
 		let originalLength = undefined;
-		let pattern, pattern2, type;
+		let pattern, type;
 
 		// MatchType is a string to go into a new mode, -1 to leave a mode, or undefined to stay in the same mode.
 		let matchType = undefined;
@@ -147,23 +128,22 @@ export default function lex(grammar, code, mode=null, line=1, col=1, index=0) {
 
 		// 1. Identify token
 
-
-		// TODO: Enable fastMatch.  This makes it about 30% faster, with the potential for more.
-		[pattern, type] = findFastMatch(grammar, mode, current);
+		// 1a. Fast match
+		[pattern, type] = findFastMatch(grammar, mode, current); // Tells us what pattern to try.
 		if (pattern)
-			[token, matchType] = matchToken(current, before, pattern, result);
+			[token, matchType, originalLength] = pattern(current, before, result) || [];
 
-		let gmode = grammar[mode];
-
-		// if (!token)
-		// 	console.log(current.slice(0, 20));
-
-
+		// 1b. Slow match, if fastmatch fails
 		if (!token) {
+			let gmode = grammar[mode];
 			for (type in gmode) {
-				[token, matchType, originalLength] = matchToken(current, before, gmode[type], result);
-				if (token !== undefined)
+				let pattern = gmode[type];
+				[token, matchType, originalLength] = pattern(current, before, result) || [];
+				if (token !== undefined) {
+					//let name = mode + ':' + type; // + ':' + token;
+					//window.slowMatches[name] = (window.slowMatches[name] || 0) + 1
 					break;
+				}
 			}
 		}
 
@@ -179,6 +159,7 @@ export default function lex(grammar, code, mode=null, line=1, col=1, index=0) {
 		// 2. Ascend or descend
 		let newMode = (matchType && matchType !== -1) ? matchType : mode;
 		let tokenObj = {text: token, type, mode: newMode, line, col, originalLength, valueOf, toString};
+		//let tokenObj = new Token(token, type, newMode, line, col, originalLength); // Why does this version fail?
 		let length = originalLength || token.length; // How much of the code string that was consumed.
 
 		if (matchType === -1) // Ascend out of a sub-mode.
@@ -191,6 +172,7 @@ export default function lex(grammar, code, mode=null, line=1, col=1, index=0) {
 			}, 0); // add the lengths of the tokens
 
 			tokenObj = {text: code.slice(index, index+length), type, tokens, mode, line, col, valueOf, toString};
+			// tokenObj = new Token(code.slice(index, index+length), type, mode, line, col, undefined, tokens); // This works, but is no faster.
 			if (length !== token.length)
 				tokenObj.originalLength = length;
 		}
@@ -204,16 +186,31 @@ export default function lex(grammar, code, mode=null, line=1, col=1, index=0) {
 			result.push(tokenObj);
 
 			// 4. Increment line/col number.
-			line += (token.match(/\n/g) || []).length; // count line returns
-			let lastLn = token.lastIndexOf('\n');
+			// line += (token.match(/\n/g) || []).length; // count line returns
+			// let lastLn = token.lastIndexOf('\n');
+			let lastLn = -1;
+			for (let i = 0, len=token.length; i<len; i++) { // Benchmark shows this is slightly faster than the code above.
+				if (token[i] == '\n') {
+					line++;
+					lastLn = i;
+				}
+			}
+
 			col = (lastLn > -1 ? -lastLn : col) + length;
 		}
 	}
 
-	//callTime += performance.now() - start;
+	// Cache
 	if (code.length < cacheLen)
 		lexCache[key] = result;
+
 	return result;
+}
+
+function charOccurances (str, char) {
+
+
+	return c;
 }
 
 

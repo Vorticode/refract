@@ -41,6 +41,10 @@ import utils from './utils.js';
 		', ... . ( ) [ ] ? :'			// Other operators
 	).split(/ /g);
 
+	let operatorMap = {};
+	for (let op of operators) // Used to speed up operator search.
+		operatorMap[op[0]] = [...(operatorMap[op[0]]||[]), op];
+
 
 	//let svg = /^<svg[\S\s]*?<\/svg>/;
 
@@ -99,6 +103,10 @@ import utils from './utils.js';
 	let keyword = `await break case catch class constructor const continue debugger default delete do enum else export extends
 				finally for function if implements import in instanceof interface let new package private protected public
 				return static super switch this throw try typeof var void while with yield`.trim().split(/\s+/g);
+
+	// let keywordMap = {};
+	// for (let kw of keyword) // Used to speed up keyword search.
+	// 	keywordMap[kw[0]] = [...(keywordMap[kw[0]]||[]), kw];
 
 
 	// Tokens that can occur before a regex.
@@ -187,11 +195,7 @@ import utils from './utils.js';
 			},
 			semicolon: ';',
 			keyword,
-			operator: code => { // Must occur after comment
-				for (let op2 of operators)
-					if (code.startsWith(op2))
-						return [op2];
-			},
+			operator: operators,
 			string: /^"(\\\\|\\"|[^"])*"|^'(\\\\|\\'|[^'])*'/
 		},
 		html: { // top level html not within javascript.  No other modes go to this mode.
@@ -245,7 +249,7 @@ import utils from './utils.js';
 			...tagCommon
 		},
 		templateTag: { // html tag within template.
-			whitespace: code => {
+			whitespace: code => { // TODO: Why do we have the double-escaped versions?
 				let matches = code.match(/^( |\r|\n|\t|\v|\f|\xa0|\\r|\\n|\\t|\\v|\\f|\\xa0)+/);
 				if (matches) {
 					let result = matches[0];
@@ -289,17 +293,41 @@ import utils from './utils.js';
 		allowUnknownTagTokens: false
 	};
 
+	// Convert everything to a function.
+	for (let mode in lexHtmlJs)
+		for (let type in lexHtmlJs[mode]) {
+			let pattern = lexHtmlJs[mode][type];
+			if (Array.isArray(pattern)) {
+
+				// Replace arrays with functions to do lookups in maps.
+				// Benchmarking shows a performance increase of about 3%.
+
+				// 1. Build a lookup map based on first letter.
+				let lookup = {};
+				for (let token of pattern)
+					lookup[token[0]] = [...(lookup[token[0]]||[]), token];
+
+				// 2. Replace the array of tokens with a function that uses this lookup map.
+				lexHtmlJs[mode][type] = code => {
+					let tokens = lookup[code[0]];
+					if (tokens)
+						for (let token of tokens)
+							if (code.startsWith(token))
+								return [token];
+				}
+			}
+			else if (typeof pattern === 'string')
+				lexHtmlJs[mode][type] = code => [code.startsWith(pattern) ? pattern : undefined]
+			else if (pattern instanceof RegExp) {
+				lexHtmlJs[mode][type] = code => [(code.match(pattern) || [])[0]]
+			}
+		}
+
 	// A fast lookup table based on starting characters.
+	// Be careful not to suggest a pattern that must come after another pattern.
+	// E.g. all js.identifier would also match js.keyword
 	// This isn't finished.
 	lexHtmlJs.fastMatch = {
-		// template: {
-		// 	'$': lexHtmlJs.template.expr,
-		// 	'#': lexHtmlJs.template.expr,
-		// 	'<': {
-		// 		'a-z': lexHtmlJs.template.openTag,
-		// 		'!': lexHtmlJs.template.comment,
-		// 	}
-		// },
 		html: {
 			'<': {
 				'/': [lexHtmlJs.html, 'closeTag'],
@@ -321,14 +349,50 @@ import utils from './utils.js';
 			'=': [lexHtmlJs.tag, 'equals'],
 		},
 		dquote: {
-			'"': [lexHtmlJs.dquote, 'quote']
+			'"': [lexHtmlJs.dquote, 'quote'],
+			'a-z0-9 \t.()[]/': [lexHtmlJs.dquote, 'text'],
+			'$#': [lexHtmlJs.dquote, 'expr'],
+		},
+		js: {
+			' \t\v\f\xa0': [lexHtmlJs.js, 'whitespace'],
+			'=&|^!+-*%,.()[]?!>:': [lexHtmlJs.js, 'operator'], // omits "/" b/c it can also be regex.  Omits < b/c it can also be close tag.
+			'\r\n' : [lexHtmlJs.js, 'ln'],
+			';': [lexHtmlJs.js, 'semicolon'],
+			'/' : {
+				'/*':  [lexHtmlJs.js, 'comment'],
+			},
+			'{': [lexHtmlJs.js, 'brace1'],
+			'}': [lexHtmlJs.js, 'brace2'],
+			'a-z$_': [lexHtmlJs.js, 'identifier'],
+			'0-9': [lexHtmlJs.js, 'number'],
+			'\'"': [lexHtmlJs.js, 'string'],
+			'`': [lexHtmlJs.js, 'template'],
+		},
+		template: {
+			//'a-z0-9 ': [lexHtmlJs.template, 'text'], // Can't work because the slow version does a look-behind to see if we're in a script tag.
+			'`': [lexHtmlJs.template, 'templateEnd'],
+			'$#': [lexHtmlJs.template, 'expr'],
+			'<': {
+				'a-z': [lexHtmlJs.template, 'openTag'],
+				'/': [lexHtmlJs.template, 'closeTag'],
+				'!': [lexHtmlJs.template, 'comment']
+			}
+		},
+		templateTag: {
+			'$': [lexHtmlJs.templateTag, 'expr']
+		},
+		templateComment: {
+			'-': [lexHtmlJs.templateComment, 'commentEnd'],
+			'a-z0-9\t\r\n ': [lexHtmlJs.templateComment, 'commentBody']
 		}
-	};
+	}; // end fastMatch object.
 
+	lexHtmlJs.fastMatch.templateTag = lexHtmlJs.fastMatch.tag;
+
+	/**
+	 * Expand the lookup rules such as a-z and 0-9, in place. */
 	function expandFastMatch(obj) {
 		for (let name in obj) {
-
-
 			if (!obj[name].length) // not an array, recurse:
 				expandFastMatch(obj[name]);
 
@@ -360,6 +424,9 @@ import utils from './utils.js';
 		expandFastMatch(lexHtmlJs.fastMatch[name]);
 
 	Object.freeze(lexHtmlJs.fastMatch);
-}
+
+
+
+} // end scope
 
 export default lexHtmlJs;

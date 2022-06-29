@@ -226,6 +226,7 @@ Deno.test('lex.template-script-tag', () => {
 
 	let template = js[5].tokens;
 	assertEquals(template, ['`', '<script>', 'var b=1<3', '</script>', '`']);
+	assertEquals(template.map(t=>t.type), ['template', 'openTag', 'script', 'closeTag', 'templateEnd']);
 
 
 	let js2 = template[2].tokens;
