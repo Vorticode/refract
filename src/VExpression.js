@@ -1,5 +1,5 @@
 import delve from "./delve.js";
-import Utils from "./utils.js";
+import Utils, {assert} from "./utils.js";
 import Parse from './Parse.js';
 import Watch from "./Watch.js";
 import VElement from './VElement.js';
@@ -259,7 +259,7 @@ export default class VExpression {
 				.flat().map(h=>h===undefined?'':h); // undefined becomes empty string
 
 			if (this.isHash) // #{...} template
-				result = [htmls.map(html => new VText(html))]; // We don't join all the text nodes b/c it creates index issues.
+				result = [htmls.map(html => new VText(html, this.xel))]; // We don't join all the text nodes b/c it creates index issues.
 			else {
 				let scopeVarNames = Object.keys(this.scope);
 				for (let html of htmls) {
@@ -361,7 +361,7 @@ export default class VExpression {
 						this.vChildren.splice(index, 0, []);
 
 					if (this.type === 'simple')
-						this.vChildren[index] = [new VText(array[index])] // TODO: Need to evaluate this expression instead of just using the value from the array.
+						this.vChildren[index] = [new VText(array[index], this.xel)] // TODO: Need to evaluate this expression instead of just using the value from the array.
 					else  // loop
 						this.vChildren[index] = this.loopItemEls.map(vel => vel.clone(this.xel, this));
 
@@ -534,7 +534,7 @@ export default class VExpression {
 				path = path.slice(1);
 
 			// Allow paths into the current scope to be watched.
-			else if (path[0] in this.scope) {
+			else if (path[0] in this.scope && path.length > 1) {
 
 				// Resolve root to the path of the scope.
 				root = this.scope[path[0]];
@@ -544,6 +544,8 @@ export default class VExpression {
 			// Make sure it's not a primitive b/c we can't subscribe to primitives.
 			// In such cases we should already be subscribed to the parent object/array for changes.
 			if (typeof root === 'object' || Array.isArray(root)) {
+				assert(path.length);
+
 				this.watches.push([root, path, callback]);  // Keep track of the subscription so we can remove it when this VExpr is removed.
 				Watch.add(root, path, callback);
 			}

@@ -6,7 +6,7 @@
  * @param mode {string}
  * @param callback {?function(string|string[])}
  * @return {function(code:string):([string, int] | undefined)} */
-export var descendIf = (regex, mode, callback) => code => {
+export var descendIf = (regex, mode, callback=null) => code => {
 	if (regex instanceof RegExp) {
 		let match = code.match(regex) || [];
 		if (match.length) {

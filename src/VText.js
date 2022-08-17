@@ -9,9 +9,13 @@ export default class VText {
 	/** @type {Node} */
 	el = null;
 
+	/** @type {Refract} */
+	xel = null;
+
 	startIndex = 0;
 
-	constructor(text='') {
+	constructor(text='', refl=null) {
+		this.xel = refl;
 		if (text === null || text === undefined)
 			text = '';
 		else if (typeof text !== 'string' && !(text instanceof String))
@@ -20,20 +24,39 @@ export default class VText {
 		this.text = Html.decode(text);
 	}
 
+	/**
+	 * @param parent {HTMLElement}
+	 * @param el {HTMLElement|Node?}
+	 * @returns {int} */
 	apply(parent=null, el=null) {
 		if (el)
 			this.el = el;
 		else {
+			let text;
+			if (parent.tagName === 'STYLE') {
+				if (!this.xel.dataset.style) {
+					this.xel.constructor.styleId = (this.xel.constructor.styleId || 0) + 1; // instance count.
+					this.xel.dataset.style = this.xel.constructor.styleId;
+				}
+
+				let rTag = this.xel.tagName.toLowerCase();
+
+				text = this.text.replace(new RegExp(rTag+'|:host', 'g'), rTag + '[data-style="' +  this.xel.dataset.style + '"]');
+			}
+			else
+				text = this.text;
+
+
 			if (this.el) { // Setting textContent will handle html entity <>& encoding properly.
-				this.el.textContent = this.text;
+				this.el.textContent = text;
 			} else {
-				this.el = parent.ownerDocument.createTextNode(this.text);
+				this.el = parent.ownerDocument.createTextNode(text);
 				parent = parent.shadowRoot || parent;
 				parent.insertBefore(this.el, parent.childNodes[this.startIndex]);
 			}
 
 			if (Refract.elsCreated)
-				Refract.elsCreated.push(Utils.toString(this.text));
+				Refract.elsCreated.push(Utils.toString(text));
 		}
 
 		return 1;
@@ -42,6 +65,7 @@ export default class VText {
 	clone() {
 		let result = new VText();
 		result.text = this.text;
+		result.xel = this.xel;
 		return result;
 	}
 

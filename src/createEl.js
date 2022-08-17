@@ -19,7 +19,7 @@ export default function(html, trim=true, doc=document) {
 	if (trim)
 		html = html.trim();
 
-	// If creating a web component, don't use a tempalte because it prevents the constructor from being called.
+	// If creating a web component, don't use a template because it prevents the constructor from being called.
 	// And don't use an item from the cache with cloneNode() because that will call the constructor more than once!
 	if (html.match(/^<\S+-\S+/)) {
 

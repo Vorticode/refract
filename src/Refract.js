@@ -265,19 +265,21 @@ export default class Refract extends HTMLElement {
 			// This search is also faster than if we use matchFirst() from the first token.
 			// TODO: Use Parse.groupEnd() ?
 			let braceDepth = 0;
-			for (let i = 0, token; token = tokens[i]; i++) {
-				if (token == '{')
+			let i =0;
+			for (let token of tokens) {
+				if (token.text == '{')
 					braceDepth++;
-				else if (token == '}')
+				else if (token.text == '}')
 					braceDepth--;
 				else if (braceDepth === 1) {
-					if (!htmlIdx && token == 'html')
+					if (!htmlIdx && token.text == 'html')
 						htmlIdx = i;
-					else if (!constructorIdx && token == 'constructor')
+					else if (!constructorIdx && token.text == 'constructor')
 						constructorIdx = i;
 				}
 				if (htmlIdx && constructorIdx)
 					break;
+				i++;
 			}
 
 			let htmlMatch = fregex.matchFirst([
@@ -353,11 +355,18 @@ export default class Refract extends HTMLElement {
 				//console.log(tokens.slice(injectIndex-3, injectIndex+3));
 				injectLines = [
 					nextToken==',' ? ',' : ';',
+
+					// TODO: This arg parsing logic is duplicated in VElement.apply()
 					`(()=>{`, // We wrap this in a function b/c some minifiers will strangely rewrite the super call into another expression.
 						...result.constructorArgs.map(argName=>
 							[`if (this.hasAttribute('${argName}')) {`,
 							`   ${argName} = this.constructor.htmlDecode(this.getAttribute('${argName}'));`,
-							`   try { ${argName} = JSON.parse(${argName}) } catch(e) {};`,
+							`   try { `,
+							`		${argName} = JSON.parse(${argName}) `,
+							`	} catch(e) {`,
+							`       if (${argName}.startsWith('\${') && ${argName}.endsWith('}'))`, // Try evaluating as code if it's surrounded with ${}
+							`		    try { ${argName} = eval(${argName}.slice(2, -1)) } catch(e) {};`,
+							`   };`,
 							'}'] // [above] Parse attrib as json if it's valid json.
 						).flat(),
 						`if (!this.virtualElement) {`, // If not already created by a super-class
@@ -372,7 +381,6 @@ export default class Refract extends HTMLElement {
 			else {
 				injectIndex = fregex.matchFirst(['{'], tokens).index+1;
 				injectLines = [
-					'//Begin Refract injected code.',
 					`constructor() {`,
 					`\tsuper();`,
 					`\tif (!this.virtualElement) {`, // If not already created by a super-class

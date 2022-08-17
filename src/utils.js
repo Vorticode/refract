@@ -11,7 +11,13 @@ class RefractError extends Error {
 /** @deprecated */
 var removeProxy = obj => (obj && obj.$removeProxy) || obj;
 
-
+var assert = expr => {
+	if (!expr) {
+		debugger;
+		throw new Error('Assertion failed');
+	}
+};
+export {assert};
 
 export default {
 

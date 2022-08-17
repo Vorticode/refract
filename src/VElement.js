@@ -53,9 +53,9 @@ export default class VElement {
 	startIndex = 0;
 
 	/**
-	 * @param tagName {string}
-	 * @param attributes {Object<string, string>} */
-	constructor(tagName, attributes) {
+	 * @param tagName {?string}
+	 * @param attributes {?Object<string, string[]>} */
+	constructor(tagName=null, attributes=null) {
 		this.tagName = tagName || '';
 		this.attributes = attributes || {};
 	}
@@ -98,8 +98,11 @@ export default class VElement {
 				let args = []
 				if (Class.constructorArgs)
 					args = Class.constructorArgs.map(name => {
-						if (name in this.attributes) {
-							let val = this.attributes[name];
+						let lname = name.toLowerCase();
+
+						// TODO: this logic is duplicated in Refract.preCompile()
+						if (lname in this.attributes) {
+							let val = this.attributes[lname];
 
 							// A solitary VExpression.
 							if (val && val.length === 1 && val[0] instanceof VExpression)
@@ -113,12 +116,44 @@ export default class VElement {
 							let result = VElement.evalVAttributeAsString(this, (val || []), this.scope);
 							try {
 								result = JSON.parse(result);
-							} catch (e) {}
+							} catch (e) {
+
+								// A code expression
+								if (result.startsWith('${') && result.endsWith('}')) // Try evaluating as code if it's surrounded with ${}
+									try {
+										result = eval(result.slice(2, -1))
+									} catch(e) {}
+							}
 							return result;
 						}
 					});
 
-				newEl = new Class(...args);
+				let i = 1;
+				do {
+					try {
+						newEl = new Class(...args);
+					} catch (e) {
+
+						// Firefox:  "Cannot instantiate a custom element inside its own constructor during upgrades"
+						// Chrome:  "TypeError: Failed to construct 'HTMLElement': This instance is already constructed"
+						// Browsers won't let us nest web components inside slots when they're created all from the same html.
+						// So we use this crazy hack to define a new version of the element.
+						// See the Refract.nested.recursive test.
+						if (!(e instanceof TypeError))
+							throw e;
+
+						var Class2 = customElements.get(tagName + '_' + i);
+						if (Class2)
+							Class = Class2;
+
+						else {
+							customElements.define(tagName + '_' + i, class extends Class {});
+							Class = customElements.get(tagName + '_' + i);
+							i++;
+						}
+					}
+				}
+				while (!newEl)
 			}
 			else if (Refract.inSvg) // SVG's won't render w/o this path.
 				newEl = document.createElementNS('http://www.w3.org/2000/svg', tagName);
@@ -164,7 +199,7 @@ export default class VElement {
 		}
 
 		// 4. Use scoped styles for non-shadowroot
-		if (this.tagName === 'style' && this.xel.contains(this.el)) {
+		/*if (this.tagName === 'style' && this.xel.contains(this.el)) {
 			this.xel.constructor.styleId = (this.xel.constructor.styleId || 0) + 1;
 			this.xel.dataset.style = this.xel.constructor.styleId;
 			if (this.vChildren.length) {
@@ -174,7 +209,7 @@ export default class VElement {
 						node.text =
 							node.text.replace(new RegExp(rTag+'|:host', 'g'), rTag + '[data-style="' +  this.xel.constructor.styleId + '"]');
 			}
-		}
+		}*/
 
 		// 5. Recurse through children
 		let isText = this.el.tagName === 'TEXTAREA' || this.attributes['contenteditable'] && (this.attributes['contenteditable']+'') !== 'false';
@@ -183,6 +218,7 @@ export default class VElement {
 				throw new Error('textarea and contenteditable cannot have expressions as children.  Use value=${this.variable} instead.');
 
 			vChild.scope = {...this.scope} // copy
+			vChild.xel = this.xel;
 			vChild.startIndex = count;
 			count += vChild.apply(this.el);
 		}
@@ -419,7 +455,7 @@ export default class VElement {
 
 			// Text node
 			if (token.type === 'text')
-				result.push(new VText(token.text));
+				result.push(new VText(token.text, vParent?.xel));
 
 			// Expression child
 			else if (token.type === 'expr')
@@ -475,10 +511,8 @@ export default class VElement {
 					}
 				}
 
-				let isSelfClosing = tagTokens[tagTokens.length-1].text == '/>' ||
-					['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source',
-						'track', 'wbr', 'command', 'keygen', 'menuitem'].includes(vel.tagName);
-					// TODO: What svg elements are self-closing?
+				let isSelfClosing = tagTokens[tagTokens.length-1].text == '/>' || vel.tagName.toLowerCase() in selfClosingTags;
+
 
 				// Process children if not a self-closing tag.
 				if (!isSelfClosing) {
@@ -529,6 +563,11 @@ export default class VElement {
 		return tokens;
 	} */
 }
+
+// TODO: What svg elements are self-closing?
+var selfClosingTags = {'area':1, 'base':1, 'br':1, 'col':1, 'embed':1, 'hr':1, 'img':1, 'input':1, 'link':1, 'meta':1, 'param':1, 'source':1,
+	'track':1, 'wbr':1, 'command':1, 'keygen':1, 'menuitem':1}
+Object.freeze(selfClosingTags);
 
 // TODO: Pair this with Utils.watchInput() ?
 function setInputValue(ref, el, value, scope) {

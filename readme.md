@@ -285,6 +285,8 @@ class CarBody extends Refract  {
 
 Any valid JavaScript variable can be passed to the embedded class this way, including functions or complex objects.
 
+==TODO: Document passing eval'd code as constructor args with {}==
+
 ### Scoped Styles
 
 Elements with `style` elements will be rewritten so that any style selectors beginning with `:host` within apply only to the Refract element.  This is done by:

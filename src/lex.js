@@ -20,9 +20,7 @@ function findFastMatch(grammar, mode, current) {
 			}
 
 			i++;
-		} while (pattern)
-
-
+		} while (pattern);
 	}
 	return [pattern, type];
 }
@@ -107,10 +105,10 @@ export default function lex(grammar, code, mode=null, line=1, col=1, index=0) {
 	// Cache small results
 	const cacheLen = 256;
 	if (code.length < cacheLen) {
-		var key = mode + '|' + code;
+		var key = mode + '|' + code.slice(0, 24); // avoid long keys
 		result = lexCache[key];
-		if (result) {
-			return result.slice();
+		if (result && result[0] === code) {
+			return result[1];
 		}
 	}
 
@@ -189,7 +187,7 @@ export default function lex(grammar, code, mode=null, line=1, col=1, index=0) {
 			// line += (token.match(/\n/g) || []).length; // count line returns
 			// let lastLn = token.lastIndexOf('\n');
 			let lastLn = -1;
-			for (let i = 0, len=token.length; i<len; i++) { // Benchmark shows this is slightly faster than the code above.
+			for (let i=0, len=token.length; i<len; i++) { // Benchmark shows this is slightly faster than the code above.
 				if (token[i] == '\n') {
 					line++;
 					lastLn = i;
@@ -202,7 +200,7 @@ export default function lex(grammar, code, mode=null, line=1, col=1, index=0) {
 
 	// Cache
 	if (code.length < cacheLen)
-		lexCache[key] = result;
+		lexCache[key] = [code, result];
 
 	return result;
 }

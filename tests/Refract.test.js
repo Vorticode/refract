@@ -1498,22 +1498,22 @@ Deno.test('Refract.nested.childProp', () => {
 			super();
 			this.name = name;
 		}
-		html = `<b-105>${this.name}</b-105>`;
+		html = `<b-102>${this.name}</b-102>`;
 	}
 	eval(B.compile());
 
 
 	class A extends Refract {
-		html = `<a-105><b-105 id="b" name="Apple"></b-105>${this.b.name}</a-105>`;
+		html = `<a-102><b-102 id="b" name="Apple"></b-102>${this.b.name}</a-102>`;
 	}
 	eval(A.compile());
 
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<a-105><b-105 id="b" name="Apple">Apple</b-105>Apple</a-105>`);
+	assertEquals(a.outerHTML, `<a-102><b-102 id="b" name="Apple">Apple</b-102>Apple</a-102>`);
 
 	a.b.name = 'Banana'; // [below] name attribute doesn't change b/c it was a static value passed to the constructor
-	assertEquals(a.outerHTML, `<a-105><b-105 id="b" name="Apple">Banana</b-105>Banana</a-105>`);
+	assertEquals(a.outerHTML, `<a-102><b-102 id="b" name="Apple">Banana</b-102>Banana</a-102>`);
 });
 
 Deno.test('Refract.nested.childProp2', () => {
@@ -1539,6 +1539,26 @@ Deno.test('Refract.nested.childProp2', () => {
 	a.b.update();
 	console.log(a.outerHTML);
 });
+
+Deno.test('Refract.nested.recursive', () => {
+	class A extends Refract {
+		html = `<a-105 title="c"><slot></slot>b</a-105>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+
+	// Firefox:  "Cannot instantiate a custom element inside its own constructor during upgrades"
+	// Chrome:  "TypeError: Failed to construct 'HTMLElement': This instance is already constructed"
+	// See the code in VElement.apply() where we keep looping through different names calling customElements.define()
+	// until we can create one.
+	let div = createEl(`<a-105><a-105></a-105></a-105>`);
+	assertEquals(div.outerHTML, '<a-105 title="c"><slot><a-105_1 title="c"><slot></slot>b</a-105_1></slot>b</a-105>');
+
+	div = createEl(`<a-105><a-105><a-105></a-105></a-105></a-105>`);
+	assertEquals(div.outerHTML, '<a-105 title="c"><slot><a-105_1 title="c"><slot><a-105_1 title="c"><slot></slot>b</a-105_1></slot>b</a-105_1></slot>b</a-105>');
+});
+
 
 
 

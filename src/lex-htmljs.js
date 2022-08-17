@@ -2,23 +2,11 @@ import {descendIf, ascendIf} from "./lex-tools.js";
 import utils from './utils.js';
 /**
  * Grammar for html/js code, including js templates.
- * TODO: This could potentially be made much faster if we indexed by the first char.
- * Then we wouldn't have to iterate through each rule, trying one at a time.
- * E.g.:
- * start = {
- *     '<': code => {
- *         if (isTag) ...
- *         if (isOperator) ...
- *     },
- *     whitespace, // The regular rules
- *     ln,
- *     ...
- * }
- * nextToken = start[fisrtChar](current);
  *
  * Known bugs
  * 1. Javascript regex to match regex tokens might not be perfect.  Since no regex can match all regexes?
  *    We need a function here instead.
+ * 2. Lex parses out html elements inside comments inside css and javascript.  When it should just be one big block of text.
  */
 {
 	let lastTag = null; // Last tag name we descended into.
