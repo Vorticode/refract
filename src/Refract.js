@@ -265,63 +265,6 @@ export default class Refract extends HTMLElement {
 		tokens = removeComments(tokens);
 		let htmlIdx = 0, constructorIdx=0;
 
-		// 2. Build the virtual element tree.
-		{
-			// A. Find html template token
-			// Make sure we're finding html = ` and the constructor at the top level, and not inside a function.
-			// This search is also faster than if we use matchFirst() from the first token.
-			// TODO: Use Parse.groupEnd() ?
-			let braceDepth = 0;
-			let i =0;
-			for (let token of tokens) {
-				if (token.text == '{')
-					braceDepth++;
-				else if (token.text == '}')
-					braceDepth--;
-				else if (braceDepth === 1) {
-					if (!htmlIdx && token.text == 'html')
-						htmlIdx = i;
-					else if (!constructorIdx && token.text == 'constructor')
-						constructorIdx = i;
-				}
-				if (htmlIdx && constructorIdx)
-					break;
-				i++;
-			}
-
-			let htmlMatch = fregex.matchFirst([
-				'html', Parse.ws, '=', Parse.ws,
-				fregex.or({type: 'template'}, {type: 'string'}),
-				Parse.ws,
-				fregex.zeroOrOne(';')
-			], tokens, htmlIdx);
-			//#IFDEV
-			if (!htmlMatch)
-				throw new Error(`Class ${self.name} is missing an html property with a template value.`);
-			//#ENDIF
-
-			// Remove the html property, so that when classes are constructed it's not evaluated as a regular template string.
-			let htmlAssign = tokens.splice(htmlMatch.index, htmlMatch.length);
-			let template = htmlAssign.filter(t=>t.tokens || t.type==='string')[0]; // only the template token has sub-tokens.
-
-			// B. Parse html
-
-			// B1 Template
-			if (template.tokens) {
-				var innerTokens = template.tokens.slice(1, -1);
-			}
-
-			// b2 Non-template
-			else { // TODO: Is there better a way to unescape "'hello \'everyone'" type strings than eval() ?
-				let code = eval(template+'');
-				innerTokens = lex(htmljs, code, 'template');
-			}
-
-			if (innerTokens[0].type === 'text' && !utils.unescapeTemplate(innerTokens[0].text).trim().length)
-				innerTokens = innerTokens.slice(1); // Skip initial whitespace.
-
-			result.virtualElement = VElement.fromTokens(innerTokens, [], null, 1)[0];
-		}
 
 
 		// 3. Get the constructorArgs and inject new code.
@@ -411,8 +354,73 @@ export default class Refract extends HTMLElement {
 
 			// This final line return is needed to prevent minifiers from breaking it.
 			tokens.splice(injectIndex, 0, injectCode);
-			result.code = tokens.join('');
+
 		}
+
+
+		// 3. Build the virtual element tree.
+		{
+			// A. Find html template token
+			// Make sure we're finding html = ` and the constructor at the top level, and not inside a function.
+			// This search is also faster than if we use matchFirst() from the first token.
+			// TODO: Use Parse.groupEnd() ?
+			let braceDepth = 0;
+			let i =0;
+			for (let token of tokens) {
+				if (token.text == '{')
+					braceDepth++;
+				else if (token.text == '}')
+					braceDepth--;
+				else if (braceDepth === 1) {
+					if (!htmlIdx && token.text == 'html')
+						htmlIdx = i;
+					else if (!constructorIdx && token.text == 'constructor') {
+						constructorIdx = i;
+					}
+				}
+
+				if (htmlIdx && constructorIdx) {
+					break;
+				}
+				i++;
+			}
+
+			let htmlMatch = fregex.matchFirst([
+				'html', Parse.ws, '=', Parse.ws,
+				fregex.or({type: 'template'}, {type: 'string'}),
+				Parse.ws,
+				fregex.zeroOrOne(';')
+			], tokens, htmlIdx);
+			//#IFDEV
+			if (!htmlMatch)
+				throw new Error(`Class ${self.name} is missing an html property with a template value.`);
+			//#ENDIF
+
+			// Remove the html property, so that when classes are constructed it's not evaluated as a regular template string.
+			let htmlAssign = tokens.splice(htmlMatch.index, htmlMatch.length);
+			let template = htmlAssign.filter(t=>t.tokens || t.type==='string')[0]; // only the template token has sub-tokens.
+
+			// B. Parse html
+
+			// B1 Template
+			if (template.tokens) {
+				var innerTokens = template.tokens.slice(1, -1);
+			}
+
+			// b2 Non-template
+			else { // TODO: Is there better a way to unescape "'hello \'everyone'" type strings than eval() ?
+				let code = eval(template+'');
+				innerTokens = lex(htmljs, code, 'template');
+			}
+
+			if (innerTokens[0].type === 'text' && !utils.unescapeTemplate(innerTokens[0].text).trim().length)
+				innerTokens = innerTokens.slice(1); // Skip initial whitespace.
+
+			result.virtualElement = VElement.fromTokens(innerTokens, [], null, 1)[0];
+
+		}
+
+		result.code = tokens.join('');
 
 		return result;
 	}

@@ -2037,11 +2037,6 @@ Deno.test('Refract.slot.Loop', () => {
 	assertEquals(a.outerHTML, '<a-404><slot>A</slot><slot>B</slot><slot>C</slot></a-404>');
 });
 
-
-Deno.test('Refract.slot.nested2', () => {
-
-});
-
 Deno.test('Refract.slot.multiple', () => {
 	class A extends Refract {
 		html =
@@ -2060,7 +2055,7 @@ Deno.test('Refract.slot.nested', () => {
 	}
 	eval(B.compile());
 
-	class A extends Refract {
+	class A extends Refract { // A has B nested, passes html to BS's slot.
 		html = `<a-420 shadow><b-420><div>apple</div></b-420></a-420>`;
 	}
 	eval(A.compile());
@@ -2068,6 +2063,55 @@ Deno.test('Refract.slot.nested', () => {
 	let a = createEl(`<a-420></a-420>`);
 	assertEquals(a.innerHTML, ``);
 	assertEquals(a.shadowRoot.innerHTML, `<b-420><slot><div>apple</div></slot></b-420>`);
+});
+
+
+Deno.test('Refract.misc.htmlFirst', () => {
+
+	class A extends Refract {
+		html = `<a-521>hi</a-521>`;
+
+		constructor() {
+			super();
+		}
+	}
+	eval(A.compile());
+
+	let a = createEl(`<5-421>hi</5-421>`);
+	console.log(a.outerHTML)
+
+});
+
+
+Deno.test('Refract.slot.nested2', () => {
+	class C extends Refract {
+		constructor() {
+			super();
+			console.log('c')
+		}
+
+		html = `<c-421>hello</c-421>`;
+	}
+	eval(C.compile());
+
+	class B extends Refract {
+		html = `<b-421><slot></slot></b-421>`;
+	}
+	eval(B.compile());
+
+	class A extends Refract {
+		html = `<a-421><div id="root"></div></a-421>`;
+
+		constructor() {
+			super();
+			this.root.innerHTML = '<b-421><c-421></c-421></b-421>';
+		}
+	}
+	eval(A.compile());
+
+	let a = createEl(`<a-421></a-421>`);
+	console.log(a.outerHTML)
+
 });
 
 Deno.test('Refract.slot._named', () => {
