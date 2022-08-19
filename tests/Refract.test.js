@@ -1542,6 +1542,7 @@ Deno.test('Refract.nested.childProp2', () => {
 
 Deno.test('Refract.nested.recursive', () => {
 	class A extends Refract {
+
 		html = `<a-105 title="c"><slot></slot>b</a-105>`;
 	}
 	eval(A.compile());
@@ -2036,42 +2037,47 @@ Deno.test('Refract.slot.Loop', () => {
 	assertEquals(a.outerHTML, '<a-404><slot>A</slot><slot>B</slot><slot>C</slot></a-404>');
 });
 
+
+Deno.test('Refract.slot.nested2', () => {
+
+});
+
 Deno.test('Refract.slot.multiple', () => {
 	class A extends Refract {
 		html =
-		`<a-405><p><slot></slot></p><slot></slot></a-405>`;
+		`<a-415><p><slot></slot></p><slot></slot></a-415>`;
 	}
 	eval(A.compile());
 
-	let a = createEl(`<a-405>test</a-405>`);
+	let a = createEl(`<a-415>test</a-415>`);
 	assertEquals(a.outerHTML,
-		`<a-405><p><slot>test</slot></p><slot>test</slot></a-405>`);
+		`<a-415><p><slot>test</slot></p><slot>test</slot></a-415>`);
 });
 
 Deno.test('Refract.slot.nested', () => {
 	class B extends Refract {
-		html = `<b-407><slot></slot></b-407>`;
+		html = `<b-420><slot></slot></b-420>`;
 	}
 	eval(B.compile());
 
 	class A extends Refract {
-		html = `<a-407 shadow><b-407><div>apple</div></b-407></a-407>`;
+		html = `<a-420 shadow><b-420><div>apple</div></b-420></a-420>`;
 	}
 	eval(A.compile());
 
-	let a = createEl(`<a-407></a-407>`);
+	let a = createEl(`<a-420></a-420>`);
 	assertEquals(a.innerHTML, ``);
-	assertEquals(a.shadowRoot.innerHTML, `<b-407><slot><div>apple</div></slot></b-407>`);
+	assertEquals(a.shadowRoot.innerHTML, `<b-420><slot><div>apple</div></slot></b-420>`);
 });
 
 Deno.test('Refract.slot._named', () => {
 	class A extends Refract {
-		html = `<a-410>begin<slot name="slot1"></slot>end</a-410>`;
+		html = `<a-425>begin<slot name="slot1"></slot>end</a-425>`;
 	}
 	eval(A.compile());
 
-	let a = createEl(`<a-410><div slot="slot1">content</div></a-410>`);
-	assertEquals(a.outerHTML, '<a-410>begin<slot name="slot1">content</slot>end</a-410>');
+	let a = createEl(`<a-425><div slot="slot1">content</div></a-425>`);
+	assertEquals(a.outerHTML, '<a-425>begin<slot name="slot1">content</slot>end</a-425>');
 });
 
 Deno.test('Refract._debugRender', () => {
@@ -2079,7 +2085,7 @@ Deno.test('Refract._debugRender', () => {
 	class A extends Refract {
 		fruits = [];
 		html = `
-			<a-415>
+			<a-430>
 				hi
 				<b name="${this.a}" title="b">test</b>
 				${this.fruits.map(fruit =>
@@ -2088,7 +2094,7 @@ Deno.test('Refract._debugRender', () => {
 				${this.fruits.map(fruit =>
 					fruit.order // TODO: This should be parsed and render as a sub-expression.
 				)}
-			</a-415>`;
+			</a-430>`;
 	}
 	eval(A.compile());
 

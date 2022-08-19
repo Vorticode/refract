@@ -82,7 +82,7 @@ export default class VElement {
 			// Because then the slot will be added to the slot, recursively forever.
 			// So we only allow setting content that doesn't have slot tags.
 			if (!el.querySelector('slot'))
-				this.xel.slotHtml = el.innerHTML;
+				this.xel.slotHtml = el.innerHTML; // At this point none of the children will be upgraded to web components?
 			el.innerHTML = '';
 		}
 		// 1B. Create Element
@@ -101,8 +101,8 @@ export default class VElement {
 						let lname = name.toLowerCase();
 
 						// TODO: this logic is duplicated in Refract.preCompile()
-						if (lname in this.attributes) {
-							let val = this.attributes[lname];
+						if (name in this.attributes || lname in this.attributes) {
+							let val = name in this.attributes ? this.attributes[name] : this.attributes[lname];
 
 							// A solitary VExpression.
 							if (val && val.length === 1 && val[0] instanceof VExpression)
@@ -128,32 +128,34 @@ export default class VElement {
 						}
 					});
 
+				// Firefox:  "Cannot instantiate a custom element inside its own constructor during upgrades"
+				// Chrome:  "TypeError: Failed to construct 'HTMLElement': This instance is already constructed"
+				// Browsers won't let us nest web components inside slots when they're created all from the same html.
+				// So we use this crazy hack to define a new version of the element.
+				// See the Refract.nested.recursive test.
 				let i = 1;
-				do {
-					try {
-						newEl = new Class(...args);
-					} catch (e) {
+				let tagName2 = tagName;
+				while (tagName2.toUpperCase() in Refract.constructing) {
+					tagName2 = tagName + '_' + i
+					var Class2 = customElements.get(tagName2);
+					if (Class2)
+						Class = Class2;
 
-						// Firefox:  "Cannot instantiate a custom element inside its own constructor during upgrades"
-						// Chrome:  "TypeError: Failed to construct 'HTMLElement': This instance is already constructed"
-						// Browsers won't let us nest web components inside slots when they're created all from the same html.
-						// So we use this crazy hack to define a new version of the element.
-						// See the Refract.nested.recursive test.
-						if (!(e instanceof TypeError))
-							throw e;
-
-						var Class2 = customElements.get(tagName + '_' + i);
-						if (Class2)
-							Class = Class2;
-
-						else {
-							customElements.define(tagName + '_' + i, class extends Class {});
-							Class = customElements.get(tagName + '_' + i);
-							i++;
-						}
+					else {
+						customElements.define(tagName2, class extends Class {});
+						Class = customElements.get(tagName2);
+						i++;
 					}
 				}
-				while (!newEl)
+
+
+				// If this code fails in the future due to an element not finished constructing/upgrading,
+				// then modify the Refract constructor injecting code to make sure that
+				// delete Refract.constructing[this.tagName]]
+				// goes at the very end of the constructor.
+				newEl = new Class(...args);
+
+
 			}
 			else if (Refract.inSvg) // SVG's won't render w/o this path.
 				newEl = document.createElementNS('http://www.w3.org/2000/svg', tagName);
@@ -198,20 +200,7 @@ export default class VElement {
 			}
 		}
 
-		// 4. Use scoped styles for non-shadowroot
-		/*if (this.tagName === 'style' && this.xel.contains(this.el)) {
-			this.xel.constructor.styleId = (this.xel.constructor.styleId || 0) + 1;
-			this.xel.dataset.style = this.xel.constructor.styleId;
-			if (this.vChildren.length) {
-				let rTag = this.xel.tagName.toLowerCase();
-				for (let node of this.vChildren)
-					if (node.text)
-						node.text =
-							node.text.replace(new RegExp(rTag+'|:host', 'g'), rTag + '[data-style="' +  this.xel.constructor.styleId + '"]');
-			}
-		}*/
-
-		// 5. Recurse through children
+		// 4. Recurse through children
 		let isText = this.el.tagName === 'TEXTAREA' || this.attributes['contenteditable'] && (this.attributes['contenteditable']+'') !== 'false';
 		for (let vChild of this.vChildren) {
 			if (isText && (vChild instanceof VExpression))
@@ -223,7 +212,7 @@ export default class VElement {
 			count += vChild.apply(this.el);
 		}
 
-		// 6. Attributes (besides shadow)
+		// 5. Attributes (besides shadow)
 		for (let name in this.attributes) {
 			let value = this.attributes[name];
 			for (let attrPart of value)
@@ -278,7 +267,7 @@ export default class VElement {
 		}
 
 
-		// 7. Form field two-way binding.
+		// 6. Form field two-way binding.
 		// Listening for user to type in form field.
 		let hasValue = (('value' in this.attributes)&& tagName !== 'option');
 		if (hasValue) {

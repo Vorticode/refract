@@ -1,5 +1,7 @@
 
 //#IFDEV
+import Watch from "./Watch.js";
+
 class RefractError extends Error {
 	constructor(msg) {
 		super(msg);
@@ -169,7 +171,7 @@ var removeProxies = (obj, visited) => {
 					obj[name] = v;
 				else {
 					// It's a defined property.  Set it on the underlying object.
-					let wp = watch.objects.get(obj);
+					let wp = Watch.objects.get(obj);
 					let node = wp ? wp.fields_ : obj;
 					node[name] = v
 				}

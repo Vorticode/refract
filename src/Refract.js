@@ -14,6 +14,13 @@ import utils from "./utils.js";
 export default class Refract extends HTMLElement {
 
 	/**
+	 * Keep track of which Refract elements are currently being constructed.  Indexed by tagname.
+	 * This prevents us from creating another instance of an element when it's in the middle of being upgraded,
+	 * which browsers don't like.
+	 * @type {Object<string, boolean>} */
+	static constructing = {};
+
+	/**
 	 * A parsed representation of this class's html.
 	 * @type VElement */
 	static virtualElement;
@@ -358,6 +365,7 @@ export default class Refract extends HTMLElement {
 
 					// TODO: This arg parsing logic is duplicated in VElement.apply()
 					`(()=>{`, // We wrap this in a function b/c some minifiers will strangely rewrite the super call into another expression.
+						`Refract.constructing[this.tagName]=true`,
 						...result.constructorArgs.map(argName=>
 							[`if (this.hasAttribute('${argName}')) {`,
 							`   ${argName} = this.constructor.htmlDecode(this.getAttribute('${argName}'));`,
@@ -372,6 +380,7 @@ export default class Refract extends HTMLElement {
 						`if (!this.virtualElement) {`, // If not already created by a super-class
 						`\tthis.virtualElement = this.constructor.virtualElement.clone(this);`,
 						`\tthis.virtualElement.apply(null, this);`,
+						`\tdelete Refract.constructing[this.tagName];`, // TODO: This needs to be put at the end of the whole constructor, not just the end of our injected code?
 						`}`,
 					`})()`
 				];
@@ -383,11 +392,13 @@ export default class Refract extends HTMLElement {
 				injectLines = [
 					`constructor() {`,
 					`\tsuper();`,
+					`Refract.constructing[this.tagName]=true;`,
 					`\tif (!this.virtualElement) {`, // If not already created by a super-class
 					`\t\tthis.virtualElement = this.constructor.virtualElement.clone(this);`,
 					`\t\tthis.virtualElement.apply(null, this);`,
 					'\t}',
-					'}',
+					`\tdelete Refract.constructing[this.tagName];`,
+					`}`,
 				];
 			}
 			injectCode = '\r\n\t\t' + [
@@ -441,6 +452,7 @@ export default class Refract extends HTMLElement {
 
 
 	/**
+	 * TODO: Replace these with the DOM builtin connectedCallback() and disconnectedCallback()?
 	 * Call a function when a node is added to the DOM.
 	 * @param node {HTMLElement|Node}
 	 * @param callback {function()} */
