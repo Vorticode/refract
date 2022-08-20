@@ -2066,28 +2066,27 @@ Deno.test('Refract.slot.nested', () => {
 });
 
 
-Deno.test('Refract.misc.htmlFirst', () => {
-
-	class A extends Refract {
-		html = `<a-521>hi</a-521>`;
-
-		constructor() {
-			super();
-		}
-	}
-	eval(A.compile());
-
-	let a = createEl(`<5-421>hi</5-421>`);
-	console.log(a.outerHTML)
-
-});
+/**
+ * This calls C's constructor twice!
+ * The first time is when the slot content is populated inside VElement.apply() step 3.
+ *
+ * The second time, the browser applies the slot content on its own.
+ *
+ * This happens even if I rename slot to slot2 and update the code to work with slot2.
+ * So it doesn't seem to be anything special with the 'slot' tagName.
+ *
+ * The second one constructed is never added to the DOM.
+ */
+Deno.test('Refract.slot._nested2', () => {
+	let cCount = 0;
 
 
-Deno.test('Refract.slot.nested2', () => {
 	class C extends Refract {
-		constructor() {
+		constructor() { // TODO: This constructor is called twice because it's instantiated inside A.
 			super();
-			console.log('c')
+			cCount++;
+			this.innerHTML = cCount;
+			//console.log('c');
 		}
 
 		html = `<c-421>hello</c-421>`;
@@ -2099,18 +2098,12 @@ Deno.test('Refract.slot.nested2', () => {
 	}
 	eval(B.compile());
 
-	class A extends Refract {
-		html = `<a-421><div id="root"></div></a-421>`;
+	let div = document.createElement('div');
+	div.innerHTML = '<b-421><c-421></c-421></b-421>';
+	console.log(div.innerHTML);
 
-		constructor() {
-			super();
-			this.root.innerHTML = '<b-421><c-421></c-421></b-421>';
-		}
-	}
-	eval(A.compile());
+	//let b = new B();
 
-	let a = createEl(`<a-421></a-421>`);
-	console.log(a.outerHTML)
 
 });
 
@@ -2201,6 +2194,22 @@ Deno.test('Refract.misc.TwoVars', () => {
 	a.a = 2;
 	assertEquals(a.innerHTML, '5');
 });
+
+
+Deno.test('Refract.misc.htmlFirst', () => {
+	class A extends Refract {
+		html = `<a-521>hi</a-521>`; // html property occurs before constructor.
+		constructor() {
+			super();
+		}
+	}
+	eval(A.compile());
+
+	let a = createEl(`<5-421>hi</5-421>`);
+	console.log(a.outerHTML)
+
+});
+
 
 
 Deno.test('Refract.benchmark.10kOptions', () => {

@@ -11,7 +11,7 @@ let templateCache = new WeakMap();
  * The string will be trimmed so that an element with space before it doesn't create a text node with spaces.
  * @param html {string}
  * @param trim {boolean=}
- * @param doc {HTMLDocument}
+ * @param doc {HTMLDocument|Document}
  * @return {HTMLElement|Node} */
 export default function(html, trim=true, doc=document) {
 
