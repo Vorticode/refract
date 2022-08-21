@@ -131,6 +131,7 @@ export default class VExpression {
 		if (this.attributes) { // An Expression that creates one or more attributes.
 			for (let attr of this.attributes)
 				parent.removeAttribute(attr);
+			this.attributes = [];
 
 			let text = this.evaluate();
 			if (text) {
@@ -143,7 +144,9 @@ export default class VExpression {
 						lastName = token;
 						this.attributes.push(lastName);
 					} else if (token.type === 'string') {
-						parent.setAttribute(lastName, token);
+						// tokens[1] is in between "..."
+						// TODO: Later we should add code to evaluate any vexpressions within it?
+						parent.setAttribute(lastName, token.tokens[1]);
 						lastName = null;
 					}
 				}

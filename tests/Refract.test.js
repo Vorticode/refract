@@ -641,7 +641,7 @@ Deno.test('Refract.attributes._Set', () => {
 }); // Fails b/c Watch doesn't intercept Set() methods, so we don't get called on add().
 
 
-Deno.test('Refract.attributes.attributeExpressions', () => {
+Deno.test('Refract.attributes.attributeExpression', () => {
 
 	class A extends Refract {
 		attr = 'contenteditable';
@@ -656,12 +656,18 @@ Deno.test('Refract.attributes.attributeExpressions', () => {
 	a.attr = 'disabled';
 	assertEquals(a.outerHTML, `<x-88 disabled=""></x-88>`);
 
+
+	a.attr = 'style="color: red"';
+	assertEquals(a.outerHTML, `<x-88 style="color: red"></x-88>`);
+
 	a.attr = '';
 	assertEquals(a.outerHTML, `<x-88></x-88>`);
 	a.attr = null;
 	assertEquals(a.outerHTML, `<x-88></x-88>`);
 	a.attr = undefined;
 	assertEquals(a.outerHTML, `<x-88></x-88>`);
+
+	// TODO: Test attribute expression with ${} embedded in string.
 
 });
 
@@ -2075,7 +2081,7 @@ Deno.test('Refract.slot.nested', () => {
  * This happens even if I rename slot to slot2 and update the code to work with slot2.
  * So it doesn't seem to be anything special with the 'slot' tagName.
  *
- * The second one constructed is never added to the DOM.
+ * The second C that's constructed is never added to the DOM.
  */
 Deno.test('Refract.slot._nested2', () => {
 	let cCount = 0;

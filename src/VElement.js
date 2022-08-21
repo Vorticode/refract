@@ -148,7 +148,6 @@ export default class VElement {
 					}
 				}
 
-
 				// If this code fails in the future due to an element not finished constructing/upgrading,
 				// then modify the Refract constructor injecting code to make sure that
 				// delete Refract.constructing[this.tagName]]
@@ -371,7 +370,7 @@ export default class VElement {
 
 	/**
 	 * TODO: Reduce shared logic between this and evalVAttribute
-	 * If a solitary VExpression, return whatevr object it evaluates to.
+	 * If a solitary VExpression, return whatever object it evaluates to.
 	 * Otherwise merge all pieces into a string and return that.
 	 * value="${'one'}" becomes 'one'
 	 * value="${['one', 'two']}" becomes ['one', 'two']
