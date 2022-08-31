@@ -75,7 +75,7 @@ export default class VExpression {
 	 * Unlike VElement.vChildren, this is an array of arrays, with each sub-array
 	 * having all the vChildren created with each loop iteration.
 	 *
-	 * @type {(VElement|VExpression|VText)[][]} */
+	 * @type {(VElement|VExpression|VText|HTMLElement)[][]} */
 	vChildren = [];
 
 
@@ -169,8 +169,11 @@ export default class VExpression {
 
 			// Remove old children.
 			for (let group of this.vChildren)
-				for (let vChild of group.slice()) // Slice because vChild.remove() can alter group, throwing off the index.
-					vChild.remove();
+				if (group instanceof HTMLElement)
+					group.parentNode.removeChild(group);
+				else
+					for (let vChild of group.slice()) // Slice because vChild.remove() can alter group, throwing off the index.
+						vChild.remove();
 
 			// Create new children.
 			this.vChildren = this.evaluateToVElements();
@@ -178,13 +181,18 @@ export default class VExpression {
 			// Add children to parent.
 			let count = 0;
 			let startIndex = this.startIndex;
-			for (let group of this.vChildren) {
-				for (let vChild of group) {
-					vChild.startIndex = startIndex;
-					let num = vChild.apply(this.parent, null);
-					startIndex += num;
-					count += num;
+			for (let item of this.vChildren) {
+				if (item instanceof HTMLElement) {
+					this.parent.insertBefore(item, this.parent.childNodes[startIndex])
+					startIndex ++;
 				}
+				else
+					for (let vChild of item) {
+						vChild.startIndex = startIndex;
+						let num = vChild.apply(this.parent, null);
+						startIndex += num;
+						count += num;
+					}
 			}
 
 			return count;
@@ -235,7 +243,7 @@ export default class VExpression {
 	 * @pure
 	 * Non-recursively resolve this and all child VExpressions, returning a tree of VElement and VText.
 	 * Does not modify the actual DOM.
-	 * @return {(VElement|VText|VExpression)[][]} */
+	 * @return {(VElement|VText|VExpression|HTMLElement)[][]} */
 	evaluateToVElements() {
 
 		// Remove previous watches.
@@ -266,10 +274,15 @@ export default class VExpression {
 			else {
 				let scopeVarNames = Object.keys(this.scope);
 				for (let html of htmls) {
-					html += ''; // can be a number.
-					if (html.length) {
-						let vels = VElement.fromHtml(html, scopeVarNames, this).flat();
-						result.push(vels);
+					if (html instanceof HTMLElement) {
+						result.push(html); // not a VElement, but a full HTMLElement
+					}
+					else {
+						html += ''; // can be a number.
+						if (html.length) {
+							let vels = VElement.fromHtml(html, scopeVarNames, this).flat();
+							result.push(vels);
+						}
 					}
 				}
 			}
@@ -454,12 +467,15 @@ export default class VExpression {
 	getAllChildrenLength() {
 		let result = 0;
 		for (let group of this.vChildren) {
-			for (let vChild of group) {
-				if (vChild.receiveNotification_) // Faster than vChild instanceof VExpression
-					result += vChild.getAllChildrenLength();
-				else
-					result++;
-			}
+			if (group instanceof HTMLElement)
+				result ++;
+			else
+				for (let vChild of group) {
+					if (vChild.receiveNotification_) // Faster than vChild instanceof VExpression
+						result += vChild.getAllChildrenLength();
+					else
+						result++;
+				}
 		}
 
 		//window.count++;
