@@ -82,12 +82,10 @@ export default {
 			!['button', 'color', 'file', 'hidden', 'image', 'radio', 'reset', 'submit'].includes(el.getAttribute('type'))
 		);
 
-
 		// It's better to do it on input than change, b/c input fires first.
 		// Then if user code adds and event listener on input, this one will fire first and have the value already set.
 		if (useInputEvent) { // TODO: Input type="number" is typable but also dispatches change event on up/down click.
 			el.addEventListener('input', e=> {
-
 				let type = el.getAttribute('type') || '';
 
 				// Convert input type="number" to a float.

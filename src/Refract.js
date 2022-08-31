@@ -44,6 +44,15 @@ export default class Refract extends HTMLElement {
 	 * @type {Event} If within an event, this is the  */
 	static currentEvent;
 
+	/**
+	 * TODO: Every event attribute should call this function.
+	 * This will fix some of the event unit tests where events are added from ${} in odd ways.
+	 * @param event {Event}
+	 * @param el {HTMLElement} I probably don't need this, since i can get it from event.currentTarget */
+	static refractEvent(event, el) {
+
+	}
+
 	/** @type {string} */
 	slotHtml = '';
 
@@ -53,6 +62,20 @@ export default class Refract extends HTMLElement {
 		// Allow setting properties on the object before any html is created:
 		for (let name in props)
 			this[name] = props[name];
+	}
+
+	createDomFromVDom(name) {
+
+		if (!this.virtualElement && this.constructor.name===name) { // If not already created by a super-class
+
+			Refract.constructing[this.tagName]=true;
+
+			this.virtualElement = this.constructor.virtualElement.clone(this);
+			this.virtualElement.apply(null, this);
+
+			// TODO: This needs to be put at the end of the whole constructor, not just the end of our injected code?
+			delete Refract.constructing[this.tagName];
+		}
 	}
 
 	//#IFDEV
@@ -308,7 +331,6 @@ export default class Refract extends HTMLElement {
 
 					// TODO: This arg parsing logic is duplicated in VElement.apply()
 					`(()=>{`, // We wrap this in a function b/c some minifiers will strangely rewrite the super call into another expression.
-						`Refract.constructing[this.tagName]=true`,
 						...result.constructorArgs.map(argName=>
 							[`if (this.hasAttribute('${argName}')) {`,
 							`   ${argName} = this.constructor.htmlDecode(this.getAttribute('${argName}'));`,
@@ -319,12 +341,8 @@ export default class Refract extends HTMLElement {
 							`		    try { ${argName} = eval(${argName}.slice(2, -1)) } catch(e) {};`,
 							`   };`,
 							'}'] // [above] Parse attrib as json if it's valid json.
-						).flat(),
-						`if (!this.virtualElement) {`, // If not already created by a super-class
-						`\tthis.virtualElement = this.constructor.virtualElement.clone(this);`,
-						`\tthis.virtualElement.apply(null, this);`,
-						`\tdelete Refract.constructing[this.tagName];`, // TODO: This needs to be put at the end of the whole constructor, not just the end of our injected code?
-						`}`,
+						).flat(), // [below] this.constructor.name==='${self.name}' is to prevent super class from constructing html for a child class.
+						`this.createDomFromVDom('${self.name}')`,
 					`})()`
 				];
 			}
@@ -334,13 +352,8 @@ export default class Refract extends HTMLElement {
 				injectIndex = fregex.matchFirst(['{'], tokens).index+1;
 				injectLines = [
 					`constructor() {`,
-					`\tsuper();`,
-					`Refract.constructing[this.tagName]=true;`,
-					`\tif (!this.virtualElement) {`, // If not already created by a super-class
-					`\t\tthis.virtualElement = this.constructor.virtualElement.clone(this);`,
-					`\t\tthis.virtualElement.apply(null, this);`,
-					'\t}',
-					`\tdelete Refract.constructing[this.tagName];`,
+					`    super();`,
+					`    this.createDomFromVDom('${self.name}')`,
 					`}`,
 				];
 			}
@@ -354,7 +367,6 @@ export default class Refract extends HTMLElement {
 
 			// This final line return is needed to prevent minifiers from breaking it.
 			tokens.splice(injectIndex, 0, injectCode);
-
 		}
 
 
@@ -538,8 +550,13 @@ export default class Refract extends HTMLElement {
 	}
 }
 
+Refract.constructing = {};
+
 Refract.htmlDecode = Html.decode;
 Refract.htmlEncode = Html.encode;
+
+var h = Html.encode;
+export {h};
 
 // Expose useful internals to users of Refract:
 export {default as Watch} from './Watch.js';

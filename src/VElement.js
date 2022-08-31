@@ -113,7 +113,7 @@ export default class VElement {
 								return true;
 
 							// Else evaluate as JSON, or as a string.
-							let result = VElement.evalVAttributeAsString(this, (val || []), this.scope);
+							let result = VElement.evalVAttributeAsString(this.xel, (val || []), this.scope);
 							try {
 								result = JSON.parse(result);
 							} catch (e) {
@@ -133,17 +133,19 @@ export default class VElement {
 				// Browsers won't let us nest web components inside slots when they're created all from the same html.
 				// So we use this crazy hack to define a new version of the element.
 				// See the Refract.nested.recursive test.
-				let i = 1;
+				let i = 2;
 				let tagName2 = tagName;
 				while (tagName2.toUpperCase() in Refract.constructing) {
 					tagName2 = tagName + '_' + i
 					var Class2 = customElements.get(tagName2);
-					if (Class2)
+					if (Class2) {
 						Class = Class2;
+						break;
+					}
 
 					else {
-						customElements.define(tagName2, class extends Class {});
-						Class = customElements.get(tagName2);
+						Class = class extends Class {};
+						customElements.define(tagName2, Class);
 						i++;
 					}
 				}
@@ -324,11 +326,12 @@ export default class VElement {
 
 	/**
 	 * @param xel {Refract}
-	 * @param vParent {VElement|VExpression}
+	 * @param vParent {null|VElement|VExpression}
 	 * @return {VElement} */
-	clone(xel, vParent) {
+	clone(xel, vParent=null) {
 		let result = new VElement(this.tagName);
 		result.xel = xel || this.xel;
+		result.vParent = vParent;
 
 		for (let attrName in this.attributes) {
 			result.attributes[attrName] = [];

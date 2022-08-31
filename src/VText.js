@@ -25,7 +25,7 @@ export default class VText {
 	}
 
 	/**
-	 * @param parent {HTMLElement}
+	 * @param parent {?HTMLElement}
 	 * @param el {HTMLElement|Node?}
 	 * @returns {int} */
 	apply(parent=null, el=null) {
@@ -33,7 +33,9 @@ export default class VText {
 			this.el = el;
 		else {
 			let text;
-			if (parent.tagName === 'STYLE') {
+
+			// If text inside a style tag that's not inside our own component's shadow root.
+			if (parent.tagName === 'STYLE' && !this.xel.contains(parent.getRootNode()?.host)) {
 				if (!this.xel.dataset.style) {
 					this.xel.constructor.styleId = (this.xel.constructor.styleId || 0) + 1; // instance count.
 					this.xel.dataset.style = this.xel.constructor.styleId;
@@ -41,7 +43,7 @@ export default class VText {
 
 				let rTag = this.xel.tagName.toLowerCase();
 
-				text = this.text.replace(new RegExp(rTag+'|:host', 'g'), rTag + '[data-style="' +  this.xel.dataset.style + '"]');
+				text = VText.styleReplace(this.text, rTag, this.xel.dataset.style);
 			}
 			else
 				text = this.text;
@@ -78,4 +80,8 @@ export default class VText {
 		return this.text;
 	}
 	//#ENDIF
+
+	static styleReplace(text, rTag, styleId) {
+		return text.replace(new RegExp(rTag+'|:host', 'g'), rTag + '[data-style="' +  styleId + '"]')
+	}
 }
