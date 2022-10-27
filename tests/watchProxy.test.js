@@ -36,7 +36,7 @@ Deno.test('watchProxy.simple', () => {
 	});
 
 	wp.a[0] = 3;
-	assert.eqDeep(log, [['set', ['a', '0'], 3]]);
+	assert.eqJson(log, [['set', ['a', '0'], 3]]);
 });
 
 // Two watchers of the same array, make sure changing it through one path notifies the other.
@@ -53,9 +53,9 @@ Deno.test('watchProxy.twoArrays', () => {
 
 	b2[0] = 5;
 
-	assert.eqDeep(ops.length, 2);
-	assert.eqDeep(ops[0], 'b1');
-	assert.eqDeep(ops[1], 'b2');
+	assert.eqJson(ops.length, 2);
+	assert.eqJson(ops[0], 'b1');
+	assert.eqJson(ops[1], 'b2');
 });
 
 // Watches with roots on both an object and it's sub-property.
@@ -103,7 +103,7 @@ Deno.test('watchProxy.arrayShift', () => {
 	assertEquals(wp.a[0], 1);
 
 	// Make sure we only have one op
-	assert.eqDeep(ops[0].slice(0, 3), ["remove", ['a', '0'], 0]);
+	assert.eqJson(ops[0].slice(0, 3), ["remove", ['a', '0'], 0]);
 	assertEquals(ops.length, 1);
 });
 
@@ -126,7 +126,7 @@ Deno.test('watchProxy.arrayShift2', () => {
 	// Make sure path of b has been updated.
 	let path = WatchUtil.getPaths(o, b)[0];
 
-	assert.eqDeep(path, ['items', '0']);
+	assert.eqJson(path, ['items', '0']);
 });
 
 // Same as above, but make sure references to sub-array are updated.
@@ -158,7 +158,7 @@ Deno.test('watchProxy.arrayShiftRecurse', () => {
 
 	let path = WatchUtil.getPaths(o, b)[0];
 
-	assert.eqDeep(path, ['items', '0', 'parts', '0']);
+	assert.eqJson(path, ['items', '0', 'parts', '0']);
 });
 
 // Test an object that refers to another object twice.
@@ -177,7 +177,7 @@ Deno.test('watchProxy.doubleRef', () => {
 
 	// wp.items[0].name has never been accessed so it isn't registered:
 	wp.item.name = 3;
-	assert.eqDeep(paths, [
+	assert.eqJson(paths, [
 		['item', 'name']
 	]);
 
@@ -186,7 +186,7 @@ Deno.test('watchProxy.doubleRef', () => {
 	paths = [];
 	var a = wp.items[0].name;
 	wp.item.name = 4;
-	assert.eqDeep(paths, [
+	assert.eqJson(paths, [
 		['item', 'name'],
 		['items', '0', 'name']
 	]);
@@ -195,14 +195,14 @@ Deno.test('watchProxy.doubleRef', () => {
 	paths = [];
 	a = wp.items[0].name;
 	wp.item.name = 4;
-	assert.eqDeep(paths, []);
+	assert.eqJson(paths, []);
 
 
 
 	// Set the value via p.items[0].name
 	paths = [];
 	wp.items[0].name = 2;
-	assert.eqDeep(paths, [
+	assert.eqJson(paths, [
 		['item', 'name'],
 		['items', '0', 'name']
 	]);
@@ -234,7 +234,7 @@ Deno.test('watchProxy.forOf', () => {
 	for (let a2 of wp.a)
 		a2.b = 2;
 
-	assert.eqDeep(called, 1);
+	assert.eqJson(called, 1);
 });
 
 /**
@@ -265,7 +265,7 @@ Deno.test('watchProxy.spliceReplace', () => {
 	});
 
 	wp.a.splice(2, 2, 'C', 'D');
-	assert.eqDeep(log, [
+	assert.eqJson(log, [
 		['set', ['a', '2'], 'C'],
 		['set', ['a', '3'], 'D']
 	]);
@@ -282,7 +282,7 @@ Deno.test('watchProxy.spliceAdd', () => {
 	});
 
 	var item = wp.a.splice(2, 2, 'C', 'D', 'E');
-	assert.eqDeep(log, [
+	assert.eqJson(log, [
 		['set', ['a', '2'], 'C'],
 		['set', ['a', '3'], 'D'],
 		['insert', ['a', '4'], 'E']
@@ -300,7 +300,7 @@ Deno.test('watchProxy.spliceRemove', () => {
 	});
 
 	var item = wp.a.splice(2, 2, 'C');
-	assert.eqDeep(log, [
+	assert.eqJson(log, [
 		['set', ['a', '2'], 'C'],
 		['remove', ['a', '3'], 3]
 	]);

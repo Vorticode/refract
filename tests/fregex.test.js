@@ -222,7 +222,7 @@ Deno.test('fregex.matchFirst', () => {
 	let tokens = ['var', 'a', '=', 'b', ';'];
 	let result = fregex.matchFirst(pattern, tokens);
 
-	assertEquals(result, ['a', '=', 'b']);
+	assert.eqJson(result, ['a', '=', 'b']);
 	assertEquals(result.index, 1);
 });
 

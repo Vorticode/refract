@@ -5,7 +5,6 @@ Testimony.enableJsDom();
 //import Refract from './../dist/Refract.min.js';
 import Refract from './../src/Refract.js';
 import createEl from '../src/createEl.js';
-import Watch from "../src/Watch.js";
 
 Refract.elsCreated = [];
 
@@ -61,8 +60,12 @@ Deno.test('Refract.basic.constructor', () => {
 	let constructorCalled = 0;
 
 	class A extends Refract {
+		test = 3;
+
+
 		constructor(a, from, b=window) {
 			super();
+			console.log('constructor');
 			constructorCalled++;
 		}
 
@@ -75,9 +78,9 @@ Deno.test('Refract.basic.constructor', () => {
 	// Make sure constructor is called when instantiative via createEl.
 	assertEquals(constructorCalled, 1);
 
-	let a2 = createEl('<a-20></a-20>');
-
-	assertEquals(constructorCalled, 2);
+	// let a2 = createEl('<a-20></a-20>');
+	//
+	// assertEquals(constructorCalled, 2);
 });
 
 Deno.test('Refract.basic.constructor2', () => {
@@ -156,21 +159,45 @@ Deno.test('Refract.basic.entity', () => {
 Deno.test('Refract.basic.entity2', () => {
 
 	class A extends Refract {
-		html = `<x-7>a < b</x-7>`;
+		html = `<b-70>a < b</b-70>`;
 	}
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, '<x-7>a &lt; b</x-7>');
+	assertEquals(a.outerHTML, '<b-70>a &lt; b</b-70>');
 });
+
+Deno.test('Refract.basic.deferredRender', "Don't render anything until we call the render() function.", () => {
+
+	let test1, test2;
+
+	class A extends Refract {
+		constructor() {
+			super(false);
+			test1 = this.d;
+			debugger;
+			this.render(this.constructor.name);
+			test2 = this.d;
+		}
+
+		html = `<b-71><div id="d"></div></b-71>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	assert.eq(test1, undefined);
+	assert(test2);
+	assert.eq(test2, a.firstChild);
+});
+
 
 Deno.test('Refract.expr.string', () => {
 	class A extends Refract {
-		html = `<x-8>${'hi'}</x-8>`;
+		html = `<b-80>${'hi'}</b-80>`;
 	}
 	eval(A.compile());
 	let a = new A();
-	assertEquals(a.outerHTML, '<x-8>hi</x-8>');
+	assertEquals(a.outerHTML, '<b-80>hi</b-80>');
 	assertEquals(a.childNodes.length, 1);
 });
 
@@ -227,7 +254,6 @@ Deno.test('Refract.expr.loopInExprLoop', () => {
 
 });
 
-
 Deno.test('Refract.expr.undefinedAttr', () => {
 	class A extends Refract {
 		value;
@@ -238,7 +264,6 @@ Deno.test('Refract.expr.undefinedAttr', () => {
 
 	assertEquals(a.outerHTML, `<x-136><div title=""></div></x-136>`);
 });
-
 
 Deno.test('Refract.expr.undefinedAttr2', () => {
 	class A extends Refract {

@@ -1,5 +1,7 @@
 /**
  * Provide functionality for running Deno tests in a web browser.
+ * Has no external dependencies.
+ *
  * TODO:
  * 4.  Integrate with IntelliJ file watcher so we run cmd line tests when files change.
  * 5.  Run tests from @expect doc tags.
@@ -7,12 +9,12 @@
  * 7.  Add to github.
  * 8.  Command line via node
  * 9.  Support other Deno options.
- * 10. Php version
  * 11. URLs only mark which tests to include or exclude, to make url shorter
+ * 12. Auto-expand to failed tests.
  */
 
 class AssertError extends Error {
-	constructor(actual, expected, op) {
+	constructor(expected, actual, op) {
 		super('Assertion Failed');
 		this.name = "AssertError";
 		this.expected = expected;
@@ -30,34 +32,91 @@ function assert(val) {
 	}
 }
 
-const assertEquals = assert.eq = (actual, expected) => {
-	// JSON.stringify lets us compare content to arbitrary depth
-	if (actual !== expected && JSON.stringify(actual) !== JSON.stringify(expected)) {
+/**
+ * https://stackoverflow.com/a/6713782/
+ * @param x
+ * @param y
+ * @return {boolean} */
+function isSame( x, y ) {
+	if ( x === y )
+		return true; // if both x and y are null or undefined and exactly the same
+
+	if (!(x instanceof Object) || !(y instanceof Object))
+		return false; // if they are not strictly equal, they both need to be Objects
+
+	// they must have the exact same prototype chain, the closest we can do is
+	// test their constructor.
+	if (x.constructor !== y.constructor)
+		return false;
+
+	for (var p in x) {
+		if (!x.hasOwnProperty(p))
+			continue; // other properties were tested using x.constructor === y.constructor
+
+		if (!y.hasOwnProperty(p))
+			return false; // allows to compare x[ p ] and y[ p ] when set to undefined
+
+		if (x[p] === y[p])
+			continue; // if they have the same strict value or identity then they are equal
+
+
+		if (typeof x[p] !== "object")
+			return false; // Numbers, Strings, Functions, Booleans must be strictly equal
+
+		if (!isSame(x[p], y[p]))
+			return false; // Objects and Arrays must be tested recursively
+	}
+
+	for (p in y) // allows x[ p ] to be set to undefined
+		if (y.hasOwnProperty(p) && !x.hasOwnProperty(p))
+			return false;
+
+	return true;
+}
+
+const assertEquals = assert.eq = (expected, actual) => {
+	// JUnit, PhpUnit, and mocha all use the order: expected, actual.
+	if (!isSame(expected, actual)) {
 		if (Testimony.debugOnAssertFail)
 			debugger;
-		throw new AssertError(actual, expected, '==');
+		throw new AssertError(expected, actual, '==');
 	}
 };
 
-const assertStartsWith = assert.startsWith = (actual, expected) => {
-	// JSON.stringify lets us compare content to arbitrary depth
-	if (!actual.startsWith(expected)) {
+const assertTrue = assert.true = actual => {
+	if (!actual) {
 		if (Testimony.debugOnAssertFail)
 			debugger;
-		throw new AssertError(actual, expected, 'startsWith');
+		throw new AssertError(actual, true, '==');
 	}
 };
 
 
-assert.eqDeep = (actual, expected) => {
-	if (actual === expected)
-		return true;
+const assertFalse = assert.false = actual => {
+	if (actual) {
+		if (Testimony.debugOnAssertFail)
+			debugger;
+		throw new AssertError(actual, false, '==');
+	}
+};
+
+const assertStartsWith = assert.startsWith = (haystack, needle) => {
+	// JSON.stringify lets us compare content to arbitrary depth
+	if (!haystack.startsWith(needle)) {
+		if (Testimony.debugOnAssertFail)
+			debugger;
+		throw new AssertError(haystack, needle, 'startsWith');
+	}
+};
+
+
+assert.eqJson = (expected, actual) => {
 	if (JSON.stringify(actual) === JSON.stringify(expected))
 		return true;
 
 	if (Testimony.debugOnAssertFail)
 		debugger;
-	throw new AssertError(actual, expected);
+	throw new AssertError(expected, actual);
 };
 
 assert.neq = (val1, val2) => {
@@ -188,7 +247,7 @@ var TableRenderer = {
 							type="checkbox" style="display: none">] 
 							
 							<!-- Status -->
-							<span class="status" style="line-height: 1">&nbsp;</span> 
+							<span class="status" style="line-height: 1; display: inline-block; width: 7.7px">&nbsp;</span> 
 
 							${name}</label>&nbsp;&nbsp;</td>
 					<td class="status"></td>
@@ -198,7 +257,7 @@ var TableRenderer = {
 			createEl(`
 				<tr class="testGroup">
 					<td colspan="2">
-						<table style="margin-left: 31px"></table>
+						<table style="margin-left: ${level ? 7.7*4 : 7.7*2}px"></table>
 					</td>
 				</tr>`)
 		];
@@ -240,14 +299,14 @@ var TableRenderer = {
 			expand.previousSibling.textContent = expand.checked ? '-' : '+';
 			trs[1].style.display = expand.checked ? '' : 'none';
 
-			// Minimizing also minimizes children:
-			if (!expand.checked) // Untested
-				for (let tr of trs[1].querySelectorAll('tr.group')) {
-					let expand2 = tr.querySelector('label.expand');
-					expand2.checked = false;
-					expand2.previousSibling.textContent = '-';
-					tr.style.display = 'none';
-				}
+			// Minimizing also minimizes children.  Doesn't work right.
+			// if (!expand.checked) // Untested
+			// 	for (let tr of trs[1].querySelectorAll('tr.group')) {
+			// 		let expand2 = tr.querySelector('label.expand');
+			// 		expand2.checked = false;
+			// 		expand2.previousSibling.textContent = '-';
+			// 		tr.style.display = 'none';
+			// 	}
 		});
 
 		return trs;
@@ -268,10 +327,10 @@ var TableRenderer = {
 						type="checkbox" name="${test.name}" value="1" style="display: none">]
 						
 					<!-- Status -->
-					<span class="status" style="line-height: 1">&nbsp;</span> 
+					<span class="status" style="line-height: 1; display: inline-block; width: 7.7px">&nbsp;</span> 
 
 					${baseName}</label>&nbsp;&nbsp;</td>
-				<td class="message"></td>
+				<td class="message"><span style="opacity: .5">${test.desc}</span></td>
 			</tr>`);
 
 		// Activate checkbox
@@ -325,8 +384,9 @@ var TableRenderer = {
 };
 
 class Test {
-	constructor(name, fn) {
+	constructor(name, desc, fn) {
 		this.name = name;
+		this.desc = desc;
 		this.fn = fn;
 	}
 }
@@ -345,26 +405,58 @@ var Testimony = {
 
 	render: TableRenderer,
 
-	shortenError(error) {
-		// slice(0, -3) to remove the 3 stacktrace lines inside Testimony.js that calls runtests.
-		let errorStack = error.stack.split(/\n/g).slice(0, -3).join('\r\n');
-
-		errorStack = errorStack.replace(/\r?\n/g, '<br>&nbsp;&nbsp;');
-		return errorStack.replace(new RegExp(window.location.origin, 'g'), ''); // Remove server name to shorten error stack.
-	},
-
-
-
 	/**
 	 * Add a test.
+	 *
+	 * Arguments can be given in any order, except that name must occur before desc.
 	 * @param name {string}
-	 * @param func {function|Object} */
-	test(name, func) {
+	 * @param desc {string|function()=}
+	 * @param html {string|function()=}
+	 * @param func {function()=} */
+	test(name, desc, html=null, func) {
+		let name2, desc2='', html2, func2;
+		for (let arg of arguments) {
+			if (typeof arg === 'function')
+				func2 = arg;
+			else if ((arg+'').trim().match(/^<[!a-z]/i)) // an open tag.
+				html2 = arg;
+			else if (!name2)
+				name2 = arg;
+			else
+				desc2 = arg || '';
+		}
 
-		if (typeof func === 'function')
-			Testimony.tests[name] = new Test(name, func);
-		else
-			Testimony.tests[name] = new Test(func.name, func.fn);
+		// Create elements for html
+		if (html2) {
+			let oldFunc = func2;
+			if (html2.startsWith('<html') || html2.startsWith('<!')) {
+				func2 = async () => {
+					var iframe = document.createElement('iframe');
+					iframe.style.display = 'none';
+					document.body.append(iframe);
+
+					var doc = iframe.contentDocument || iframe.contentWindow.document;
+					doc.open();
+					doc.write(html2);
+					doc.close();
+
+					let result = await oldFunc(doc);
+					iframe.parentNode.removeChild(iframe);
+					return result;
+				};
+			}
+			else {
+				func2 = async () => {
+					let el = createEl(html2);
+					document.body.append(el);
+					let result = await oldFunc(el);
+					document.body.removeChild(el);
+					return result;
+				}
+			}
+		}
+
+		Testimony.tests[name2] = new Test(name2, desc2, func2);
 	},
 
 	/**
@@ -373,15 +465,13 @@ var Testimony = {
 		let result = {};
 		for (let name in Testimony.tests)
 			delve(result, name.split(/\./g), Testimony.tests[name]);
-		return {'AllTests': result};
+		return {AllTests: result};
 	},
-
 
 	async runTests(parentEl, tree=undefined, level=0) {
 
 		if (!tree)
 			tree = Testimony.getTestTree();
-
 
 		for (let name in tree) {
 			let trs = []
@@ -434,9 +524,52 @@ var Testimony = {
 				await Testimony.runTests(table, test, level+1); // recurse
 			}
 
-
 			parentEl.append(...trs);
 		}
+	},
+
+
+	/**
+	 * @deprecated for makeDoc()
+	 * Use an iframe to create a document.
+	 * @param html {string}
+	 * @param callback {function(Document)} */
+	async mockDoc(html, callback) {
+		if (!html.includes('<head'))
+			html = `<html lang="en"><head><meta charset="uft8"><title></title></head><body>${html}</body></html>`;
+
+		var iframe = document.createElement('iframe');
+		iframe.style.display = 'none';
+		document.body.append(iframe);
+
+		var doc = iframe.contentDocument || iframe.contentWindow.document;
+		doc.open();
+		doc.write(html);
+		doc.close();
+
+		await callback(doc);
+		iframe.parentNode.removeChild(iframe);
+	},
+
+	/** @deprecated for passing html to the regular test() function. */
+	mockElement(html, callback) {
+		let el = createEl('<div>' + html + '</div>').firstChild;
+		document.body.append(el);
+		callback(el, el.ownerDocument);
+		document.body.removeChild(el);
+	},
+
+
+
+
+	// Internal functions:
+
+	shortenError(error) {
+		// slice(0, -3) to remove the 3 stacktrace lines inside Testimony.js that calls runtests.
+		let errorStack = error.stack.split(/\n/g).slice(0, -3).join('\r\n');
+
+		errorStack = errorStack.replace(/\r?\n/g, '<br>&nbsp;&nbsp;');
+		return errorStack.replace(new RegExp(window.location.origin, 'g'), ''); // Remove server name to shorten error stack.
 	},
 
 	/**
@@ -455,13 +588,10 @@ var Testimony = {
 		}
 	},
 
-	mockElement(html, callback) {
-		let el = createEl('<div>' + html + '</div>').firstChild;
-		document.body.appendChild(el);
-		callback(el, el.ownerDocument);
-		document.body.removeChild(el);
-	}
+}
 
+function makeDoc(html) {
+	return `<html lang="en"><head><meta charset="uft8"><title></title></head><body>${html}</body></html>`
 }
 
 
@@ -469,4 +599,4 @@ var Testimony = {
 if (!globalThis.Deno)
 	globalThis.Deno = {test: Testimony.test};
 export default Testimony;
-export {assert, assertEquals, assertStartsWith, Testimony};
+export {assert, assertEquals, assertStartsWith, assertTrue, assertFalse, makeDoc, Testimony};

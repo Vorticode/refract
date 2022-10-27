@@ -303,6 +303,36 @@ class CarBody extends Refract  {
 
 ==TODO: Document passing eval'd code as constructor args with {}==
 
+### Deferred Rendering
+
+Maybe you want to setup your object a little before it's rendered.  In this case, pass `false` to the super constructor then call `this.render()` whenever it's ready:
+
+```javascript
+class TodoList extends Refract {
+
+    items = [];
+    
+    constructor(items) {
+        super(false); // False to not create child nodes until we call this.render().
+        console.log(this.listParent); // undefined, not created yet.
+        this.items = items;
+        this.render(); // Don't create child nodes until here.
+        console.log(this.listParent); // Now it's created.
+    }
+
+    this.html = `
+        <todo-list>
+        	<ul id="listParent">
+        	    ${this.items.map(item =>
+                    `<li>${item}</li>`                                
+                )}
+        	</ul>
+        </todo-list>`;
+}
+```
+
+
+
 ### Scoped Styles
 
 Elements with `style` elements will be rewritten so that any style selectors beginning with `:host` within apply only to the Refract element.  This is done by:
@@ -471,7 +501,7 @@ In this case, Refract sees the `this.count` variable in the expression for `Coun
 
 ## How Refract works
 
-When `ClassName.compile()` is called, Refract parses the `html` property, building a virtual tree of the elements and expressions it contains.  It finds all `this.variables` within the expressions and watches for their values to change, via [JavaScript Proxies](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy).  Finally, `compile()` calls `customElements.define` to register a custom tag name.
+When `ClassName.compile()` is called, Refract parses the `html` property and calls `customElements.define` to register a custom tag name.  The first time a class is instantiated, Refract builds a virtual tree of the elements and expressions it contains.  It finds all `this.variables` within the expressions and watches for their values to change, via [JavaScript Proxies](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy).
 
 Additionally, Refract has a special code path for watching loop expressions created via `this.array.map(...)`, so that when the array powering a loop changes, only the html elements connected to the items changed are updated.
 

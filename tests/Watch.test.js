@@ -92,7 +92,7 @@ Deno.test('Watch.removeProxy2', () => {
 
 	// o is an object with Object.defineProperty()'s defined and isn't a proxy.
 	//assertEqDeep(o.$removeProxy, {a: {c: undefined}, b: undefined});
-	assert.eqDeep(o.a.$removeProxy, {c: undefined});
+	assert.eqJson(o.a.$removeProxy, {c: undefined});
 	assertEquals(o.a.$removeProxy.c, undefined);
 });
 

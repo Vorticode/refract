@@ -27,8 +27,6 @@ export default class Refract extends HTMLElement {
 	 * @type VElement */
 	static virtualElement;
 
-	static tagName = null;
-
 	/**
 	 * @type {string[]} Names of the constructor's arguments. */
 	static constructorArgs = [];
@@ -60,12 +58,22 @@ export default class Refract extends HTMLElement {
 	/** @type {string} */
 	slotHtml = '';
 
+	/** If true, call render() before the constructor, and every time after a property is changed */
+	autoRender = true;
+
+	/** Has render() benn called at least once to create the DOM */
+	initialRender = false;
+
 	constructor(props={}) {
 		super();
 
-		// Allow setting properties on the object before any html is created:
-		for (let name in props)
-			this[name] = props[name];
+		if (props === false)
+			this.autoRender = false;
+
+		else // Deprecated path, we can just disable autoRender instead.
+			// Allow setting properties on the object before any html is created:
+			for (let name in props)
+				this[name] = props[name];
 	}
 
 	/**
@@ -73,23 +81,25 @@ export default class Refract extends HTMLElement {
 	 * 1.  If calling render() for the first time on any instance, parse the html to the virtual DOM.
 	 * 2.  If calling render() for the first time on this instance, Render the virtual DOM to the real DOM.
 	 * 3.  Apply any updates to the real DOM. TODO
-	 * @param name {string} What is this for? */
-	render(name) {
+	 * @param name {?string} Name of the class calling render.  What is this for? */
+	render(name=null) {
 
+		// Parse the html tokens to Virtual DOM
 		if (!this.constructor.virtualElement) {
 			this.constructor.virtualElement = VElement.fromTokens(this.constructor.htmlTokens, [], null, this.constructor, 1)[0];
 			this.constructor.htmlTokens = null; // We don't need them any more.
 		}
 
-		if (!this.virtualElement && this.constructor.name===name) { // If not already created by a super-class
-
+		// If not already created by a super-class.  Is ` this.constructor.name===name` still needed?
+		if (!this.virtualElement && (!name || this.constructor.name===name)) {
 			Refract.constructing[this.tagName]=true;
 
 			this.virtualElement = this.constructor.virtualElement.clone(this);
 			this.virtualElement.apply(null, this);
 
-			// TODO: This needs to be put at the end of the whole constructor, not just the end of our injected code?
 			delete Refract.constructing[this.tagName];
+
+			this.initialRender = true;
 		}
 	}
 
@@ -313,6 +323,8 @@ export default class Refract extends HTMLElement {
 			// Modify existing constructor
 			if (constr) { // is null if no match found.
 
+
+
 				// Find arguments
 				let argTokens = tokens.slice(constr.index+constr.length, Parse.findGroupEnd(tokens, constr.index+constr.length));
 				result.constructorArgs = Parse.filterArgNames(argTokens);
@@ -357,7 +369,7 @@ export default class Refract extends HTMLElement {
 							`   };`,
 							'}'] // [above] Parse attrib as json if it's valid json.
 						).flat(), // [below] this.constructor.name==='${self.name}' is to prevent super class from constructing html for a child class.
-						`this.render('${self.name}')`,
+						//`this.render('${self.name}')`,
 					`})()`
 				];
 			}
@@ -368,7 +380,7 @@ export default class Refract extends HTMLElement {
 				injectLines = [
 					`constructor() {`,
 					`    super();`,
-					`    this.render('${self.name}')`,
+					//`    this.render('${self.name}')`,
 					`}`,
 				];
 			}
@@ -385,7 +397,7 @@ export default class Refract extends HTMLElement {
 		}
 
 
-		// 3. Build the virtual element tree.
+		// 3. Build the virtual element tree from the html.
 		{
 			// A. Find html template token
 			// Make sure we're finding html = ` and the constructor at the top level, and not inside a function.
@@ -430,9 +442,8 @@ export default class Refract extends HTMLElement {
 			// B. Parse html
 
 			// B1 Template
-			if (template.tokens) {
+			if (template.tokens)
 				var innerTokens = template.tokens.slice(1, -1);
-			}
 
 			// b2 Non-template
 			else { // TODO: Is there better a way to unescape "'hello \'everyone'" type strings than eval() ?
@@ -450,6 +461,21 @@ export default class Refract extends HTMLElement {
 					break;
 				}
 			}
+
+			let lastBrace = null;
+			for (let i=tokens.length-1; i>=htmlMatch.index; i--)
+				if (tokens[i].text === '}') {
+					lastBrace = i;
+					break;
+				}
+
+			let renderBeforeConstructor = `
+				_renderBeforeConstructor = (() => {
+					if (this.autoRender)
+						this.render(this.constructor.name);
+				})();	
+			`;
+			tokens.splice(lastBrace, 0, renderBeforeConstructor);
 		}
 
 		result.code = tokens.join('');

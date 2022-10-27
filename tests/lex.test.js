@@ -76,7 +76,7 @@ Deno.test('lex.template', () => {
 Deno.test('lex.identifier', () => {
 	let code = 'formula=3'; // Make sure it doesn't match the keyword "for"
 	let tokens = lex(jsHtml, code);
-	assertEquals(tokens.map(t=>t.text), ['formula', '=', '3']);
+	assert.eqJson(tokens.map(t=>t.text), ['formula', '=', '3']);
 });
 
 Deno.test('lex.templateHash', () => {
@@ -128,7 +128,7 @@ Deno.test('lex.template-hash-escape', () => {
 Deno.test('lex.template-brace-depth', () => {
 	let code = '<div>${{a: `a`})}</div>';
 	let tokens = lex(jsHtml, code, 'template');
-	assertEquals(tokensToText(tokens), ['<div>', '${{a: `a`})}', '</div>']);
+	assert.eqJson(tokensToText(tokens), ['<div>', '${{a: `a`})}', '</div>']);
 });
 
 Deno.test('lex.template-brace-depth2', () => {
@@ -138,11 +138,11 @@ Deno.test('lex.template-brace-depth2', () => {
 	// TOOD: test.
 	tokens = tokensToText(tokens);
 
-	assertEquals(tokens, ['`a ${{b: `${{c: 3}}`}}`', '.', 'length']);
-	assertEquals(tokens[0].tokens, ['`', 'a ', '${{b: `${{c: 3}}`}}', '`']);
-	assertEquals(tokens[0].tokens[2].tokens, ['${', '{', 'b', ':', ' ', '`${{c: 3}}`', '}', '}']);
-	assertEquals(tokens[0].tokens[2].tokens[5].tokens, ['`', '${{c: 3}}', '`']);
-	assertEquals(tokens[0].tokens[2].tokens[5].tokens[1].tokens, ['${', '{', 'c', ':', ' ', '3', '}', '}']);
+	assert.eqJson(tokens, ['`a ${{b: `${{c: 3}}`}}`', '.', 'length']);
+	assert.eqJson(tokens[0].tokens, ['`', 'a ', '${{b: `${{c: 3}}`}}', '`']);
+	assert.eqJson(tokens[0].tokens[2].tokens, ['${', '{', 'b', ':', ' ', '`${{c: 3}}`', '}', '}']);
+	assert.eqJson(tokens[0].tokens[2].tokens[5].tokens, ['`', '${{c: 3}}', '`']);
+	assert.eqJson(tokens[0].tokens[2].tokens[5].tokens[1].tokens, ['${', '{', 'c', ':', ' ', '3', '}', '}']);
 });
 
 Deno.test('lex.template-tag-expr', () => {
@@ -151,22 +151,22 @@ Deno.test('lex.template-tag-expr', () => {
 	tokens = tokensToText(tokens);
 
 	// Javascript level
-	assertEquals(tokens, ['var',' ','a','=','`hello <b class="one ${class}">world</b>!`',';']);
+	assert.eqJson(tokens, ['var',' ','a','=','`hello <b class="one ${class}">world</b>!`',';']);
 
 	// Template string
-	assertEquals(tokens[4].tokens, ['`','hello ','<b class="one ${class}">','world','</b>','!','`']);
+	assert.eqJson(tokens[4].tokens, ['`','hello ','<b class="one ${class}">','world','</b>','!','`']);
 	assertEquals(tokens[4].tokens[0].mode, 'template');
 
 	// Html tag inside template string.
-	assertEquals(tokens[4].tokens[2].tokens, ['<b',' ','class','=','"one ${class}"','>']);
+	assert.eqJson(tokens[4].tokens[2].tokens, ['<b',' ','class','=','"one ${class}"','>']);
 	assertEquals(tokens[4].tokens[2].tokens[0].mode, 'templateTag');
 
 	// dquote string inside tag.
-	assertEquals(tokens[4].tokens[2].tokens[4].tokens, ['"','one ','${class}','"']);
+	assert.eqJson(tokens[4].tokens[2].tokens[4].tokens, ['"','one ','${class}','"']);
 	assertEquals(tokens[4].tokens[2].tokens[4].tokens[0].mode, 'dquote');
 
 	// js expression inside dquote string.
-	assertEquals(tokens[4].tokens[2].tokens[4].tokens[2].tokens, ['${','class','}']);
+	assert.eqJson(tokens[4].tokens[2].tokens[4].tokens[2].tokens, ['${','class','}']);
 	assertEquals(tokens[4].tokens[2].tokens[4].tokens[2].tokens[0].mode, 'js');
 });
 
@@ -202,7 +202,7 @@ Deno.test('lex.template-multiple2', () => {
 
 	let tokens = lex(jsHtml, code, 'template');
 	tokens = tokensToText(tokens);
-	assertEquals(tokens, ['#{this.$one}', ' # ', '#{this.$two}', ' # ', '#{this.three}']);
+	assert.eqJson(tokens, ['#{this.$one}', ' # ', '#{this.$two}', ' # ', '#{this.three}']);
 
 	jsHtml.allowHashTemplates = old;
 });
@@ -222,15 +222,15 @@ Deno.test('lex.template-script-tag', () => {
 	tokens = tokensToText(tokens);
 
 	let js = tokens[0].tokens;
-	assertEquals(js, ['${', 'var', ' ', 'a', '=', '`<script>var b=1<3</script>`', '}']);
+	assert.eqJson(js, ['${', 'var', ' ', 'a', '=', '`<script>var b=1<3</script>`', '}']);
 
 	let template = js[5].tokens;
-	assertEquals(template, ['`', '<script>', 'var b=1<3', '</script>', '`']);
+	assert.eqJson(template, ['`', '<script>', 'var b=1<3', '</script>', '`']);
 	assertEquals(template.map(t=>t.type), ['template', 'openTag', 'script', 'closeTag', 'templateEnd']);
 
 
 	let js2 = template[2].tokens;
-	assertEquals(js2, ['var', ' ', 'b', '=', '1', '<', '3']);
+	assert.eqJson(js2, ['var', ' ', 'b', '=', '1', '<', '3']);
 
 
 	//console.log(tokens[0].tokens[1].tokens.tokens); // TODO
@@ -250,7 +250,7 @@ Deno.test('lex.regex', () => {
 	let code = 'a=/^\\/(\\\\\\\\|\\\\\\/|\\[\\^\\/]|\\[[^]]]|[^/])+\\/[agimsx]*/';
 	let tokens = lex(jsHtml, code, 'js');
 	tokens = tokensToText(tokens);
-	assertEquals(tokens, ['a', '=', '/^\\/(\\\\\\\\|\\\\\\/|\\[\\^\\/]|\\[[^]]]|[^/])+\\/[agimsx]*/']);
+	assert.eqJson(tokens, ['a', '=', '/^\\/(\\\\\\\\|\\\\\\/|\\[\\^\\/]|\\[[^]]]|[^/])+\\/[agimsx]*/']);
 	assertEquals(tokens[2].type, 'regex');
 });
 
@@ -258,7 +258,7 @@ Deno.test('lex.regex2', () => {
 	let code = `/[/]+/g; b='/'`;
 	let tokens = lex(jsHtml, code, 'js');
 	tokens = tokensToText(tokens);
-	assertEquals(tokens, ['/[/]+/g', ';', ' ', 'b', '=', "'/'"]);
+	assert.eqJson(tokens, ['/[/]+/g', ';', ' ', 'b', '=', "'/'"]);
 	assertEquals(tokens[0].type, 'regex');
 });
 
@@ -267,7 +267,7 @@ Deno.test('lex.html-self-closing', () => {
 
 	let tokens = lex(jsHtml, code, 'html');
 	tokens = tokensToText(tokens);
-	assertEquals(tokens[0].tokens, ['<img', '/>']);
+	assert.eqJson(tokens[0].tokens, ['<img', '/>']);
 	assertEquals(tokens[0].tokens.map(t=>t.type), ['openTag', 'tagEnd']);
 	assertEquals(tokens[0].tokens.map(t=>t.mode), ['tag', 'tag']);
 });
@@ -278,7 +278,7 @@ Deno.test('lex.html-comment', () => {
 	let tokens = lex(jsHtml, code, 'html');
 	tokens = tokensToText(tokens);
 
-	assertEquals(tokens, ['<div>', '<!-- \r\ncomment -->', '</div>']);
+	assert.eqJson(tokens, ['<div>', '<!-- \r\ncomment -->', '</div>']);
 	assertEquals(tokens.map(t=>t.type), ['openTag', 'comment', 'closeTag']);
 	assertEquals(tokens.map(t=>t.mode), ['html', 'html', 'html']);
 });
@@ -289,7 +289,7 @@ Deno.test('lex.comment-expr', () => {
 	let tokens = lex(jsHtml, code, 'js');
 	tokens = tokensToText(tokens);
 
-	assertEquals(tokens[0].tokens[2].tokens, ['<!--', ' ', '${a}', ' ', '-->']);
+	assert.eqJson(tokens[0].tokens[2].tokens, ['<!--', ' ', '${a}', ' ', '-->']);
 	assertEquals(tokens[0].tokens[2].tokens.map(t=>t.type), ['comment', 'commentBody', 'expr', 'commentBody', 'commentEnd']);
 });
 
@@ -304,10 +304,10 @@ Deno.test('lex.attr', () => {
 
 	console.log(tokens[0]);
 
-	assertEquals(tokens[0].tokens[4].tokens[1].tokens, ['${', 'one', '}']);
-	assertEquals(tokens[0].tokens[8].tokens[1].tokens, ['#{', 'two', '}']);
-	assertEquals(tokens[0].tokens[10].tokens, ['${', 'three', '}']);
-	assertEquals(tokens[0].tokens[12].tokens, ['#{', 'four', '}']);
+	assert.eqJson(tokens[0].tokens[4].tokens[1].tokens, ['${', 'one', '}']);
+	assert.eqJson(tokens[0].tokens[8].tokens[1].tokens, ['#{', 'two', '}']);
+	assert.eqJson(tokens[0].tokens[10].tokens, ['${', 'three', '}']);
+	assert.eqJson(tokens[0].tokens[12].tokens, ['#{', 'four', '}']);
 
 	// assertEquals(tokens[0].tokens[2].tokens, ['<!--', ' ', '${a}', ' ', '-->']);
 	// assertEquals(tokens[0].tokens[2].tokens.map(t=>t.type), ['comment', 'commentBody', 'expr', 'commentBody', 'commentEnd']);
@@ -322,7 +322,7 @@ Deno.test('lex.unclosed-tag', () => {
 	let tokens = lex(jsHtml, code, 'html');
 	tokens = tokensToText(tokens);
 
-	assertEquals(tokens, ['<p>', 'text']);
+	assert.eqJson(tokens, ['<p>', 'text']);
 	assertEquals(tokens.map(t=>t.type), ['openTag', 'text']);
 });
 
@@ -332,8 +332,8 @@ Deno.test('lex.unclosed-comment', () => {
 	let tokens = lex(jsHtml, code, 'html');
 	tokens = tokensToText(tokens);
 
-	assertEquals(tokens, ['<!--text']);
-	assertEquals(tokens[0].tokens, ['<!--', 'text']);
+	assert.eqJson(tokens, ['<!--text']);
+	assert.eqJson(tokens[0].tokens, ['<!--', 'text']);
 	assertEquals(tokens[0].tokens.map(t=>t.type), ['comment', 'commentBody']);
 });
 
@@ -365,7 +365,7 @@ Deno.test('lex.php', () => {
 	var code = `<?php print 1?-->`;
 	let tokens = lex(htmljs, code, 'html');
 	tokens = tokensToText(tokens);
-	assertEquals(tokens, ['<?php print 1?-->']);
+	assert.eqJson(tokens, ['<?php print 1?-->']);
 	assertEquals(tokens[0].type, 'text');
 
 
