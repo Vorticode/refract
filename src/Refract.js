@@ -20,10 +20,14 @@ export default class Refract extends HTMLElement {
 	 * @type {Object<string, boolean>} */
 	static constructing = {};
 
+	static tokens = null;
+
 	/**
 	 * A parsed representation of this class's html.
 	 * @type VElement */
 	static virtualElement;
+
+	static tagName = null;
 
 	/**
 	 * @type {string[]} Names of the constructor's arguments. */
@@ -64,7 +68,20 @@ export default class Refract extends HTMLElement {
 			this[name] = props[name];
 	}
 
-	createDomFromVDom(name) {
+	/**
+	 * Bring this element's DOM nodes up to date.
+	 * 1.  If calling render() for the first time on any instance, parse the html to the virtual DOM. TODO
+	 * 2.  If calling render() for the first time on this instance, Render the virtual DOM to the real DOM.
+	 * 3.  Apply any updates to the real DOM. TODO
+	 * @param name {string} What is this for? */
+	render(name) {
+
+		if (!this.constructor.virtualElement) {
+			window.RefractCurrentClass = this.constructor
+			this.constructor.virtualElement = VElement.fromTokens(this.constructor.htmlTokens, [], null, 1)[0];
+			this.constructor.htmlTokens = null; // We don't need them any more.
+			delete window.RefractCurrentClass;
+		}
 
 		if (!this.virtualElement && this.constructor.name===name) { // If not already created by a super-class
 
@@ -342,7 +359,7 @@ export default class Refract extends HTMLElement {
 							`   };`,
 							'}'] // [above] Parse attrib as json if it's valid json.
 						).flat(), // [below] this.constructor.name==='${self.name}' is to prevent super class from constructing html for a child class.
-						`this.createDomFromVDom('${self.name}')`,
+						`this.render('${self.name}')`,
 					`})()`
 				];
 			}
@@ -353,7 +370,7 @@ export default class Refract extends HTMLElement {
 				injectLines = [
 					`constructor() {`,
 					`    super();`,
-					`    this.createDomFromVDom('${self.name}')`,
+					`    this.render('${self.name}')`,
 					`}`,
 				];
 			}
@@ -428,8 +445,13 @@ export default class Refract extends HTMLElement {
 			if (innerTokens[0].type === 'text' && !utils.unescapeTemplate(innerTokens[0].text).trim().length)
 				innerTokens = innerTokens.slice(1); // Skip initial whitespace.
 
-			result.virtualElement = VElement.fromTokens(innerTokens, [], null, 1)[0];
-
+			result.htmlTokens = innerTokens;
+			for (let token of innerTokens) {
+				if (token.type === 'openTag') {
+					result.tagName = token.tokens[0].text.slice(1); // Get '<open-tag' w/o first character.
+					break;
+				}
+			}
 		}
 
 		result.code = tokens.join('');
@@ -467,7 +489,8 @@ export default class Refract extends HTMLElement {
   */
 
 		// 4. Register the class as an html element.
-		customElements.define(NewClass.virtualElement.tagName.toLowerCase(), NewClass);
+		NewClass.htmlTokens = compiled.htmlTokens;
+		customElements.define(compiled.tagName.toLowerCase(), NewClass);
 	}
 
 
@@ -534,7 +557,6 @@ export default class Refract extends HTMLElement {
 		// We remove it from Refract because Refract will be used again in may other scopes.
 		return `
 			(() => {
-				window.RefractCurrentClass = ${this.name};
 				${this.name}.createFunction = (...args) => {
 					let params = args.slice(0, -1).join(',');
 					let code = args[args.length-1];
@@ -543,7 +565,6 @@ export default class Refract extends HTMLElement {
 				let compiled = ${this.name}.preCompile(${this.name});
 				${this.name} = eval('('+compiled.code+')');		
 				${this.name}.decorate(${this.name}, compiled);
-				delete window.RefractCurrentClass;
 				return ${this.name};	
 			})();		
 		`;
