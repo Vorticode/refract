@@ -70,17 +70,15 @@ export default class Refract extends HTMLElement {
 
 	/**
 	 * Bring this element's DOM nodes up to date.
-	 * 1.  If calling render() for the first time on any instance, parse the html to the virtual DOM. TODO
+	 * 1.  If calling render() for the first time on any instance, parse the html to the virtual DOM.
 	 * 2.  If calling render() for the first time on this instance, Render the virtual DOM to the real DOM.
 	 * 3.  Apply any updates to the real DOM. TODO
 	 * @param name {string} What is this for? */
 	render(name) {
 
 		if (!this.constructor.virtualElement) {
-			window.RefractCurrentClass = this.constructor
-			this.constructor.virtualElement = VElement.fromTokens(this.constructor.htmlTokens, [], null, 1)[0];
+			this.constructor.virtualElement = VElement.fromTokens(this.constructor.htmlTokens, [], null, this.constructor, 1)[0];
 			this.constructor.htmlTokens = null; // We don't need them any more.
-			delete window.RefractCurrentClass;
 		}
 
 		if (!this.virtualElement && this.constructor.name===name) { // If not already created by a super-class
@@ -576,6 +574,10 @@ Refract.constructing = {};
 Refract.htmlDecode = Html.decode;
 Refract.htmlEncode = Html.encode;
 
+/**
+ * TODO: Make a version of this that escapes the proper way depending on the context, automatically.
+ * backslashes when in js strings
+ * escape single or double quotes or tempalte tags if inside those strings. */
 var h = Html.encode;
 export {h};
 

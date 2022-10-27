@@ -280,7 +280,7 @@ export default class VExpression {
 					else {
 						html += ''; // can be a number.
 						if (html.length) {
-							let vels = VElement.fromHtml(html, scopeVarNames, this).flat();
+							let vels = VElement.fromHtml(html, scopeVarNames, this, this.xel.constructor).flat();
 							result.push(vels);
 						}
 					}
@@ -588,7 +588,7 @@ export default class VExpression {
 	 * @param vParent {VElement|VExpression}
 	 * @param attrName {string?} If set, this VExpression is part of an attribute, otherwise it creates html child nodes.
 	 * @return {VExpression} */
-	static fromTokens(tokens, scope, vParent, attrName) {
+	static fromTokens(tokens, scope, vParent, Class, attrName) {
 		let result = new VExpression();
 		result.vParent = vParent;
 		if (vParent) {
@@ -618,7 +618,7 @@ export default class VExpression {
 
 		// Get the createFunction() from the class if it's already been instantiated.  Else use Refract's temporary createfunction().
 		// This lets us use other variabls defiend in the same scope as the class that extends Refract.
-		let Class = ((vParent && vParent.xel && vParent.xel.constructor) || window.RefractCurrentClass);
+		//let Class = ((vParent && vParent.xel && vParent.xel.constructor) || window.RefractCurrentClass);
 
 		if (loopBody) {
 			result.type = 'loop';
@@ -635,12 +635,12 @@ export default class VExpression {
 			let loopBodyTrimmed = loopBody.filter(token => token.type !== 'whitespace' && token.type !== 'ln');
 			if (loopBodyTrimmed.length === 1 && loopBodyTrimmed[0].type === 'template') {
 				// Remove beginning and end string delimiters, parse items.
-				result.loopItemEls = VElement.fromTokens(loopBodyTrimmed[0].tokens.slice(1, -1), scope, vParent);
+				result.loopItemEls = VElement.fromTokens(loopBodyTrimmed[0].tokens.slice(1, -1), scope, vParent, Class);
 			}
 
 			// The loop body is more complex javascript code:
 			else
-				result.loopItemEls = [VExpression.fromTokens(loopBody, scope, vParent)];
+				result.loopItemEls = [VExpression.fromTokens(loopBody, scope, vParent, Class)];
 		}
 
 		else {

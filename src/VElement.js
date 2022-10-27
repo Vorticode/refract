@@ -193,7 +193,7 @@ export default class VElement {
 		// 3. Slot content
 		let count = 0;
 		if (tagName === 'slot') {
-			let slotChildren = VElement.fromHtml(this.xel.slotHtml, Object.keys(this.scope), this);
+			let slotChildren = VElement.fromHtml(this.xel.slotHtml, Object.keys(this.scope), this, this.xel.constructor);
 			for (let vChild of slotChildren) {
 				vChild.scope = {...this.scope}
 				vChild.startIndex = count;
@@ -422,9 +422,9 @@ export default class VElement {
 	 * @param scopeVars {string[]}
 	 * @param vParent {VElement|VExpression}
 	 * @return {(VElement|VExpression|string)[]} */
-	static fromHtml(html, scopeVars=[], vParent=null) {
+	static fromHtml(html, scopeVars=[], vParent=null, Class) {
 		let tokens = lex(htmljs, [html].flat().join(''), 'template');
-		return VElement.fromTokens(tokens, scopeVars, vParent);
+		return VElement.fromTokens(tokens, scopeVars, vParent, Class);
 	}
 
 	/**
@@ -436,7 +436,7 @@ export default class VElement {
 	 * @param index {int=} used internally.
 	 * @return {(VElement|VExpression|string)[]}
 	 *     Array with a .index property added, to keep track of what token we're on. */
-	static fromTokens(tokens, scopeVars=[], vParent=null, limit=false, index=0) {
+	static fromTokens(tokens, scopeVars=[], vParent=null, Class, limit=false, index=0) {
 		if (!tokens.length)
 			return [];
 
@@ -450,7 +450,7 @@ export default class VElement {
 
 			// Expression child
 			else if (token.type === 'expr')
-				result.push(VExpression.fromTokens(token.tokens, scopeVars, vParent));
+				result.push(VExpression.fromTokens(token.tokens, scopeVars, vParent, Class));
 
 			// Collect tagName and attributes from open tag.
 			else if (token.type === 'openTag') {
@@ -479,12 +479,12 @@ export default class VElement {
 						if (tagToken.type === 'string')
 							for (let exprToken of tagToken.tokens.slice(1, -1)) { // slice to remove surrounding quotes.
 								if (exprToken.type === 'expr')
-									attrValues.push(VExpression.fromTokens(exprToken.tokens, scopeVars, vParent, attrName));
+									attrValues.push(VExpression.fromTokens(exprToken.tokens, scopeVars, vParent, Class, attrName));
 								else // string:
 									attrValues.push(exprToken.text);
 							}
 						else if (tagToken.type === 'expr') // expr not in string.
-							attrValues.push(VExpression.fromTokens(tagToken.tokens, scopeVars, vParent, attrName));
+							attrValues.push(VExpression.fromTokens(tagToken.tokens, scopeVars, vParent, Class, attrName));
 						//#IFDEV
 						else
 							throw new Error(); // Shouldn't happen.
@@ -496,7 +496,7 @@ export default class VElement {
 
 					// Expression that creates attribute(s)
 					else if (tagToken.type === 'expr') {
-						let expr = VExpression.fromTokens(tagToken.tokens, scopeVars, vParent);
+						let expr = VExpression.fromTokens(tagToken.tokens, scopeVars, vParent, Class);
 						expr.attributes = []; // Marks it as being an attribute expression.
 						vel.attributeExpressions.push(expr);
 					}
@@ -510,7 +510,7 @@ export default class VElement {
 					index++
 
 					// New path:
-					vel.vChildren = VElement.fromTokens(tokens, scopeVars, vel, false, index);
+					vel.vChildren = VElement.fromTokens(tokens, scopeVars, vel, Class, false, index);
 					index = vel.vChildren.index; // What is this?
 				}
 
