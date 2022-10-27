@@ -1,4 +1,69 @@
 /**
+ * Use the grammar.fastMatch table to suggest what pattern to use to check for a token.
+ * This is much faster than looping through and trying all patterns.
+ * @param grammar
+ * @param mode
+ * @param current
+ * @returns {(*)[]} */
+function findFastMatch(grammar, mode, current) {
+	let type;
+	let pattern = grammar.fastMatch[mode];
+	if (pattern) {
+		let i = 0;
+		do {
+			let letter = current[i];
+			pattern = pattern[letter];
+			if (pattern && pattern.length) {
+				[pattern, type] = pattern;
+				pattern = pattern[type];
+				break;
+			}
+
+			i++;
+		} while (pattern);
+	}
+	return [pattern, type];
+}
+
+/**
+ * Allow tokens to be compared to strings with ==.
+ * @example
+ * var token = {text: 'return', valueOf};
+ * token == 'return' // true, b/c we use double equals.
+ * @returns {string} */
+function valueOf() {
+	return this.text
+}
+
+function toString() {
+	return this.text
+}
+
+class Token {
+
+	constructor(text, type, mode, line, col, originalLength, tokens) {
+		this.text = text;
+		this.type = type;
+		this.mode = mode;
+		this.line = line;
+		this.col = col;
+		this.originalLength = originalLength;
+		this.tokens = tokens;
+	}
+
+	valueOf() {
+		return this.text
+	}
+
+	toString() {
+		return this.text
+	}
+}
+
+
+window.slowMatches = {};
+
+/**
  * Parse code into tokens according to rules in a grammar.
  *
  * @typedef GrammarRule {(
@@ -8,8 +73,7 @@
  * )}
  *
  * @typedef Token{
- *     string |
- *     {type:string, mode:string, line:int, col:int, ?tokens:Token[]}
+ *     {text: string, type:string, mode:string, line:int, col:int, ?tokens:Token[], ?originalLength:int}
  * }
  *
  * @param grammar {Object<string, GrammarRule|GrammarRule[]>}.  An object of rules objects, where the key is the mode to use.
@@ -22,18 +86,16 @@
  *    Where match is the string that matches.
  * 4. An array containing a list of strings to match
  *
+ * Token.originalLength stores the length of a token before escaping occurs.
+ *
  * @param code {string} String to parse.
  * @param mode {?string}
- * @param result {Iterable|Array} Iterable object to populate with result.  Defaults to empty array.
  * @param line {int=} Start counting from this line.
  * @param col {int=} Start counting from this column.
  * @param index {int} Used internally.
  *
  * @return Token[] */
-var lexCache = {};
-
 function lex(grammar, code, mode=null, line=1, col=1, index=0) {
-	//let start = performance.now();
 
 	mode = mode || Object.keys(grammar)[0]; // start in first mode.
 	code = code+'';
@@ -41,51 +103,52 @@ function lex(grammar, code, mode=null, line=1, col=1, index=0) {
 	let result;
 
 	// Cache small results
-	let cacheLen = 256;
+	const cacheLen = 256;
 	if (code.length < cacheLen) {
-		var key = mode + '|' + code;
+		var key = mode + '|' + code.slice(0, 24); // avoid long keys
 		result = lexCache[key];
-		if (result) {
-			//callTime += performance.now() - start;
-			return result.slice();
+		if (result && result[0] === code) {
+			return result[1];
 		}
 	}
 
-
 	result = [];
-
 	while (index < code.length) {
+		let before = code.slice(0, index);
 		let current = code.slice(index);
+		let token = undefined;
+		let originalLength = undefined;
+		let pattern, type;
+
+		// MatchType is a string to go into a new mode, -1 to leave a mode, or undefined to stay in the same mode.
+		let matchType = undefined;
+
 
 		// 1. Identify token
-		let matchType = undefined, token = undefined;
-		for (var [type, pattern] of Object.entries(grammar[mode])) {
-			//let start = performance.now();
-			if (pattern instanceof RegExp)
-				token = (current.match(pattern) || [])[0];
-			else if (typeof pattern === 'function')
-				[token, matchType] = pattern(current, code.slice(0, index), result) || [];
 
+		// 1a. Fast match
+		[pattern, type] = findFastMatch(grammar, mode, current); // Tells us what pattern to try.
+		if (pattern)
+			[token, matchType, originalLength] = pattern(current, before, result) || [];
 
-			else if (Array.isArray(pattern)) {
-				for (let item of pattern)
-					if (current.startsWith(item)) {
-						token = item;
-						break;
-					}
+		// 1b. Slow match, if fastmatch fails
+		if (!token) {
+			let gmode = grammar[mode];
+			for (type in gmode) {
+				let pattern = gmode[type];
+				[token, matchType, originalLength] = pattern(current, before, result) || [];
+				if (token !== undefined) {
+					//let name = mode + ':' + type; // + ':' + token;
+					//window.slowMatches[name] = (window.slowMatches[name] || 0) + 1
+					break;
+				}
 			}
-			else if (current.startsWith(pattern))
-				token = pattern;
-			if (token !== undefined)
-				break;
-
-			// let time = performance.now() - start;
-			// types[mode + '.' + type] = types[mode + '.' + type] + time || time;
 		}
+
 		//#IFDEV
 		if (token === undefined) {
-			let before = code.slice(Math.max(index - 10, 0), index);
-			let after = current.slice(0, 20).replace(/\r/g, '\\r').replace(/\n/g, '\\n');
+			let before = code.slice(Math.max(index - 15, 0), index);
+			let after = current.slice(0, 25).replace(/\r/g, '\\r').replace(/\n/g, '\\n');
 			let msg = before + '⚠️' + after;
 			throw new Error(`Unknown token within "${mode}" at ${line}:${col}\r\n"${msg}"`);
 		}
@@ -93,34 +156,58 @@ function lex(grammar, code, mode=null, line=1, col=1, index=0) {
 
 		// 2. Ascend or descend
 		let newMode = (matchType && matchType !== -1) ? matchType : mode;
-		token = Object.assign(token, {type, mode: newMode, line, col});
+		let tokenObj = {text: token, type, mode: newMode, line, col, originalLength, valueOf, toString};
+		//let tokenObj = new Token(token, type, newMode, line, col, originalLength); // Why does this version fail?
+		let length = originalLength || token.length; // How much of the code string that was consumed.
+
 		if (matchType === -1) // Ascend out of a sub-mode.
-			return [...result, token];
+			return [...result, tokenObj];
 
 		else if (matchType) { // Descend into new mode
-			let tokens = [token, ...lex(grammar, code, matchType, line, col+token.length, index+token.length)].filter(t=>t.length);
-			token = Object.assign(tokens.join(''), {type, tokens, mode, line, col});
+			let tokens = [tokenObj, ...lex(grammar, code, matchType, line, col+length, index+length)].filter(t=>t.text.length);
+			length = tokens.reduce((p, c) => {
+				return p + (c.originalLength || c.text.length)
+			}, 0); // add the lengths of the tokens
+
+			tokenObj = {text: code.slice(index, index+length), type, tokens, mode, line, col, valueOf, toString};
+			// tokenObj = new Token(code.slice(index, index+length), type, mode, line, col, undefined, tokens); // This works, but is no faster.
+			if (length !== token.length)
+				tokenObj.originalLength = length;
 		}
 
+
 		// Sometimes a zero length token will be used to go into a new mode.
-		if (token.length) {
+		if (length) {
 
 			// 3. Process token
-			index += token.length;
-			result.push(token);
+			index += length;
+			result.push(tokenObj);
 
 			// 4. Increment line/col number.
-			line += (token.match(/\n/g) || []).length; // count line returns
-			let lastLn = token.lastIndexOf('\n');
-			col = (lastLn > -1 ? -lastLn : col) + token.length;
+			// line += (token.match(/\n/g) || []).length; // count line returns
+			// let lastLn = token.lastIndexOf('\n');
+			let lastLn = -1;
+			for (let i=0, len=token.length; i<len; i++) { // Benchmark shows this is slightly faster than the code above.
+				if (token[i] == '\n') {
+					line++;
+					lastLn = i;
+				}
+			}
+
+			col = (lastLn > -1 ? -lastLn : col) + length;
 		}
 	}
 
-	//callTime += performance.now() - start;
+	// Cache
 	if (code.length < cacheLen)
-		lexCache[key] = result;
+		lexCache[key] = [code, result];
+
 	return result;
 }
+
+
+var lexCache = {};
+
 
 // var types = {};
 // setTimeout(() => console.log(types), 1800);
@@ -130,9 +217,9 @@ function lex(grammar, code, mode=null, line=1, col=1, index=0) {
  * Go into the mode if the string starts with the given regex.
  * @param regex {RegExp|string}
  * @param mode {string}
- * @oaram callaback {?function(string|string[])}
- * @returns {function(code:string):([string, int] | undefined)} */
-var descendIf = (regex, mode, callback) => code => {
+ * @param callback {?function(string|string[])}
+ * @return {function(code:string):([string, int] | undefined)} */
+var descendIf = (regex, mode, callback=null) => code => {
 	if (regex instanceof RegExp) {
 		let match = code.match(regex) || [];
 		if (match.length) {
@@ -152,7 +239,7 @@ var descendIf = (regex, mode, callback) => code => {
 /**
  * Ascend out of the current mode (to the previous mode) if the string starts with the given regex.
  * @param regex {RegExp|string}
- * @returns {function(code:string):([string, int] | undefined)} */
+ * @return {function(code:string):([string, int] | undefined)} */
 var ascendIf = regex => code => {
 	if (regex instanceof RegExp) {
 		let match = code.match(regex) || [];
@@ -164,24 +251,1066 @@ var ascendIf = regex => code => {
 };
 
 /**
+ * @property object.$isProxy
+ * @property object.$removeProxy
+ * @property object.$trigger
+ * */
+
+{
+
+
+	let arrayRead = ['indexOf', 'lastIndexOf', 'includes'];
+	let arrayWrite = ['push', 'pop', 'splice', 'shift', 'sort', 'reverse', 'unshift'];
+	// TODO What about array copy functions, like slice() and flat() ?  Currently they just remove the proxy.
+
+	/**
+	 * Handler object used when calling WatchUtil.getProxy() */
+	let handler = {
+		/**
+		 * Overridden to wrap returned values in a Proxy, so we can see when they're changed.
+		 * And to keep track of the path as we traverse deeper into an object.
+		 * @param obj {Array|object}
+		 * @param field {string} An object key or array index.
+		 * @returns {*} */
+		get(obj, field) {
+
+			// Special properties
+			if (field[0] === '$') {
+				if (field === '$removeProxy') // most common paths first.
+					return obj;
+				if (field === '$isProxy')
+					return true;
+				if (field === '$trigger') {
+					return (path) => {
+						let roots = WatchUtil.getRoots(obj);
+						for (let root of roots)
+							for (let callback of WatchUtil.getCallbacks(root))
+								callback('set', path || [], obj);
+
+						return roots;
+					}
+				}
+
+				// Debugging functions
+				//#IFDEV
+				if (field === '$roots')
+					return WatchUtil.getRoots(obj);
+				if (field === '$subscribers') {
+					return Array.from(WatchUtil.getRoots(obj))
+						.map((x) => x.callbacks_)
+						.reduce((a, b) => [...a, ...b])
+						.map((x) => x('info'))
+						.reduce((a, b) => [...a, ...b])
+				}
+				//#ENDIF
+			}
+
+
+			let result = obj[field];
+
+
+			// Return the underlying array's iterator, to make for(...of) loops work.
+			if (field === Symbol.iterator)
+				return result;
+
+			// Make sure to call functions on the unproxied version
+			if (typeof result === 'function') {
+				let obj2 = obj.$removeProxy || obj;
+				let result = obj2[field];
+				if (result.prototype) // If it's a class and not a regular function, don't bind it to the object:
+					return result;
+				return result.bind(obj2);
+			}
+
+			// We only wrap objects and arrays in proxies.
+			// Primitives and functions we leave alone.
+			// if (result && typeof result === 'object' && !(result instanceof Node)) {
+			if (result && typeof result === 'object') { // isObj() inline to hopefully be faster.
+
+				// Remove any proxies.
+				result = result.$removeProxy || result;
+				//#IFDEV
+				if (result.$isProxy)
+					throw new RefractError("Double wrapped proxy found.");
+				//#ENDIF
+
+				// Make sure the path from the root to the object's field is tracked:
+				let roots = WatchUtil.getRoots(obj);
+				for (let root of roots) { // Get all paths from the roots to the parent.
+					let parentPaths = WatchUtil.getPaths(root, obj);
+					for (let parentPath of parentPaths) {
+
+						// Combine each path with the field name.
+						WatchUtil.addPath(root, [...parentPath, field], result); // Add to our list of tracked paths.
+					}
+				}
+
+				return WatchUtil.getProxy(result);
+			}
+			return result;
+		},
+
+		/**
+		 * Trap called whenever anything in an array or object is set.
+		 * Changing and shifting array values will also call this function.
+		 * @param obj {Array|object} root or an object within root that we're setting a property on.
+		 * @param field {string} An object key or array index.
+		 * @param newVal {*}
+		 * @returns {boolean} */
+		set(obj, field, newVal) {
+
+			// Don't allow setting proxies on underlying obj.
+			// This removes them recursively in case of something like newVal=[Proxy(obj)].
+			let oldVal = obj[field];
+
+			newVal = removeProxies(newVal);
+
+			// Set the value.
+			// TODO: This can trigger notification if field was created on obj by defineOwnProperty().  But that seems to be ok?
+			// Should I use .$disableWatch?
+			//let setter = Object.getOwnPropertyDescriptor(obj, field).set;
+			obj[field] = newVal;
+
+			// Find all callbacks.
+			let paths = handler.getWatchedPaths(obj, field);
+
+			// Call callbacks.
+			for (let rootAndPath of paths) {
+				let callbacks = WatchUtil.getCallbacks(rootAndPath[0]);
+				for (let callback of callbacks)
+					callback('set', rootAndPath[1], newVal, oldVal, rootAndPath[0]);
+			}
+
+
+			return true; // Proxy requires us to return true.
+		},
+
+		/**
+		 * Find all paths to the object's field from every root object.
+		 * @param obj {object}
+		 * @param field {string}
+		 * @returns {[object, string][]} Array of root object and watched path. */
+		getWatchedPaths(obj, field) {
+			let roots = WatchUtil.getRoots(obj);
+			let paths = [];
+			for (let root of roots) { // Notify
+				let parentPaths = WatchUtil.getPaths(root, obj);
+				for (let parentPath of parentPaths) {
+					let path = [...parentPath, field];
+					paths.push([root, path]);
+				}
+			}
+			return paths;
+		},
+
+		/**
+		 * Trap called whenever anything in an array or object is deleted.
+		 * @param obj {Array|object} root or an object within root that we're deleting a property on.
+		 * @param field {int|string} An object key or array index.
+		 * @returns {boolean} */
+		deleteProperty(obj, field) {
+			if (Array.isArray(obj))
+				obj.splice(field, 1);
+			else
+				delete obj[field];
+
+			let roots = WatchUtil.getRoots(obj);
+			for (let root of roots) {
+				let parentPaths = WatchUtil.getPaths(root, obj);
+				for (let parentPath of parentPaths) {
+					let path = [...parentPath, field];
+					for (let callback of WatchUtil.getCallbacks(root))
+						callback('set', path, /*, undefined*/);
+				}
+			}
+
+			return true; // Proxy requires us to return true.
+		}
+	};
+
+
+
+
+
+
+	var WatchUtil = {
+		/** @type {WeakMap<Object, Proxy>} A map from an object to the Proxy of itself. */
+		proxies: new WeakMap(),
+
+		//proxiesReverse: new WeakMap(),
+
+		/** @type {WeakMap<Object, Set<Object>>} A map from an object to all of its root objects that have properties pointing to it. */
+		roots: new WeakMap(),
+
+
+		/** @type {WeakMap<Object, function[]>} A map from roots to the callbacks that should be called when they're changed. */
+		callbacks: new WeakMap(),
+
+		/**
+		 * A map of all paths from a root to an object.
+		 * Outer WeakMap is indexed by root, inner by object.
+		 * @type {WeakMap<Object, WeakMap<Object, string[][]>>} */
+		paths: new WeakMap(),
+
+
+		/**
+		 * Get or create proxy for an object.
+		 * An object will never have more than one proxy.
+		 * @returns {Proxy} */
+		getProxy(obj) {
+			let proxy = WatchUtil.proxies.get(obj);
+			if (!proxy) {
+
+				WatchUtil.proxies.set(obj, proxy = new Proxy(obj, handler));
+				//WatchUtil.proxiesReverse.set(proxy, obj);
+
+				if (Array.isArray(obj)) {
+					//debugger;
+					//Object.setPrototypeOf(proxy, new ProxyArray()); // This seems to work.
+
+					// Because this.proxy_ is a Proxy, we have to replace the functions
+					// on it in this special way by using Object.defineProperty()
+					// Directly assigning this.proxy_.indexOf = ... calls the setter and leads to infinite recursion.
+					for (let func of arrayRead) // TODO: Support more array functions.
+
+						Object.defineProperty(proxy, func, {
+							enumerable: false,
+							get: () => // Return a new version of indexOf or the other functions.
+								(item) => Array.prototype[func].call(obj, utils.removeProxy(item))
+						});
+
+					/*
+					 * Intercept array modification functions so that we only send one notification instead
+					 * of a notification every time an array item is moved (shift, unshift, splice) or the length changes. */
+					for (let func of arrayWrite)
+						Object.defineProperty(proxy, func, {
+							configurable: true,
+							enumerable: false,
+
+							// Return a new version of push or the other array functions.
+							get: () => (...args) => WatchUtil.arrayFunction(obj, func, args)
+						});
+				}
+			}
+
+			return proxy;
+		},
+
+		/**
+		 * Call a function that modifies the array, and notify all watches of the changes.
+		 * TODO: It'd be better to simply update the proxied array's prototype to point to a WatchedArray class
+		 * that overrides each of these methods to notify.
+		 * @param array {Array} Array the function is called upon.
+		 * @param func {string} Name of the function to call.
+		 * @param args {*[]} Arguments passed to the function.
+		 * @returns {*} The return value of func.  */
+		arrayFunction(array, func, args) {
+			let originalLength = array.length;
+			let startIndex = 0;
+			if (func === 'push')
+				startIndex = originalLength;
+			else if (func === 'pop')
+				startIndex = originalLength - 1;
+			else if (func === 'splice') // Splice's first argument can be from the beginning or from the end.
+				startIndex = args[0] < 0 ? originalLength - args[0] : args[0];
+
+
+			// Apply array operations on the underlying watched object, so we don't notify a jillion times.
+			let result = Array.prototype[func].apply(array, args);
+
+			// Rebuild the array indices inside the proxy objects.
+			// This is covered by the test Watch.arrayShift2()
+			// TODO: This can be faster if we only update the affected array elements.
+			if (['splice', 'shift', 'sort', 'reverse', 'unshift'].includes(func)) { // ops that modify within the array.
+				WatchUtil.rebuildArray(array, startIndex, null, null);
+			}
+
+			// Trigger a notification for every array element changed, instead of one for every sub-operation.
+			// Copy the set b/c otherwise it can grow continuously and never finish if we call Watch.add() and Watch.remove()
+			// From loop items.
+			let roots = Array.from(WatchUtil.getRoots(array));
+			for (let root of roots) {
+				let parentPaths = WatchUtil.getPaths(root, array);
+
+				for (let callback of WatchUtil.getCallbacks(root))
+
+					for (let parentPath of parentPaths) {
+						if (func === 'pop') // Remove from end
+							callback('remove', [...parentPath, startIndex+''], result, null, root);
+						else if (func === 'shift') // Remove from beginning
+							callback('remove', [...parentPath, '0'], result, null, root);
+						else if (func === 'unshift') // Add to beginning
+							callback('insert', [...parentPath, '0'], array[0], null, root);
+						else if (func === 'splice') {
+							let remove = args[1];
+							let insert = args.length - 2;
+							let set = Math.min(insert, remove);
+
+							// First set the overlapping ones, then insert or remove.
+							for (i = 0; i<set; i++)
+								callback('set', [...parentPath, (startIndex + i) + ''], array[startIndex + i], null, root);
+
+
+							if (insert > remove)
+								for (i = set; i<insert; i++) // insert new ones
+									callback('insert', [...parentPath, (startIndex+i) + ''], array[startIndex+i], null, root);
+
+							else if (insert < remove)
+								for (i=remove-1; i>=set; i--) // remove old ones, in reverse for better performance.
+									callback('remove', [...parentPath, (startIndex+i)+''], result[i-set+1], null, root);
+						}
+						else { // push, sort, reverse
+							for (var i = startIndex; i < array.length; i++) {
+								// if (window.debug)
+								// 	debugger;
+								callback('set', [...parentPath, i + ''], array[i], null, root);
+							}
+							for (i; i<originalLength; i++)
+								callback('delete', [...parentPath, i + ''], null, root);
+						}
+					}
+			}
+
+			return result;
+		},
+
+		/**
+		 * For item, find all proxyRoots and update their paths such that they end with path.
+		 * Then we recurse and do the same for the children, appending to path as we go.
+		 * Ths effectively lets us update the path of all of item's subscribers.
+		 * This is necessary for example when an array is spliced and the paths after the splice need to be updated.
+		 * @param obj {Object|*[]}
+		 * @param startIndex {int?} If set, only rebuild array elements at and after this index.
+		 * @param path {string[]=}
+		 * @param visited {WeakSet=} */
+		rebuildArray(obj, startIndex, path, visited) {
+			path = path || [];
+			visited = visited || new WeakSet();
+			if (startIndex === undefined)
+				startIndex = 0;
+
+			if (visited.has(obj))
+				return;
+			visited.add(obj);
+
+			if (path.length) {
+
+				let roots = WatchUtil.roots.get(obj);
+				if (!roots) // because nothing is watching this array element.
+					return;
+
+				for (let root of roots) {
+					let parentPaths = WatchUtil.getPaths(root, obj);
+					for (let i in parentPaths) {
+						let oldPath = parentPaths[i];
+
+						// Swap end of oldPath with the new path if the new path  points from root to obj.
+						let start = oldPath.length - path.length;
+						if (start >= 0) {
+
+							// Create the newPath.
+							let newPath = oldPath.slice();
+							for (let j = start; j < oldPath.length; j++)
+								newPath[j] = path[j - start];
+
+
+							// See if newPath is a valid path from root to obj.
+							let item = root;
+							for (let field of newPath) {
+								item = item[field];
+								if (!item)
+									break;
+							}
+
+							// Update the path.
+							if (item === obj)
+								parentPaths[i] = newPath;
+						}
+					}
+				}
+			}
+
+
+			// Recurse through children to update their paths too.
+			// This is tested by the arrayShiftRecurse() test.
+			if (Array.isArray(obj))
+				for (let i=startIndex; i<obj.length; i++) {
+					if (Array.isArray(obj[i]) || isObj(obj[i]))
+						WatchUtil.rebuildArray(obj[i], 0, [...path, i+''], visited);
+				}
+			else if (isObj(obj))
+				for (let i in obj)
+					if (Array.isArray(obj[i]) || isObj(obj[i]))
+						WatchUtil.rebuildArray(obj[i], 0, [...path, i+''], visited);
+		},
+
+		/**
+		 * Get all roots that have paths to obj.
+		 * @param obj
+		 * @returns {Set.<Object>|Array} An iterable list. */
+		getRoots(obj)	{
+			obj = obj.$removeProxy || obj;
+			return WatchUtil.roots.get(obj) || [];
+		},
+
+		/**
+		 * Register a path from root to obj. */
+		addPath(root, newPath, obj) {
+			obj = obj.$removeProxy || obj;
+			root = root.$removeProxy || root;
+
+			//#IFDEV
+			// if (newPath.length && !(newPath[0] in root))
+			// 	throw new Error("Path doesn't exist");
+			// if (root !== obj && !Object.keys(root).length)
+			// 	throw new Error("Root has no paths");
+			//#ENDIF
+
+			// Add root from obj to path.
+			let pointingToObj = WatchUtil.roots.get(obj);
+			if (!pointingToObj)
+				WatchUtil.roots.set(obj, pointingToObj = new Set()); // Wet and not WeakSet because it must be iterable.
+			pointingToObj.add(root);
+
+			// Get the map from object to paths.
+			let objMap = WatchUtil.paths.get(root);
+			if (!objMap)
+				WatchUtil.paths.set(root, objMap=new WeakMap());
+
+			// Get the paths
+			let paths = objMap.get(obj);
+			if (!paths)
+				objMap.set(obj, [newPath]);
+
+			// Add the path if it isn't already registered.
+			// TODO: This could possibly be faster if the javascript Set could index by arrays.
+			else {
+				for (let existingPath of paths) {
+
+					let l = existingPath.length;
+					if (newPath.length < l)
+						continue;
+
+					// If the new path begins with existingPath, don't add it.
+					// Because now we're just expanding more paths from circular references.
+					// Inline version of arrayEq() because it's faster.
+					let diff = false;
+					for (let i=0; i<l; i++)
+						if ((diff = existingPath[i] !== newPath[i]))
+							break;
+					if (!diff)
+						return;
+				}
+				paths.push(newPath);
+			}
+		},
+
+		/**
+		 * Get all paths from root to obj. */
+		getPaths(root, obj) {
+
+			//#IFDEV
+			if (root.$isProxy)
+				throw new Error("Can't be proxy.");
+			//#ENDIF
+
+			// Get the map from object to paths.
+			let objMap = WatchUtil.paths.get(root);
+			if (!objMap)
+				return [];
+
+			// Get the paths
+			return objMap.get(obj.$removeProxy || obj) || [];
+		},
+
+
+		/**
+		 * @param root {object}
+		 * @param callback {function} */
+		addCallback(root, callback) {
+			root = root.$removeProxy || root;
+
+			let callbacks = WatchUtil.callbacks.get(root);
+			if (!callbacks)
+				WatchUtil.callbacks.set(root, callbacks=[]);
+			callbacks.push(callback);
+		},
+
+		getCallbacks(root) {
+			root = root.$removeProxy || root;
+			return WatchUtil.callbacks.get(root) || [];
+		},
+
+		//#IFDEV
+		cleanup() {
+			WatchUtil.proxies = new WeakMap();
+			WatchUtil.roots = new WeakMap();
+			WatchUtil.callbacks = new WeakMap();
+			WatchUtil.paths = new WeakMap();
+		}
+		//#ENDIF
+	};
+
+
+
+	/**
+	 * Create a copy of root, where callback() is called whenever anything within object is added, removed, or modified.
+	 * Monitors all deeply nested properties including array operations.
+	 * Watches will not extend into HTML elements and nodes.
+	 * Inspired by: stackoverflow.com/q/41299642
+	 * @param root {Object}
+	 * @param callback {function(action:string, path:string[], value:string?)} Action is 'set' or 'delete'.
+	 *     'insert' and 'remove' operations are for adding or removing elements within arrays.
+	 * @returns {Proxy} */
+	var watchProxy = (root, callback) => {
+		//#IFDEV
+		if (!isObj(root))
+			throw new Error('Can only watch objects');
+		//#ENDIF
+
+		// Add a path from root to itself, so that when we call WatchUtil.getRoots() on a root, we get an empty path.
+		WatchUtil.addPath(root, [], root);
+
+		WatchUtil.addCallback(root, callback);
+		return WatchUtil.getProxy(root);
+	};
+}
+
+var dontCreateValue = {};
+
+/**
+ * @param obj {object}
+ * @param path {string[]}
+ * @param createVal {*}  If set, non-existant paths will be created and value at path will be set to createVal.
+ * @param watchless {boolean}
+ * @return The value, or undefined if it can't be reached. */
+function delve(obj, path, createVal=dontCreateValue, watchless=false) {
+	let create = createVal !== dontCreateValue;
+
+	if (!obj && !create && path.length)
+		return undefined;
+
+	let i = 0;
+	for (let srcProp of path) {
+		let last = i === path.length - 1;
+
+		if (watchless) {
+			obj = obj.$removeProxy || obj;
+			if (typeof obj === 'object')
+				obj.$disableWatch = true; // sometimes this causes stack overflow?  Perhaps I need to use Object.getOwnPropertyDescriptor() to see if it's a prop?
+		}
+
+		// If the path is undefined and we're not to the end yet:
+		if (obj[srcProp] === undefined) {
+
+			// If the next index is an integer or integer string.
+			if (create) {
+				if (!last) {
+					// If next level path is a number, create as an array
+					let isArray = (path[i + 1] + '').match(/^\d+$/);
+					obj[srcProp] = isArray ? [] : {};
+				}
+			} else {
+				delete obj.$disableWatch;
+				return undefined; // can't traverse
+			}
+		}
+
+		// If last item in path
+		if (last && create) {
+			obj[srcProp] = createVal;
+		}
+
+		if (watchless)
+			delete obj.$disableWatch;
+
+			// Traverse deeper along destination object.
+		obj = obj[srcProp];
+		if (watchless) // [below] remove proxy
+			obj = (obj!==null && obj !== undefined) ? (obj.$removeProxy || obj) : null;
+
+		i++;
+	}
+
+	return obj;
+}
+
+delve.dontCreateValue = dontCreateValue;
+
+/**
+ * Allow subscribing only to specific properties of an object.
+ * Internally, the property is replaced with a call to Object.defineProperty() that forwards to
+ * a proxy created by watchProxy(). */
+class WatchProperties {
+
+	constructor(obj) {
+		this.obj_ = obj;   // Original object being watched.
+		this.fields_ = {}; // Unproxied underlying fields that store the data.
+		                   // This is necessary to store the values of obj_ after defineProperty() is called.
+
+		this.proxy_ = watchProxy(this.fields_, this.notify_.bind(this));
+
+		/** @type {Object<string, function>} A map from a path to the callback subscribed to that path. */
+		this.subs_ = {};
+	}
+
+	/**
+	 * When a property or sub-property changes, notify its subscribers.
+	 * This is an expanded version of watchproxy.notify.  It also notifies every callback subscribed to a parent of path,
+	 * and all children of path if their own value changed.
+	 * @param action {string}
+	 * @param path {string[]}
+	 * @param value {*=}
+	 * @param oldVal {*=} */
+	notify_(action, path, value, oldVal) {
+		if (action === 'info') // Used with the $subscribers meta-property?
+			return this.subs_;
+
+		let allCallbacks = this.getAllCallbacks(path, action, value, oldVal);
+
+		// Debugging is easier if I added all callbacks to an array, then called them.
+		// It's also necessary to accumulate and call the callbacks this way, because other callbacks can modify the subscribers
+		// and cause some subscriptions to be skipped.
+		for (let [func, args] of allCallbacks)
+			func.apply(this.obj_, args);
+	}
+
+	/**
+	 * Get all functions that should be called when `action` is performed on `path`.
+	 * @param action {string}
+	 * @param path {string[]}
+	 * @param value {*=}
+	 * @param oldVal {*=}
+	 * @return {[function(), *[]]} Function and array of arguments to pass to function. */
+	getAllCallbacks(path, action, value, oldVal) {
+		let result = [];
+		let cpath = csv(path);
+
+		// Traverse up the path looking for anything subscribed.
+		let parentPath = path.slice(0, -1);
+		while (parentPath.length) {
+			let parentCPath = csv(parentPath); // TODO: This seems like a lot of work for any time a property is changed.
+
+			if (parentCPath in this.subs_)
+				/** @type function */
+				for (let callback of this.subs_[parentCPath])
+					// "this.obj_" so it has the context of the original object.
+					// We set indirect to true, which data-loop's rebuildChildren() uses to know it doesn't need to do anything.
+					result.push([callback, [action, path, value, oldVal, this.obj_]]);
+			parentPath.pop();
+		}
+
+		// Notify at the current level:
+		if (cpath in this.subs_)
+			for (let callback of this.subs_[cpath])
+				result.push([callback, [action, path, value, oldVal, this.obj_]]);
+
+		// Traverse to our current level and downward looking for anything subscribed
+		let newVal = delve(this.obj_, path, delve.dontCreateValue, true);
+		for (let name in this.subs_)
+			if (name.startsWith(cpath) && name.length > cpath.length) {
+				let subPath = name.slice(cpath.length > 0 ? cpath.length + 1 : cpath.length); // +1 for ','
+				let oldSubPath = JSON.parse('[' + subPath + ']');
+
+				let oldSubVal = utils.removeProxy(delve(oldVal, oldSubPath, delve.dontCreateValue, true));
+				let newSubVal = utils.removeProxy(delve(newVal, oldSubPath, delve.dontCreateValue, true));
+
+				if (oldSubVal !== newSubVal) {
+					let callbacks = this.subs_[name];
+					if (callbacks.length) {
+						let fullSubPath = JSON.parse('[' + name + ']'); // Parse as csv
+						for (let callback of callbacks)  // [below] "this.obj_" so it has the context of the original object.
+							result.push([callback, [action, fullSubPath, newSubVal, oldSubVal, this.obj_]]);
+					}
+				}
+			}
+		return result;
+	}
+
+	/**
+	 *
+	 * @param path {string|string[]}
+	 * @param callback {function(action:string, path:string[], value:string?)} */
+	subscribe_(path, callback) {
+		if (path.startsWith) // is string
+			path = [path];
+
+		// Create property at top level path, even if we're only watching something much deeper.
+		// This way we don't have to worry about overriding properties created at deeper levels.
+		let self = this;
+		let field = path[0];
+
+		if (!(field in self.fields_)) {
+
+			self.fields_[field] = self.obj_[field];
+
+			// If we're subscribing to something within the top-level field for the first time,
+			// then define it as a property that forward's to the proxy.
+			delete self.obj_[field];
+			Object.defineProperty(self.obj_, field, {
+				enumerable: 1,
+				configurable: 1,
+				get: () => {
+					if (self.obj_.$disableWatch)
+						return self.fields_[field]
+					else
+						return self.proxy_[field]
+				},
+				//set: (val) => self.obj_.$disableWatch ? self.proxy_.$removeProxy[field] = val : self.proxy_[field] = val
+				set(val) {
+					if (self.obj_.$disableWatch) // used by traversePath to watchlessly set.
+						self.proxy_.$removeProxy[field] = val;
+					else
+						self.proxy_[field] = val;
+				}
+			});
+		}
+
+
+		// Create the full path if it doesn't exist.
+		// TODO: Can this part be removed?
+		delve(this.fields_, path, undefined);
+
+
+		// Add to subscriptions
+		let cpath = csv(path);
+		if (!(cpath in self.subs_))
+			self.subs_[cpath] = [];
+		self.subs_[cpath].push(callback);
+	}
+
+	/**
+	 *
+	 * @param path{string[]|string}
+	 * @param {function?} callback Unsubscribe this callback.  If not specified, all callbacks willb e unsubscribed. */
+	unsubscribe_(path, callback) {
+
+		// Make sure path is an array.
+		if (path.startsWith) // is string
+			path = [path];
+
+		// Remove the callback from this path and all parent paths.
+		let cpath = csv(path);
+		if (cpath in this.subs_) {
+
+			// Remove the callback from the subscriptions
+			if (callback) {
+				let callbackIndex = this.subs_[cpath].indexOf(callback);
+				//#IFDEV
+				if (callbackIndex === -1)
+					throw new Error('Bad index');
+				//#ENDIF
+				this.subs_[cpath].splice(callbackIndex, 1); // splice() modifies array in-place
+			}
+
+			// If removing all callbacks, or if all callbacks have been removed:
+			if (!callback || !this.subs_[cpath].length) {
+
+				// Remove the whole subscription array if there's no more callbacks
+				delete this.subs_[cpath];
+
+				// Undo the Object.defineProperty() call when there are no more subscriptions to it.
+				// If there are no subscriptions that start with propCPath
+				// TODO This can be VERY SLOW when an object has many subscribers.  Such as an x-loop with hundreds of children.
+				// If the loop tries to remove every child at once the complexity is O(n^2) because each child must search every key in this.subs_.
+				// We need to find a faster way.
+				let propCpath = csv([path[0]]);
+				if (!utils.hasKeyStartingWith_(this.subs_, propCpath)) {
+
+					delete this.obj_[path[0]]; // Remove the defined property.
+					this.obj_[path[0]] = this.fields_[path[0]]; // reset original unproxied value to object.
+
+					// Get all roots that point to the field
+					// Not sure why this makes some unit tests fail.
+					let roots = WatchUtil.roots.get(this.fields_[path[0]]);
+					if (roots) {
+						roots.delete(this.fields_);
+						if (!roots.size) // Delete Set() if last item removed.
+							WatchUtil.roots.delete(this.fields_[path[0]]);
+					}
+
+					delete this.fields_[path[0]];
+
+
+					// TODO: I'm still uneasy about this code.
+					// WatchUtil.addPath() adds to WatchUtil.roots Set for the added object.
+					// But there's no code to remove items from that Set, ever.
+					// It only disapears when the object goes out of scope, and the whole Set is removed at once.
+
+					// If we delete the last field of an object, remove it from roots.
+					if (!Object.keys(this.fields_).length) {
+
+						//#IFDEV
+						// if (!WatchUtil.paths.has(this.fields_))
+						// 	throw new Error('');
+						// if (!WatchUtil.roots.has(this.fields_))
+						// 	throw new Error('');
+						// if (!WatchUtil.roots.has(this.obj_[path[0]]))
+						// 	throw new Error('');
+						//#ENDIF
+
+						//let root = WatchUtil.roots.get(this.fields_);
+						WatchUtil.paths.delete(this.fields_);
+						WatchUtil.roots.delete(this.fields_);
+						WatchUtil.roots.delete(this.obj_[path[0]]);
+					}
+
+					if (!Object.keys(this.obj_).length) {
+						//#IFDEV
+						if (!WatchUtil.paths.has(this.obj_))
+							throw new Error('');
+						if (!WatchUtil.roots.has(this.obj_))
+							throw new Error('');
+						//#ENDIF
+
+						WatchUtil.paths.delete(this.obj_);
+						WatchUtil.roots.delete(this.obj_);
+					}
+
+
+				}
+			}
+		}
+	}
+}
+
+
+var Watch = {
+
+	/**
+	 * Keeps track of which objects we're watching.
+	 * That way Watch.add() and Watch.remove() can work without adding any new fields to the objects they watch.
+	 * @type {WeakMap<object, WatchProperties>} */
+	objects: new WeakMap(),
+
+	/**
+	 *
+	 * @param obj {object}
+	 * @param path {string|string[]}
+	 * @param callback {function(action:string, path:string[], value:string?)} */
+	add(obj, path, callback) {
+		assert(path.length);
+		obj = removeProxy(obj);
+
+		// Keep only one WatchProperties per watched object.
+		var wp = Watch.objects.get(obj);
+		if (!wp)
+			Watch.objects.set(obj, wp = new WatchProperties(obj));
+
+		wp.subscribe_(path, callback);
+	},
+
+	/**
+	 *
+	 * @param obj {object}
+	 * @param path {string|string[]}
+	 * @param callback {function=} If not specified, all callbacks will be unsubscribed. */
+	remove(obj, path, callback) {
+		obj = removeProxy(obj);
+		var wp = Watch.objects.get(obj);
+
+		if (wp) {
+			if (path) // unsubscribe only from path.
+				wp.unsubscribe_(path, callback);
+			else // unsubscribe rom all paths.
+				for (let sub in wp.subs_)
+					wp.unsubscribe_(sub);
+
+			// Remove from watched objects if we're no longer watching
+			if (!Object.keys(wp.subs_).length)
+				Watch.objects.delete(obj);
+		}
+	},
+
+	cleanup() {
+		Watch.objects = new WeakMap();
+	}
+
+};
+
+class RefractError extends Error {
+	constructor(msg) {
+		super(msg);
+	}
+}
+//#ENDIF
+
+
+/** @deprecated */
+var removeProxy = obj => (obj && obj.$removeProxy) || obj;
+
+var assert = expr => {
+	if (!expr) {
+		debugger;
+		throw new Error('Assertion failed');
+	}
+};
+
+var utils = {
+
+	removeProxy(obj) {
+		return (obj && obj.$removeProxy) || obj;
+	},
+
+	arrayEq(a, b) {
+		if (a.length !== b.length)
+			return false;
+		for (let i = 0; i < a.length; i++)
+			if (a[i] !== b[i])
+				return false;
+		return true;
+	},
+
+	arrayStartsWith(haystack, prefix) {
+		for (let i=0; i<prefix.length; i++)
+			if (haystack[i] !== prefix[i]) // will be undefined if prefix is longer than haystack, and that will still work.
+				return false;
+		return true;
+	},
+
+
+	/**
+	 * Find object values by keys that start with prefix.
+	 * @param obj {object}
+	 * @param prefix {string}
+	 * @return {boolean} */
+	hasKeyStartingWith_(obj, prefix) {
+		for (let key in obj)
+			if (key.startsWith(prefix))
+				return true;
+		return false;
+	},
+
+	toString(val) {
+		if (val === undefined || val === null)
+			return '';
+		return val+'';
+	},
+
+	unescapeTemplate(text) {
+		return text.replace(/\\r/g, '\r').replace(/\\n/g, '\n').replace(/\\t/g, '\t');
+	},
+
+
+	/**
+	 * When the input's value changes, call the callback with the new, typed value.
+	 * @param el {HTMLInputElement|HTMLElement}
+	 * @param callback {function(val:*, event)}	 */
+	watchInput(el, callback) {
+		let tagName = el.tagName;
+		let isContentEditable =el.hasAttribute('contenteditable') && el.getAttribute('contenteditable') !== 'false';
+		let isTextArea = tagName==='TEXTAREA';
+
+
+		let useInputEvent = isTextArea || isContentEditable || (
+			tagName === 'INPUT' &&
+			!['button', 'color', 'file', 'hidden', 'image', 'radio', 'reset', 'submit'].includes(el.getAttribute('type'))
+		);
+
+		// It's better to do it on input than change, b/c input fires first.
+		// Then if user code adds and event listener on input, this one will fire first and have the value already set.
+		if (useInputEvent) { // TODO: Input type="number" is typable but also dispatches change event on up/down click.
+			el.addEventListener('input', e=> {
+				let type = el.getAttribute('type') || '';
+
+				// Convert input type="number" to a float.
+				let val = isContentEditable ? el.innerHTML : el.value;
+				if (type === 'number' || type === 'range')
+					val = parseFloat(val);
+				else if (type === 'datetime-local' || type === 'datetime')
+					val = new Date(val);
+				else if (el.type === 'checkbox')
+					val = el.checked;
+
+				callback(val, e);
+
+			}, true); // We bind to the event capture phase, so we can update values before it calls onchange and other event listeners added by the user.
+		}
+		else {
+			el.addEventListener('change', e => {
+				// TODO: Convert value to boolean for checkbox.  File input type.
+				let val;
+				if (tagName === 'SELECT' && el.hasAttribute('multiple'))
+					val = Array.from(el.children).filter(el => el.selected).map(opt => opt.value);
+				else
+					val = isContentEditable ? el.innerHTML : el.value;
+
+				callback(val, e);
+
+
+			}, true);
+		}
+	}
+};
+
+
+/**
+ * Return the array as a quoted csv string.
+ * @param array {string[]}
+ * @return {string} */
+var csv = array => JSON.stringify(array).slice(1, -1); // slice() to remove starting and ending [].
+
+
+/**
+ * @param obj {*}
+ * @return {boolean} */
+var isObj = obj => obj && typeof obj === 'object'; // Make sure it's not null, since typof null === 'object'.
+
+
+/**
+ * Operates recursively to remove all proxies.
+ * TODO: This is used by watchproxy and should be moved there?
+ * @param obj {*}
+ * @param visited {WeakSet=} Used internally.
+ * @return {*} */
+var removeProxies = (obj, visited) => {
+	if (obj === null || obj === undefined)
+		return obj;
+
+	if (obj.$isProxy) {
+		obj = obj.$removeProxy;
+
+		//#IFDEV
+		if (obj.$isProxy) // If still a proxy.  There should never be more than 1 level deep of proxies.
+			throw new RefractError("Double wrapped proxy found.");
+		//#ENDIF
+	}
+
+	if (typeof obj === 'object') {
+		if (!visited)
+			visited = new WeakSet();
+		else if (visited.has(obj))
+			return obj; // visited this object before in a cyclic data structure.
+		visited.add(obj);
+
+		// Recursively remove proxies from every property of obj:
+		for (let name in Object.keys(obj)) { // Don't mess with inherited properties.  E.g. defining a new outerHTML.
+			let t = obj[name];
+			let v = removeProxies(t, visited);
+
+			// If a proxy was removed from something created with Object.defineOwnProperty()
+			if (v !== t) {
+				if (Object.getOwnPropertyDescriptor(obj, name).writable) // we never set writable=true when we defineProperty.
+					obj[name] = v;
+				else {
+					// It's a defined property.  Set it on the underlying object.
+					let wp = Watch.objects.get(obj);
+					let node = wp ? wp.fields_ : obj;
+					node[name] = v;
+				}
+			}
+		}
+	}
+	return obj;
+};
+
+/**
  * Grammar for html/js code, including js templates.
- * TODO: This could potentially be made much faster if we indexed by the first char.
- * Then we wouldn't have to iterate through each rule, trying one at a time.
- * E.g.:
- * start = {
- *     '<': code => {
- *         if (isTag) ...
- *         if (isOperator) ...
- *     },
- *     whitespace, // The regular rules
- *     ln,
- *     ...
- * }
- * nextToken = start[fisrtChar](current);
  *
  * Known bugs
  * 1. Javascript regex to match regex tokens might not be perfect.  Since no regex can match all regexes?
  *    We need a function here instead.
+ * 2. Lex parses out html elements inside comments inside css and javascript.  When it should just be one big block of text.
  */
 {
 	let lastTag = null; // Last tag name we descended into.
@@ -203,6 +1332,10 @@ var ascendIf = regex => code => {
 		'++ -- ** + - * / % ' +         // Arithmetic operators
 		', ... . ( ) [ ] ? :'			// Other operators
 	).split(/ /g);
+
+	let operatorMap = {};
+	for (let op of operators) // Used to speed up operator search.
+		operatorMap[op[0]] = [...(operatorMap[op[0]]||[]), op];
 
 
 	//let svg = /^<svg[\S\s]*?<\/svg>/;
@@ -232,8 +1365,7 @@ var ascendIf = regex => code => {
 		}
 	};
 
-	let tag = { // html open tag
-		whitespace: /^[ \r\n\t\v\f\xa0]+/,
+	let tagCommon = { // html open tag
 		attribute: /^[\-_$\w\xA0-\uFFFF:]+/i,
 		string: code =>
 			descendIf("'", 'squote')(code) ||
@@ -264,6 +1396,10 @@ var ascendIf = regex => code => {
 				finally for function if implements import in instanceof interface let new package private protected public
 				return static super switch this throw try typeof var void while with yield`.trim().split(/\s+/g);
 
+	// let keywordMap = {};
+	// for (let kw of keyword) // Used to speed up keyword search.
+	// 	keywordMap[kw[0]] = [...(keywordMap[kw[0]]||[]), kw];
+
 
 	// Tokens that can occur before a regex.
 	// https://stackoverflow.com/a/27120110
@@ -274,6 +1410,7 @@ var ascendIf = regex => code => {
 	/**
 	 * A grammar for parsing js and html within js templates, for use with lex.js. */
 	var lexHtmlJs = {
+
 
 		js: {
 			whitespace,
@@ -350,11 +1487,7 @@ var ascendIf = regex => code => {
 			},
 			semicolon: ';',
 			keyword,
-			operator: code => { // Must occur after comment
-				for (let op2 of operators)
-					if (code.startsWith(op2))
-						return [op2];
-			},
+			operator: operators,
 			string: /^"(\\\\|\\"|[^"])*"|^'(\\\\|\\'|[^'])*'/
 		},
 		html: { // top level html not within javascript.  No other modes go to this mode.
@@ -368,7 +1501,6 @@ var ascendIf = regex => code => {
 			commentEnd: ascendIf('-->'),
 			commentBody: /^[\s\S]+?(?=-->|$)/,
 		},
-
 		template: { // template within javascript
 			script,
 			expr,
@@ -379,12 +1511,22 @@ var ascendIf = regex => code => {
 
 			// Continue until end of text.
 			// supports both ${} and #{} template expressions.
-			text: code => [code.match(
-				lexHtmlJs.allowHashTemplates // https://stackoverflow.com/a/977294
-					? /^(?:\\#{|\\\${|\s|(?!(#{|\${|`|<[\w\xA0-\uFFFF!:/-]|$)).)+/
-					: /^(?:\\\${|\s|(?!(\${|`|<[\w\xA0-\uFFFF!:/-]|$)).)+/) || []][0],
-		},
+			text: code => {
+				let regex = lexHtmlJs.allowHashTemplates // https://stackoverflow.com/a/977294
+						? /^(?:\\#{|\\\${|\s|(?!(#{|\${|`|<[\w\xA0-\uFFFF!:/-]|$)).)+/
+						: /^(?:\\\${|\s|(?!(\${|`|<[\w\xA0-\uFFFF!:/-]|$)).)+/;
 
+				let matches = code.match(regex);
+				if (matches) {
+					let result = matches[0];
+					result = utils.unescapeTemplate(result);
+					//result = Object.assign(result, {originalLength: matches[0].length});
+					// if (result.length !== matches[0].length)
+					// 	debugger;
+					return [result, undefined, matches[0].length];
+				}
+			}
+		},
 		// Comment within a `template` tag.
 		templateComment: { // Like htmlComment, but allows expressions.
 			expr,
@@ -394,14 +1536,24 @@ var ascendIf = regex => code => {
 					? /^[\s\S]+?(?=-->|[$#]{|$)/
 					: /^[\s\S]+?(?=-->|\${|$)/) || []][0],
 		},
-		tag,
-
+		tag: {
+			whitespace: /^[ \r\n\t\v\f\xa0]+/,
+			...tagCommon
+		},
 		templateTag: { // html tag within template.
+			whitespace: code => { // TODO: Why do we have the double-escaped versions?
+				let matches = code.match(/^( |\r|\n|\t|\v|\f|\xa0|\\r|\\n|\\t|\\v|\\f|\\xa0)+/);
+				if (matches) {
+					let result = matches[0];
+					result = utils.unescapeTemplate(result);
+					//result = Object.assign(result, {originalLength: matches[0].length});
+					return [result, undefined, matches[0].length];
+				}
+			},
 			expr,
 			templateEnd, // A ` quote to end the template.
-			...tag,
+			...tagCommon,
 		},
-
 		// TODO: template end with `
 		squote: { // single quote string within tag.  Used for both js strings and html attributes.
 			expr,
@@ -432,7 +1584,142 @@ var ascendIf = regex => code => {
 		allowHashTemplates: false,
 		allowUnknownTagTokens: false
 	};
-}
+
+	// Convert everything to a function.
+	for (let mode in lexHtmlJs)
+		for (let type in lexHtmlJs[mode]) {
+			let pattern = lexHtmlJs[mode][type];
+			if (Array.isArray(pattern)) {
+
+				// Replace arrays with functions to do lookups in maps.
+				// Benchmarking shows a performance increase of about 3%.
+
+				// 1. Build a lookup map based on first letter.
+				let lookup = {};
+				for (let token of pattern)
+					lookup[token[0]] = [...(lookup[token[0]]||[]), token];
+
+				// 2. Replace the array of tokens with a function that uses this lookup map.
+				lexHtmlJs[mode][type] = code => {
+					let tokens = lookup[code[0]];
+					if (tokens)
+						for (let token of tokens)
+							if (code.startsWith(token))
+								return [token];
+				};
+			}
+			else if (typeof pattern === 'string')
+				lexHtmlJs[mode][type] = code => [code.startsWith(pattern) ? pattern : undefined];
+			else if (pattern instanceof RegExp) {
+				lexHtmlJs[mode][type] = code => [(code.match(pattern) || [])[0]];
+			}
+		}
+
+	// A fast lookup table based on starting characters.
+	// Be careful not to suggest a pattern that must come after another pattern.
+	// E.g. all js.identifier would also match js.keyword
+	// This isn't finished.
+	lexHtmlJs.fastMatch = {
+		html: {
+			'<': {
+				'/': [lexHtmlJs.html, 'closeTag'],
+				'a-z0-9': [lexHtmlJs.html, 'openTag'],
+				'!': [lexHtmlJs.html, 'comment'],
+			},
+			'a-z0-9 \t\r\n': [lexHtmlJs.html, 'text']
+		},
+
+		tag: {
+			'a-z0-9': [lexHtmlJs.tag, 'attribute'],
+			' \t\r\n': [lexHtmlJs.tag, 'whitespace'],
+			'"': [lexHtmlJs.tag, 'string'],
+			"'": [lexHtmlJs.tag, 'string'],
+			">": [lexHtmlJs.tag, 'tagEnd'],
+			"/": {
+				'>': [lexHtmlJs.tag, 'tagEnd']
+			},
+			'=': [lexHtmlJs.tag, 'equals'],
+		},
+		dquote: {
+			'"': [lexHtmlJs.dquote, 'quote'],
+			'a-z0-9 \t.()[]/': [lexHtmlJs.dquote, 'text'],
+			'$#': [lexHtmlJs.dquote, 'expr'],
+		},
+		js: {
+			' \t\v\f\xa0': [lexHtmlJs.js, 'whitespace'],
+			'=&|^!+-*%,.()[]?!>:': [lexHtmlJs.js, 'operator'], // omits "/" b/c it can also be regex.  Omits < b/c it can also be close tag.
+			'\r\n' : [lexHtmlJs.js, 'ln'],
+			';': [lexHtmlJs.js, 'semicolon'],
+			'/' : {
+				'/*':  [lexHtmlJs.js, 'comment'],
+			},
+			'{': [lexHtmlJs.js, 'brace1'],
+			'}': [lexHtmlJs.js, 'brace2'],
+			'a-z$_': [lexHtmlJs.js, 'identifier'],
+			'0-9': [lexHtmlJs.js, 'number'],
+			'\'"': [lexHtmlJs.js, 'string'],
+			'`': [lexHtmlJs.js, 'template'],
+		},
+		template: {
+			//'a-z0-9 ': [lexHtmlJs.template, 'text'], // Can't work because the slow version does a look-behind to see if we're in a script tag.
+			'`': [lexHtmlJs.template, 'templateEnd'],
+			'$#': [lexHtmlJs.template, 'expr'],
+			'<': {
+				'a-z': [lexHtmlJs.template, 'openTag'],
+				'/': [lexHtmlJs.template, 'closeTag'],
+				'!': [lexHtmlJs.template, 'comment']
+			}
+		},
+		templateTag: {
+			'$': [lexHtmlJs.templateTag, 'expr']
+		},
+		templateComment: {
+			'-': [lexHtmlJs.templateComment, 'commentEnd'],
+			'a-z0-9\t\r\n ': [lexHtmlJs.templateComment, 'commentBody']
+		}
+	}; // end fastMatch object.
+
+	lexHtmlJs.fastMatch.templateTag = lexHtmlJs.fastMatch.tag;
+
+	/**
+	 * Expand the lookup rules such as a-z and 0-9, in place. */
+	function expandFastMatch(obj) {
+		for (let name in obj) {
+			if (!obj[name].length) // not an array, recurse:
+				expandFastMatch(obj[name]);
+
+			if (name.length > 1) {
+				let originalName = name;
+
+				if (name.includes('a-z')) {
+					for (let letter of 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ')
+						obj[letter] = obj[originalName];
+					name = name.replace('a-z', '');
+				}
+				if (name.includes('0-9')) {
+					for (let letter of '0123456789')
+						obj[letter] = obj[originalName];
+					name = name.replace('0-9', '');
+				}
+
+				if (name.length > 1)
+					for (let letter of name)
+						obj[letter] = obj[originalName];
+
+				delete obj[originalName];
+			}
+		}
+		Object.freeze(obj); // Theoretically makes it faster, but benchmarking doesn't show this.
+
+	}
+	for (let name in lexHtmlJs.fastMatch)
+		expandFastMatch(lexHtmlJs.fastMatch[name]);
+
+	Object.freeze(lexHtmlJs.fastMatch);
+
+
+
+} // end scope
 
 /**
  * Functional regular expressions.
@@ -566,7 +1853,7 @@ fregex.oneOrMore = (...rules) => fregex.xOrMore(1, ...rules);
  * @param pattern
  * @param {array} haystack
  * @param {int} startIndex
- * @returns {*[]} A slice of the items in haystack that match.
+ * @return {*[]} A slice of the items in haystack that match.
  *     with an added index property designating the index of the match within the haystack array. */
 fregex.matchFirst = (pattern, haystack, startIndex=0) => {
 	let result = fregex.matchAll(pattern, haystack, 1, startIndex);
@@ -611,7 +1898,7 @@ fregex.lookAhead = (...rules) => {
  * Experimental
  * Matches the end of the tokens.
  * @param tokens
- * @returns {number|boolean} */
+ * @return {number|boolean} */
 fregex.end = tokens => {
 	return tokens.length ? false : 0;
 };
@@ -624,7 +1911,7 @@ fregex.end.debug = 'end';
 /**
  * Allow matching on functions, object properties, and strings.
  * @param rules
- * @returns {function[]} */
+ * @return {function[]} */
 var prepare = rules => {
 	if (Array.isArray(rules[0]) && rules.length === 1)
 		rules = rules[0];
@@ -721,10 +2008,10 @@ var Parse = {
 			// TODO: Completely recreate the original tokens, instead of just string versions of them:
 			if (token.tokens) {
 				let tokens = Parse.replaceHashExpr(token.tokens, token.mode, className);
-				result.push(Object.assign(tokens.join(''), {type: token.type, tokens, mode: token.mode}));
+				result.push({text: tokens.map(t=>t.text).join(''), type: token.type, tokens, mode: token.mode});
 			}
-			else if (token == '#{' && token.type == 'expr') {
-				result.push('${', className, '.', 'htmlEncode', '(');
+			else if (token.text == '#{' && token.type == 'expr') {
+				result.push(new Token('${'), new Token(className), new Token('.'), new Token('htmlEncode'), new Token('('));
 				isHash = true;
 			}
 			else
@@ -734,11 +2021,11 @@ var Parse = {
 		if (isHash) { // Add the closing paren around htmlEncode
 			let extra = [];
 			if (mode === 'squote') // Escape quotes if we're inside an attribute
-				extra = [',', `"'"`];
+				extra = [new Token(','), new Token(`"'"`)];
 			else if (mode === 'dquote')
-				extra = [',', `'"'`];
+				extra = [new Token(','), new Token(`'"'`)];
 
-			result.splice(result.length - 1, 0, ...extra, ')');
+			result.splice(result.length - 1, 0, ...extra, new Token(')'));
 		}
 
 
@@ -800,7 +2087,7 @@ var Parse = {
 	 * Loop through the tokens and find the start of a function.
 	 * @param tokens {Token[]}
 	 * @param start {int}
-	 * @returns {int|null} */
+	 * @return {int|null} */
 	findFunctionStart(tokens, start=0) {
 		for (let i=start, token; token=tokens[i]; i++) {
 			if (token == 'function')
@@ -827,7 +2114,7 @@ var Parse = {
 	 * Finds the last token of a function, not including a trailing semicolon.
 	 * @param tokens {Token[]}
 	 * @param start {int} Must be the index of the first token of the function.
-	 * @returns {int|null} */
+	 * @return {int|null} */
 	findFunctionEnd(tokens, start) {
 		let isArrow = tokens[start] != 'function';
 		let depth = 0, groups = isArrow && tokens[start] != '(' ? 1 : 2;
@@ -880,18 +2167,19 @@ var Parse = {
 	 * @return {Token[]} */
 	escape$(tokens) {
 
-		let fstart = this.findFunctionStart(tokens);
-		for (let i=0, token; token=tokens[i]; i++) {
+		let result = tokens.map(t=>({...t}));// copy each
+		let fstart = this.findFunctionStart(result);
+		for (let i=0, token; token=result[i]; i++) {
 
 			if (i===fstart) {
-				i = this.findFunctionEnd(tokens, i);
-				fstart = this.findFunctionStart(tokens, i);
+				i = this.findFunctionEnd(result, i);
+				fstart = this.findFunctionStart(result, i);
 			}
 
 			if (token.type === 'template')
-				tokens[i] = '`'+ token.slice(1, -1).replace(/\${/g, '\\${').replace(/`/g, '\\`') + '`';
+				result[i].text = '`'+ token.text.slice(1, -1).replace(/\${/g, '\\${').replace(/`/g, '\\`') + '`';
 		}
-		return tokens
+		return result;
 	},
 
 	/**
@@ -1091,1042 +2379,6 @@ Parse.argList = fregex.zeroOrMore([
 	])
 ]);
 
-var dontCreateValue = {};
-
-/**
- * @param obj {object}
- * @param path {string[]}
- * @param createVal {*}  If set, non-existant paths will be created and value at path will be set to createVal.
- * @param watchless {boolean}
- * @return The value, or undefined if it can't be reached. */
-function delve(obj, path, createVal=dontCreateValue, watchless=false) {
-	let create = createVal !== dontCreateValue;
-
-	if (!obj && !create && path.length)
-		return undefined;
-
-	let i = 0;
-	for (let srcProp of path) {
-		let last = i === path.length - 1;
-
-		if (watchless) {
-			obj = obj.$removeProxy || obj;
-			if (typeof obj === 'object')
-				obj.$disableWatch = true; // sometimes this causes stack overflow?  Perhaps I need to use Object.getOwnPropertyDescriptor() to see if it's a prop?
-		}
-
-		// If the path is undefined and we're not to the end yet:
-		if (obj[srcProp] === undefined) {
-
-			// If the next index is an integer or integer string.
-			if (create) {
-				if (!last) {
-					// If next level path is a number, create as an array
-					let isArray = (path[i + 1] + '').match(/^\d+$/);
-					obj[srcProp] = isArray ? [] : {};
-				}
-			} else {
-				delete obj.$disableWatch;
-				return undefined; // can't traverse
-			}
-		}
-
-		// If last item in path
-		if (last && create) {
-			obj[srcProp] = createVal;
-		}
-
-		if (watchless)
-			delete obj.$disableWatch;
-
-			// Traverse deeper along destination object.
-		obj = obj[srcProp];
-		if (watchless) // [below] remove proxy
-			obj = (obj!==null && obj !== undefined) ? (obj.$removeProxy || obj) : null;
-
-		i++;
-	}
-
-	return obj;
-}
-
-delve.dontCreateValue = dontCreateValue;
-
-//#IFDEV
-class RefractError extends Error {
-	constructor(msg) {
-		super(msg);
-	}
-}
-//#ENDIF
-
-
-/** @deprecated */
-var removeProxy = obj => (obj && obj.$removeProxy) || obj;
-
-
-
-var Utils = {
-
-	removeProxy(obj) {
-		return (obj && obj.$removeProxy) || obj;
-	},
-
-	arrayEq(a, b) {
-		if (a.length !== b.length)
-			return false;
-		for (let i = 0; i < a.length; i++)
-			if (a[i] !== b[i])
-				return false;
-		return true;
-	},
-
-	arrayStartsWith(haystack, prefix) {
-		for (let i=0; i<prefix.length; i++)
-			if (haystack[i] !== prefix[i]) // will be undefined if prefix is longer than haystack, and that will still work.
-				return false;
-		return true;
-	},
-
-
-	/**
-	 * Find object values by keys that start with prefix.
-	 * @param obj {object}
-	 * @param prefix {string}
-	 * @returns {boolean} */
-	hasKeyStartingWith_(obj, prefix) {
-		for (let key in obj)
-			if (key.startsWith(prefix))
-				return true;
-		return false;
-	},
-
-	toString(val) {
-		if (val === undefined || val === null)
-			return '';
-		return val+'';
-	},
-
-
-	/**
-	 * When the input's value changes, call the callback with the new, typed value.
-	 * @param el {HTMLInputElement|HTMLElement}
-	 * @param callback {function(val:*, event)}	 */
-	watchInput(el, callback) {
-		let tagName = el.tagName;
-		let isContentEditable =el.hasAttribute('contenteditable') && el.getAttribute('contenteditable') !== 'false';
-		let isTextArea = tagName==='TEXTAREA';
-
-
-		let useInputEvent = isTextArea || isContentEditable || (
-			tagName === 'INPUT' &&
-			!['button', 'color', 'file', 'hidden', 'image', 'radio', 'reset', 'submit'].includes(el.getAttribute('type'))
-		);
-
-
-		// It's better to do it on input than change, b/c input fires first.
-		// Then if user code adds and event listener on input, this one will fire first and have the value already set.
-		if (useInputEvent) { // TODO: Input type="number" is typable but also dispatches change event on up/down click.
-			el.addEventListener('input', e=> {
-
-				let type = el.getAttribute('type') || '';
-
-				// Convert input type="number" to a float.
-				let val = isContentEditable ? el.innerHTML : el.value;
-				if (type === 'number' || type === 'range')
-					val = parseFloat(val);
-				else if (type === 'datetime-local' || type === 'datetime')
-					val = new Date(val);
-				else if (el.type === 'checkbox')
-					val = el.checked;
-
-				callback(val, e);
-
-			}, true); // We bind to the event capture phase, so we can update values before it calls onchange and other event listeners added by the user.
-		}
-		else {
-			el.addEventListener('change', e => {
-				// TODO: Convert value to boolean for checkbox.  File input type.
-				let val;
-				if (tagName === 'SELECT' && el.hasAttribute('multiple'))
-					val = Array.from(el.children).filter(el => el.selected).map(opt => opt.value);
-				else
-					val = isContentEditable ? el.innerHTML : el.value;
-
-				callback(val, e);
-
-
-			}, true);
-		}
-	}
-};
-
-
-/**
- * Return the array as a quoted csv string.
- * @param array {string[]}
- * @returns {string} */
-var csv = array => JSON.stringify(array).slice(1, -1); // slice() to remove starting and ending [].
-
-
-/**
- * @param obj {*}
- * @returns {boolean} */
-var isObj = obj => obj && typeof obj === 'object'; // Make sure it's not null, since typof null === 'object'.
-
-
-/**
- * Operates recursively to remove all proxies.
- * TODO: This is used by watchproxy and should be moved there?
- * @param obj {*}
- * @param visited {WeakSet=} Used internally.
- * @returns {*} */
-var removeProxies = (obj, visited) => {
-	if (obj === null || obj === undefined)
-		return obj;
-
-	if (obj.$isProxy) {
-		obj = obj.$removeProxy;
-
-		//#IFDEV
-		if (obj.$isProxy) // If still a proxy.  There should never be more than 1 level deep of proxies.
-			throw new RefractError("Double wrapped proxy found.");
-		//#ENDIF
-	}
-
-	if (typeof obj === 'object') {
-		if (!visited)
-			visited = new WeakSet();
-		else if (visited.has(obj))
-			return obj; // visited this object before in a cyclic data structure.
-		visited.add(obj);
-
-		// Recursively remove proxies from every property of obj:
-		for (let name in Object.keys(obj)) { // Don't mess with inherited properties.  E.g. defining a new outerHTML.
-			let t = obj[name];
-			let v = removeProxies(t, visited);
-
-			// If a proxy was removed from something created with Object.defineOwnProperty()
-			if (v !== t) {
-				if (Object.getOwnPropertyDescriptor(obj, name).writable) // we never set writable=true when we defineProperty.
-					obj[name] = v;
-				else {
-					// It's a defined property.  Set it on the underlying object.
-					let wp = watch.objects.get(obj);
-					let node = wp ? wp.fields_ : obj;
-					node[name] = v;
-				}
-			}
-		}
-	}
-	return obj;
-};
-
-/**
- * @property object.$isProxy
- * @property object.$removeProxy
- * @property object.$trigger
- * */
-
-{
-
-
-	let arrayRead = ['indexOf', 'lastIndexOf', 'includes'];
-	let arrayWrite = ['push', 'pop', 'splice', 'shift', 'sort', 'reverse', 'unshift'];
-	// TODO What about array copy functions, like slice() and flat() ?  Currently they just remove the proxy.
-
-	/**
-	 * Handler object used when calling WatchUtil.getProxy() */
-	let handler = {
-		/**
-		 * Overridden to wrap returned values in a Proxy, so we can see when they're changed.
-		 * And to keep track of the path as we traverse deeper into an object.
-		 * @param obj {Array|object}
-		 * @param field {string} An object key or array index.
-		 * @returns {*} */
-		get(obj, field) {
-
-			// Special properties
-			if (field[0] === '$') {
-				if (field === '$removeProxy') // most common paths first.
-					return obj;
-				if (field === '$isProxy')
-					return true;
-				if (field === '$trigger') {
-					return (path) => {
-						let roots = WatchUtil.getRoots(obj);
-						for (let root of roots)
-							for (let callback of WatchUtil.getCallbacks(root))
-								callback('set', path || [], obj);
-
-						return roots;
-					}
-				}
-
-				// Debugging functions
-				//#IFDEV
-				if (field === '$roots')
-					return WatchUtil.getRoots(obj);
-				if (field === '$subscribers') {
-					return Array.from(WatchUtil.getRoots(obj))
-						.map((x) => x.callbacks_)
-						.reduce((a, b) => [...a, ...b])
-						.map((x) => x('info'))
-						.reduce((a, b) => [...a, ...b])
-				}
-				//#ENDIF
-			}
-
-
-			let result = obj[field];
-
-
-			// Return the underlying array's iterator, to make for(...of) loops work.
-			if (field === Symbol.iterator)
-				return result;
-
-			// Make sure to call functions on the unproxied version
-			if (typeof result === 'function') {
-				let obj2 = obj.$removeProxy || obj;
-				let result = obj2[field];
-				if (result.prototype) // If it's a class and not a regular function, don't bind it to the object:
-					return result;
-				return result.bind(obj2);
-			}
-
-			// We only wrap objects and arrays in proxies.
-			// Primitives and functions we leave alone.
-			// if (result && typeof result === 'object' && !(result instanceof Node)) {
-			if (result && typeof result === 'object') { // isObj() inline to hopefully be faster.
-
-				// Remove any proxies.
-				result = result.$removeProxy || result;
-				//#IFDEV
-				if (result.$isProxy)
-					throw new RefractError("Double wrapped proxy found.");
-				//#ENDIF
-
-				// Make sure the path from the root to the object's field is tracked:
-				let roots = WatchUtil.getRoots(obj);
-				for (let root of roots) { // Get all paths from the roots to the parent.
-					let parentPaths = WatchUtil.getPaths(root, obj);
-					for (let parentPath of parentPaths) {
-
-						// Combine each path with the field name.
-						WatchUtil.addPath(root, [...parentPath, field], result); // Add to our list of tracked paths.
-					}
-				}
-
-				return WatchUtil.getProxy(result);
-			}
-			return result;
-		},
-
-		/**
-		 * Trap called whenever anything in an array or object is set.
-		 * Changing and shifting array values will also call this function.
-		 * @param obj {Array|object} root or an object within root that we're setting a property on.
-		 * @param field {string} An object key or array index.
-		 * @param newVal {*}
-		 * @returns {boolean} */
-		set(obj, field, newVal) {
-
-			// Don't allow setting proxies on underlying obj.
-			// This removes them recursively in case of something like newVal=[Proxy(obj)].
-			let oldVal = obj[field];
-
-			newVal = removeProxies(newVal);
-
-			// Set the value.
-			// TODO: This can trigger notification if field was created on obj by defineOwnProperty().  But that seems to be ok?
-			// Should I use .$disableWatch?
-			//let setter = Object.getOwnPropertyDescriptor(obj, field).set;
-			obj[field] = newVal;
-
-			// Find all callbacks.
-			let paths = handler.getWatchedPaths(obj, field);
-
-			// Call callbacks.
-			for (let rootAndPath of paths) {
-				let callbacks = WatchUtil.getCallbacks(rootAndPath[0]);
-				for (let callback of callbacks)
-					callback('set', rootAndPath[1], newVal, oldVal, rootAndPath[0]);
-			}
-
-
-			return true; // Proxy requires us to return true.
-		},
-
-		/**
-		 * Find all paths to the object's field from every root object.
-		 * @param obj {object}
-		 * @param field {string}
-		 * @returns {[object, string][]} Array of root object and watched path. */
-		getWatchedPaths(obj, field) {
-			let roots = WatchUtil.getRoots(obj);
-			let paths = [];
-			for (let root of roots) { // Notify
-				let parentPaths = WatchUtil.getPaths(root, obj);
-				for (let parentPath of parentPaths) {
-					let path = [...parentPath, field];
-					paths.push([root, path]);
-				}
-			}
-			return paths;
-		},
-
-		/**
-		 * Trap called whenever anything in an array or object is deleted.
-		 * @param obj {Array|object} root or an object within root that we're deleting a property on.
-		 * @param field {int|string} An object key or array index.
-		 * @returns {boolean} */
-		deleteProperty(obj, field) {
-			if (Array.isArray(obj))
-				obj.splice(field, 1);
-			else
-				delete obj[field];
-
-			let roots = WatchUtil.getRoots(obj);
-			for (let root of roots) {
-				let parentPaths = WatchUtil.getPaths(root, obj);
-				for (let parentPath of parentPaths) {
-					let path = [...parentPath, field];
-					for (let callback of WatchUtil.getCallbacks(root))
-						callback('set', path, /*, undefined*/);
-				}
-			}
-
-			return true; // Proxy requires us to return true.
-		}
-	};
-
-
-
-
-
-
-	var WatchUtil = {
-		/** @type {WeakMap<Object, Proxy>} Map from an object to the Proxy of itself. */
-		proxies: new WeakMap(),
-
-		/** @type {WeakMap<Object, Set<Object>>} A map from an object to all of its root objects that have properties pointing to it.. */
-		roots: new WeakMap(),
-
-
-		/** @type {WeakMap<Object, function[]>} A map from roots to the callbacks that should be called when they're changed.. */
-		callbacks: new WeakMap(),
-
-		/**
-		 * A map of all paths from a root to an object.
-		 * Outer WeakMap is indexed by root, inner by object.
-		 * @type {WeakMap<Object, WeakMap<Object, string[][]>>} */
-		paths: new WeakMap(),
-
-
-		/**
-		 * Get or create proxy for an object.
-		 * An object will never have more than one proxy.
-		 * @returns {Proxy} */
-		getProxy(obj) {
-			let proxy = WatchUtil.proxies.get(obj);
-			if (!proxy) {
-
-				WatchUtil.proxies.set(obj, proxy = new Proxy(obj, handler));
-
-				if (Array.isArray(obj)) {
-					//debugger;
-					//Object.setPrototypeOf(proxy, new ProxyArray()); // This seems to work.
-
-					// Because this.proxy_ is a Proxy, we have to replace the functions
-					// on it in this special way by using Object.defineProperty()
-					// Directly assigning this.proxy_.indexOf = ... calls the setter and leads to infinite recursion.
-					for (let func of arrayRead) // TODO: Support more array functions.
-
-						Object.defineProperty(proxy, func, {
-							enumerable: false,
-							get: () => // Return a new version of indexOf or the other functions.
-								(item) => Array.prototype[func].call(obj, Utils.removeProxy(item))
-						});
-
-					/*
-					 * Intercept array modification functions so that we only send one notification instead
-					 * of a notification every time an array item is moved (shift, unshift, splice) or the length changes. */
-					for (let func of arrayWrite)
-						Object.defineProperty(proxy, func, {
-							configurable: true,
-							enumerable: false,
-
-							// Return a new version of push or the other array functions.
-							get: () => (...args) => WatchUtil.arrayFunction(obj, func, args)
-						});
-				}
-			}
-
-			return proxy;
-		},
-
-		/**
-		 * Call a function that modifies the array, and notify all watches of the changes.
-		 * TODO: It'd be better to simply update the proxied array's prototype to point to a WatchedArray class
-		 * that overrides each of these methods to notify.
-		 * @param array {Array} Array the function is called upon.
-		 * @param func {string} Name of the function to call.
-		 * @param args {*[]} Arguments passed to the function.
-		 * @returns {*} The return value of func.  */
-		arrayFunction(array, func, args) {
-			let originalLength = array.length;
-			let startIndex = 0;
-			if (func === 'push')
-				startIndex = originalLength;
-			else if (func === 'pop')
-				startIndex = originalLength - 1;
-			else if (func === 'splice') // Splice's first argument can be from the beginning or from the end.
-				startIndex = args[0] < 0 ? originalLength - args[0] : args[0];
-
-
-			// Apply array operations on the underlying watched object, so we don't notify a jillion times.
-			let result = Array.prototype[func].apply(array, args);
-
-			// Rebuild the array indices inside the proxy objects.
-			// This is covered by the test Watch.arrayShift2()
-			// TODO: This can be faster if we only update the affected array elements.
-			if (['splice', 'shift', 'sort', 'reverse', 'unshift'].includes(func)) { // ops that modify within the array.
-				WatchUtil.rebuildArray(array, startIndex, null, null);
-			}
-
-			// Trigger a notification for every array element changed, instead of one for every sub-operation.
-			// Copy the set b/c otherwise it can grow continuously and never finish if we call Watch.add() and Watch.remove()
-			// From loop items.
-			let roots = Array.from(WatchUtil.getRoots(array));
-			for (let root of roots) {
-				let parentPaths = WatchUtil.getPaths(root, array);
-
-				for (let callback of WatchUtil.getCallbacks(root))
-
-					for (let parentPath of parentPaths) {
-						if (func === 'pop') // Remove from end
-							callback('remove', [...parentPath, startIndex+''], result, null, root);
-						else if (func === 'shift') // Remove from beginning
-							callback('remove', [...parentPath, '0'], result, null, root);
-						else if (func === 'unshift') // Add to beginning
-							callback('insert', [...parentPath, '0'], array[0], null, root);
-						else if (func === 'splice') {
-							let remove = args[1];
-							let insert = args.length - 2;
-							let set = Math.min(insert, remove);
-
-							// First set the overlapping ones, then insert or remove.
-							for (i = 0; i<set; i++)
-								callback('set', [...parentPath, (startIndex + i) + ''], array[startIndex + i], null, root);
-
-
-							if (insert > remove)
-								for (i = set; i<insert; i++) // insert new ones
-									callback('insert', [...parentPath, (startIndex+i) + ''], array[startIndex+i], null, root);
-
-							else if (insert < remove)
-								for (i=remove-1; i>=set; i--) // remove old ones, in reverse for better performance.
-									callback('remove', [...parentPath, (startIndex+i)+''], result[i-set+1], null, root);
-						}
-						else { // push, sort, reverse
-							for (var i = startIndex; i < array.length; i++) {
-								// if (window.debug)
-								// 	debugger;
-								callback('set', [...parentPath, i + ''], array[i], null, root);
-							}
-							for (i; i<originalLength; i++)
-								callback('delete', [...parentPath, i + ''], null, root);
-						}
-					}
-			}
-
-			return result;
-		},
-
-		/**
-		 * For item, find all proxyRoots and update their paths such that they end with path.
-		 * Then we recurse and do the same for the children, appending to path as we go.
-		 * Ths effectively lets us update the path of all of item's subscribers.
-		 * This is necessary for example when an array is spliced and the paths after the splice need to be updated.
-		 * @param obj {Object|*[]}
-		 * @param startIndex {int?} If set, only rebuild array elements at and after this index.
-		 * @param path {string[]=}
-		 * @param visited {WeakSet=} */
-		rebuildArray(obj, startIndex, path, visited) {
-			path = path || [];
-			visited = visited || new WeakSet();
-			if (startIndex === undefined)
-				startIndex = 0;
-
-			if (visited.has(obj))
-				return;
-			visited.add(obj);
-
-			if (path.length) {
-
-				let roots = WatchUtil.roots.get(obj);
-				if (!roots) // because nothing is watching this array element.
-					return;
-
-				for (let root of roots) {
-					let parentPaths = WatchUtil.getPaths(root, obj);
-					for (let i in parentPaths) {
-						let oldPath = parentPaths[i];
-
-						// Swap end of oldPath with the new path if the new path  points from root to obj.
-						let start = oldPath.length - path.length;
-						if (start >= 0) {
-
-							// Create the newPath.
-							let newPath = oldPath.slice();
-							for (let j = start; j < oldPath.length; j++)
-								newPath[j] = path[j - start];
-
-
-							// See if newPath is a valid path from root to obj.
-							let item = root;
-							for (let field of newPath) {
-								item = item[field];
-								if (!item)
-									break;
-							}
-
-							// Update the path.
-							if (item === obj)
-								parentPaths[i] = newPath;
-						}
-					}
-				}
-			}
-
-
-			// Recurse through children to update their paths too.
-			// This is tested by the arrayShiftRecurse() test.
-			if (Array.isArray(obj))
-				for (let i=startIndex; i<obj.length; i++) {
-					if (Array.isArray(obj[i]) || isObj(obj[i]))
-						WatchUtil.rebuildArray(obj[i], 0, [...path, i+''], visited);
-				}
-			else if (isObj(obj))
-				for (let i in obj)
-					if (Array.isArray(obj[i]) || isObj(obj[i]))
-						WatchUtil.rebuildArray(obj[i], 0, [...path, i+''], visited);
-		},
-
-		/**
-		 * Get all roots that have paths to obj.
-		 * @param obj
-		 * @returns {Set.<Object>|Array} An iterable list. */
-		getRoots(obj)	{
-			obj = obj.$removeProxy || obj;
-			return WatchUtil.roots.get(obj) || [];
-		},
-
-		/**
-		 * Register a path from root to obj. */
-		addPath(root, newPath, obj) {
-			obj = obj.$removeProxy || obj;
-			root = root.$removeProxy || root;
-
-			//#IFDEV
-			// if (newPath.length && !(newPath[0] in root))
-			// 	throw new Error("Path doesn't exist");
-			// if (root !== obj && !Object.keys(root).length)
-			// 	throw new Error("Root has no paths");
-			//#ENDIF
-
-			// Add root from obj to path.
-			let a = WatchUtil.roots.get(obj);
-			if (!a)
-				WatchUtil.roots.set(obj, a = new Set()); // Wet and not WeakSet because it must be iterable.
-			a.add(root);
-
-			// Get the map from object to paths.
-			let objMap = WatchUtil.paths.get(root);
-			if (!objMap)
-				WatchUtil.paths.set(root, objMap=new WeakMap());
-
-			// Get the paths
-			let paths = objMap.get(obj);
-			if (!paths)
-				objMap.set(obj, [newPath]);
-
-			// Add the path if it isn't already registered.
-			// TODO: This could possibly be faster if the javascript Set could index by arrays.
-			else {
-				for (let existingPath of paths) {
-
-					let l = existingPath.length;
-					if (newPath.length < l)
-						continue;
-
-					// If the new path begins with existingPath, don't add it.
-					// Because now we're just expanding more paths from circular references.
-					// Inline version of arrayEq() because it's faster.
-					let diff = false;
-					for (let i=0; i<l; i++)
-						if ((diff = existingPath[i] !== newPath[i]))
-							break;
-					if (!diff)
-						return;
-				}
-				paths.push(newPath);
-			}
-		},
-
-		/**
-		 * Get all paths from root to obj. */
-		getPaths(root, obj) {
-
-			//#IFDEV
-			if (root.$isProxy)
-				throw new Error("Can't be proxy.");
-			//#ENDIF
-
-			// Get the map from object to paths.
-			let objMap = WatchUtil.paths.get(root);
-			if (!objMap)
-				return [];
-
-			// Get the paths
-			return objMap.get(obj.$removeProxy || obj) || [];
-		},
-
-
-		/**
-		 * @param root {object}
-		 * @param callback {function} */
-		addCallback(root, callback) {
-			root = root.$removeProxy || root;
-
-			let callbacks = WatchUtil.callbacks.get(root);
-			if (!callbacks)
-				WatchUtil.callbacks.set(root, callbacks=[]);
-			callbacks.push(callback);
-		},
-
-		getCallbacks(root) {
-			root = root.$removeProxy || root;
-			return WatchUtil.callbacks.get(root) || [];
-		},
-
-		//#IFDEV
-		cleanup() {
-			WatchUtil.proxies = new WeakMap();
-			WatchUtil.roots = new WeakMap();
-			WatchUtil.callbacks = new WeakMap();
-			WatchUtil.paths = new WeakMap();
-		}
-		//#ENDIF
-	};
-
-
-
-	/**
-	 * Create a copy of root, where callback() is called whenever anything within object is added, removed, or modified.
-	 * Monitors all deeply nested properties including array operations.
-	 * Watches will not extend into HTML elements and nodes.
-	 * Inspired by: stackoverflow.com/q/41299642
-	 * @param root {Object}
-	 * @param callback {function(action:string, path:string[], value:string?)} Action is 'set' or 'delete'.
-	 *     'insert' and 'remove' operations are for adding or removing elements within arrays.
-	 * @returns {Proxy} */
-	var watchProxy = (root, callback) => {
-		//#IFDEV
-		if (!isObj(root))
-			throw new Error('Can only watch objects');
-		//#ENDIF
-
-		// Add a path from root to itself, so that when we call WatchUtil.getRoots() on a root, we get an empty path.
-		WatchUtil.addPath(root, [], root);
-
-		WatchUtil.addCallback(root, callback);
-		return WatchUtil.getProxy(root);
-	};
-}
-
-/**
- * Allow subscribing only to specific properties of an object.
- * Internally, the property is replaced with a call to Object.defineProperty() that forwards to
- * a proxy created by watchObh() above. */
-class WatchProperties {
-
-	constructor(obj) {
-		this.obj_ = obj;   // Original object being watched.
-		this.fields_ = {}; // Unproxied underlying fields that store the data.
-		                   // This is necessary to store the values of obj_ after defineProperty() is called.
-		this.proxy_ = watchProxy(this.fields_, this.notify_.bind(this));
-
-		/** @type {Object<string, function>} A map from a path to the callback subscribed to that path. */
-		this.subs_ = {};
-	}
-
-	/**
-	 * When a property or sub-property changes, notify its subscribers.
-	 * This is an expanded version of watchproxy.notify.  It also notifies every callback subscribed to a parent of path,
-	 * and all children of path if their own value changed.
-	 * @param action {string}
-	 * @param path {string[]}
-	 * @param value {*=}
-	 * @param oldVal {*=} */
-	notify_(action, path, value, oldVal) {
-
-
-		let allCallbacks = [];
-		if (action === 'info')
-			return this.subs_;
-
-		let cpath = csv(path);
-
-		// Traverse up the path looking for anything subscribed.
-		let parentPath = path.slice(0, -1);
-		while (parentPath.length) {
-			let parentCPath = csv(parentPath); // TODO: This seems like a lot of work for any time a property is changed.
-
-			if (parentCPath in this.subs_)
-				/** @type function */
-				for (let callback of this.subs_[parentCPath])
-					// "this.obj_" so it has the context of the original object.
-					// We set indirect to true, which data-loop's rebuildChildren() uses to know it doesn't need to do anything.
-					//callback.apply(this.obj_, arguments)
-					allCallbacks.push([callback, [action, path, value, oldVal, this.obj_]]);
-			parentPath.pop();
-		}
-
-		// Notify at the current level:
-		if (cpath in this.subs_)
-			for (let callback of this.subs_[cpath])
-				//callback.apply(this.obj_, arguments);
-				allCallbacks.push([callback, [action, path, value, oldVal, this.obj_]]);
-
-		// Traverse to our current level and downward looking for anything subscribed
-		let newVal = delve(this.obj_, path, delve.dontCreateValue, true);
-		for (let name in this.subs_)
-			if (name.startsWith(cpath) && name.length > cpath.length) {
-				let subPath = name.slice(cpath.length > 0 ? cpath.length + 1 : cpath.length); // +1 for ','
-				let oldSubPath = JSON.parse('[' + subPath + ']');
-
-				let oldSubVal = removeProxy(delve(oldVal, oldSubPath, delve.dontCreateValue, true));
-				let newSubVal = removeProxy(delve(newVal, oldSubPath, delve.dontCreateValue, true));
-
-				if (oldSubVal !== newSubVal) {
-					let callbacks = this.subs_[name];
-					if (callbacks.length) {
-						let fullSubPath = JSON.parse('[' + name + ']');
-						for (let callback of callbacks)  // [below] "this.obj_" so it has the context of the original object.
-							//callback.apply(this.obj_, [action, fullSubPath, newSubVal, oldSubVal, this.obj_]);
-							allCallbacks.push([callback, [action, fullSubPath, newSubVal, oldSubVal, this.obj_]]);
-					}
-				}
-			}
-
-		// Debugging is easier if I added all callbacks to an array, then called them.
-		// It's also necessary to accumulate and call the callbacks this way, because other callbacks can modify the subscribers
-		// and cause some subscriptions to be skipped.
-		for (let callback of allCallbacks)
-			callback[0].apply(this.obj_, callback[1]);
-	}
-
-	/**
-	 *
-	 * @param path {string|string[]}
-	 * @param callback {function(action:string, path:string[], value:string?)} */
-	subscribe_(path, callback) {
-		if (path.startsWith) // is string
-			path = [path];
-
-		// Create property at top level path, even if we're only watching something much deeper.
-		// This way we don't have to worry about overriding properties created at deeper levels.
-		let self = this;
-		let field = path[0];
-
-		if (!(field in self.fields_)) {
-
-			self.fields_[field] = self.obj_[field];
-
-			// If we're subscribing to something within the top-level field for the first time,
-			// then define it as a property that forward's to the proxy.
-			delete self.obj_[field];
-			Object.defineProperty(self.obj_, field, {
-				enumerable: 1,
-				configurable: 1,
-				get: () => {
-					if (self.obj_.$disableWatch)
-						return self.fields_[field]
-					else
-						return self.proxy_[field]
-				},
-				//set: (val) => self.obj_.$disableWatch ? self.proxy_.$removeProxy[field] = val : self.proxy_[field] = val
-				set(val) {
-					if (self.obj_.$disableWatch) // used by traversePath to watchlessly set.
-						self.proxy_.$removeProxy[field] = val;
-					else
-						self.proxy_[field] = val;
-				}
-			});
-		}
-
-
-		// Create the full path if it doesn't exist.
-		// TODO: Can this part be removed?
-		delve(this.fields_, path, undefined);
-
-
-		// Add to subscriptions
-		let cpath = csv(path);
-		if (!(cpath in self.subs_))
-			self.subs_[cpath] = [];
-		self.subs_[cpath].push(callback);
-	}
-
-	/**
-	 *
-	 * @param path{string[]|string}
-	 * @param {function?} callback Unsubscribe this callback.  If not specified, all callbacks willb e unsubscribed. */
-	unsubscribe_(path, callback) {
-
-		// Make sure path is an array.
-		if (path.startsWith) // is string
-			path = [path];
-
-		// Remove the callback from this path and all parent paths.
-		let cpath = csv(path);
-		if (cpath in this.subs_) {
-
-			// Remove the callback from the subscriptions
-			if (callback) {
-				let callbackIndex = this.subs_[cpath].indexOf(callback);
-				//#IFDEV
-				if (callbackIndex === -1)
-					throw new Error('Bad index');
-				//#ENDIF
-				this.subs_[cpath].splice(callbackIndex, 1); // splice() modifies array in-place
-			}
-
-			// If removing all callbacks, or if all callbacks have been removed:
-			if (!callback || !this.subs_[cpath].length) {
-
-				// Remove the whole subscription array if there's no more callbacks
-				delete this.subs_[cpath];
-
-				// Undo the Object.defineProperty() call when there are no more subscriptions to it.
-				// If there are no subscriptions that start with propCPath
-				// TODO This can be VERY SLOW when an object has many subscribers.  Such as an x-loop with hundreds of children.
-				// If the loop tries to remove every child at once the complexity is O(n^2) because each child must search every key in this.subs_.
-				// We need to find a faster way.
-				let propCpath = csv([path[0]]);
-				if (!Utils.hasKeyStartingWith_(this.subs_, propCpath)) {
-
-					delete this.obj_[path[0]]; // Remove the defined property.
-					this.obj_[path[0]] = this.fields_[path[0]]; // reset original unproxied value to object.
-
-					// Get all roots that point to the field
-					// Not sure why this makes some unit tests fail.
-					let roots = WatchUtil.roots.get(this.fields_[path[0]]);
-					if (roots) {
-						roots.delete(this.fields_);
-						if (!roots.size) // Delete Set() if last item removed.
-							WatchUtil.roots.delete(this.fields_[path[0]]);
-					}
-
-					delete this.fields_[path[0]];
-
-
-					// TODO: I'm still uneasy about this code.
-					// WatchUtil.addPath() adds to WatchUtil.roots Set for the added object.
-					// But there's no code to remove items from that Set, ever.
-					// It only disapears when the object goes out of scope, and the whole Set is removed at once.
-
-					// If we delete the last field of an object, remove it from roots.
-					if (!Object.keys(this.fields_).length) {
-
-						//#IFDEV
-						// if (!WatchUtil.paths.has(this.fields_))
-						// 	throw new Error('');
-						// if (!WatchUtil.roots.has(this.fields_))
-						// 	throw new Error('');
-						// if (!WatchUtil.roots.has(this.obj_[path[0]]))
-						// 	throw new Error('');
-						//#ENDIF
-
-						//let root = WatchUtil.roots.get(this.fields_);
-						WatchUtil.paths.delete(this.fields_);
-						WatchUtil.roots.delete(this.fields_);
-						WatchUtil.roots.delete(this.obj_[path[0]]);
-					}
-
-					if (!Object.keys(this.obj_).length) {
-						//#IFDEV
-						if (!WatchUtil.paths.has(this.obj_))
-							throw new Error('');
-						if (!WatchUtil.roots.has(this.obj_))
-							throw new Error('');
-						//#ENDIF
-
-						WatchUtil.paths.delete(this.obj_);
-						WatchUtil.roots.delete(this.obj_);
-					}
-
-
-				}
-			}
-		}
-	}
-}
-
-
-var Watch = {
-
-	/**
-	 * Keeps track of which objects we're watching.
-	 * That way Watch.add() and Watch.remove() can work without adding any new fields to the objects they watch.
-	 * @type {WeakMap<object, WatchProperties>} */
-	objects: new WeakMap(),
-
-	/**
-	 *
-	 * @param obj {object}
-	 * @param path {string|string[]}
-	 * @param callback {function(action:string, path:string[], value:string?)} */
-	add(obj, path, callback) {
-		obj = removeProxy(obj);
-
-		// Keep only one WatchProperties per watched object.
-		var wp = Watch.objects.get(obj);
-		if (!wp)
-			Watch.objects.set(obj, wp = new WatchProperties(obj));
-
-		wp.subscribe_(path, callback);
-	},
-
-	/**
-	 *
-	 * @param obj {object}
-	 * @param path {string|string[]}
-	 * @param callback {function=} If not specified, all callbacks will be unsubscribed. */
-	remove(obj, path, callback) {
-		obj = removeProxy(obj);
-		var wp = Watch.objects.get(obj);
-
-		if (wp) {
-			if (path) // unsubscribe only from path.
-				wp.unsubscribe_(path, callback);
-			else // unsubscribe rom all paths.
-				for (let sub in wp.subs_)
-					wp.unsubscribe_(sub);
-
-			// Remove from watched objects if we're no longer watching
-			if (!Object.keys(wp.subs_).length)
-				Watch.objects.delete(obj);
-		}
-	},
-
-	cleanup() {
-		Watch.objects = new WeakMap();
-	}
-
-};
-
 var div = document.createElement('div');
 var decodeCache = {};
 
@@ -2135,7 +2387,7 @@ var Html = {
 	/**
 	 * Convert html entities like &lt; to their literal values like <.
 	 * @param {string} html
-	 * @returns {string} */
+	 * @return {string} */
 	decode(html) {
 		if (!html)
 			return '';
@@ -2153,7 +2405,7 @@ var Html = {
 	},
 
 	encode(text, quotes='') {
-		text = Utils.toString(text) // TODO: This changes 0 to ''
+		text = utils.toString(text) // TODO: This changes 0 to ''
 			.replace(/&/g, '&amp;')
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;')
@@ -2173,9 +2425,13 @@ class VText {
 	/** @type {Node} */
 	el = null;
 
+	/** @type {Refract} */
+	xel = null;
+
 	startIndex = 0;
 
-	constructor(text='') {
+	constructor(text='', refl=null) {
+		this.xel = refl;
 		if (text === null || text === undefined)
 			text = '';
 		else if (typeof text !== 'string' && !(text instanceof String))
@@ -2184,19 +2440,41 @@ class VText {
 		this.text = Html.decode(text);
 	}
 
+	/**
+	 * @param parent {?HTMLElement}
+	 * @param el {HTMLElement|Node?}
+	 * @returns {int} */
 	apply(parent=null, el=null) {
 		if (el)
 			this.el = el;
 		else {
+			let text;
+
+			// If text inside a style tag that's not inside our own component's shadow root.
+			if (parent.tagName === 'STYLE' && !this.xel.contains(parent.getRootNode()?.host)) {
+				if (!this.xel.dataset.style) {
+					this.xel.constructor.styleId = (this.xel.constructor.styleId || 0) + 1; // instance count.
+					this.xel.dataset.style = this.xel.constructor.styleId;
+				}
+
+				let rTag = this.xel.tagName.toLowerCase();
+
+				text = VText.styleReplace(this.text, rTag, this.xel.dataset.style);
+			}
+			else
+				text = this.text;
+
+
 			if (this.el) { // Setting textContent will handle html entity <>& encoding properly.
-				this.el.textContent = this.text;
+				this.el.textContent = text;
 			} else {
-				this.el = document.createTextNode(this.text);
+				this.el = parent.ownerDocument.createTextNode(text);
+				parent = parent.shadowRoot || parent;
 				parent.insertBefore(this.el, parent.childNodes[this.startIndex]);
 			}
 
 			if (Refract.elsCreated)
-				Refract.elsCreated.push(Utils.toString(this.text));
+				Refract.elsCreated.push(utils.toString(text));
 		}
 
 		return 1;
@@ -2205,6 +2483,7 @@ class VText {
 	clone() {
 		let result = new VText();
 		result.text = this.text;
+		result.xel = this.xel;
 		return result;
 	}
 
@@ -2217,18 +2496,26 @@ class VText {
 		return this.text;
 	}
 	//#ENDIF
+
+	static styleReplace(text, rTag, styleId) {
+		return text.replace(new RegExp(rTag+'|:host', 'g'), rTag + '[data-style="' +  styleId + '"]')
+	}
 }
 
 /**
  * A parsed ${} or #{} expression embedded in an html template ``  */
 class VExpression {
 
-	/** @type {string[][]} Array of watched paths, parsed from the expression. */
+	/** @type {string[][]} Array of watched paths, parsed from the expression. See also this.watches. */
 	watchPaths = [];
 
-	/** @type {string|null} Only used when the expression is inside an attribute. */
+	/**
+	 * @type {string|null} Only used when the expression is inside an attribute.
+	 * If it's an empty string, that means it's an attribute expression.  E.g. ${'checked'}*/
 	attrName = null;
 
+	/** @type {string[]|null} If an expression that creates attributes, keep track of them here. */
+	attributes = null;
 
 	/**
 	 * @type {string} simple|complex|loop
@@ -2240,6 +2527,9 @@ class VExpression {
 	 * If type==='loop', the first watchPath is the loop array. */
 	type = 'simple';
 
+	/**
+	 * Is this a #{...} expression?
+	 * @type {boolean} */
 	isHash = false;
 
 	/**
@@ -2250,10 +2540,9 @@ class VExpression {
 	exec = null;
 
 	/**
-	 * @deprecated for loopParamNames
-	 * @type {?string} Used only with type='loop'.  The name of the argument passed to a function to generate a single child. */
-
-	/** @type {string[]} */
+	 * Names of the parameters accepted by the function given to array.map().
+	 * E.g. ['item', 'index', 'array'] for array.map((item, index, array) => {...});
+	 * @type {string[]} */
 	loopParamNames = [];
 
 	/**
@@ -2281,7 +2570,7 @@ class VExpression {
 	 * Unlike VElement.vChildren, this is an array of arrays, with each sub-array
 	 * having all the vChildren created with each loop iteration.
 	 *
-	 * @type {(VElement|VExpression|VText)[][]} */
+	 * @type {(VElement|VExpression|VText|HTMLElement)[][]} */
 	vChildren = [];
 
 
@@ -2297,9 +2586,9 @@ class VExpression {
 
 
 	/**
-	 *
-	 * @type {[Refract, string[], function][]}
-	 */
+	 * Arguments passed to Watch.add() for this expression.  We track them here so we can later remove them via Watch.remove().
+	 * See also this.watchPaths.
+	 * @type {[Refract, string[], function][]} */
 	watches = [];
 
 	//#IFDEV
@@ -2311,7 +2600,6 @@ class VExpression {
 
 
 	constructor() {
-
 		//#IFDEV
 		//this.stack = (new Error()).stack.split(/\n\s+at /g).slice(1);
 		//#ENDIF
@@ -2322,7 +2610,7 @@ class VExpression {
 	 * @param parent {HTMLElement}
 	 * @param el {HTMLElement} Unused.
 	 * @return {int} Number of elements created. d*/
-	apply(parent=null, el=null, bind=true) {
+	apply(parent=null, el=null) {
 		//#IFDEV
 		if (this.attrName)
 			throw new Error("Cannot apply an VExpression that's for an attribute.  Use evalVAttribute() or .exec.apply() instead.");
@@ -2335,28 +2623,75 @@ class VExpression {
 		if (!('virtualElement' in this.parent) && !this.parent.parentNode)
 			return 0;
 		//#ENDIF
+		if (this.attributes) { // An Expression that creates one or more attributes.
+			for (let attr of this.attributes)
+				parent.removeAttribute(attr);
+			this.attributes = [];
 
-		// Remove old children.
-		for (let group of this.vChildren)
-			for (let vChild of group.slice()) // Slice because vChild.remove() can alter group, throwing off the index.
-				vChild.remove();
-
-		// Create new children.
-		this.vChildren = this.evaluateToVElements();
-
-		// Add children to parent.
-		let count = 0;
-		let startIndex = this.startIndex;
-		for (let group of this.vChildren) {
-			for (let vChild of group) {
-				vChild.startIndex = startIndex;
-				let num = vChild.apply(this.parent, null, bind);
-				startIndex += num;
-				count += num;
+			let text = this.evaluate();
+			if (text) {
+				let tokens = lex(lexHtmlJs, text, 'tag');
+				let lastName = null;
+				for (let token of tokens) {
+					if (token.type === 'attribute') {
+						if (lastName)
+							parent.setAttribute(lastName, '');
+						lastName = token;
+						this.attributes.push(lastName);
+					} else if (token.type === 'string') {
+						// tokens[1] is in between "..."
+						// TODO: Later we should add code to evaluate any vexpressions within it?
+						parent.setAttribute(lastName, token.tokens[1]);
+						lastName = null;
+					}
+				}
+				if (lastName)
+					parent.setAttribute(lastName, '');
 			}
+
+			return 0;
 		}
 
-		return count;
+
+		else if (this.attrName) {
+			//#IFDEV
+			// Make sure we're not applying on an element that's been removed.
+			throw new Error();
+			//#ENDIF
+		}
+
+		else {
+
+			// Remove old children.
+			for (let group of this.vChildren)
+				if (group instanceof HTMLElement)
+					group.parentNode.removeChild(group);
+				else
+					for (let vChild of group.slice()) // Slice because vChild.remove() can alter group, throwing off the index.
+						vChild.remove();
+
+			// Create new children.
+			this.vChildren = this.evaluateToVElements();
+
+			// Add children to parent.
+			let count = 0;
+			let startIndex = this.startIndex;
+			for (let item of this.vChildren) {
+				if (item instanceof HTMLElement) {
+					this.parent.insertBefore(item, this.parent.childNodes[startIndex]);
+					startIndex ++;
+				}
+				else
+					for (let vChild of item) {
+						vChild.startIndex = startIndex;
+						let num = vChild.apply(this.parent, null);
+						startIndex += num;
+						count += num;
+					}
+			}
+
+			return count;
+		}
 	}
 
 	/**
@@ -2364,11 +2699,12 @@ class VExpression {
 	 * @param xel {Refract?}
 	 * @param vParent {VElement?}
 	 * @param parent {HTMLElement?}
-	 * @returns {VExpression} */
+	 * @return {VExpression} */
 	clone(xel=null, vParent=null, parent=null) {
 		let result = new VExpression();
 		result.watchPaths = this.watchPaths;
 		result.attrName = this.attrName;
+		result.attributes = this.attributes;
 
 		result.type = this.type;
 		result.exec = this.exec;
@@ -2393,7 +2729,7 @@ class VExpression {
 	}
 
 	/**
-	 * @returns {string|string[]} */
+	 * @return {string|string[]} */
 	evaluate() {
 		return this.exec.apply(this.xel, Object.values(this.scope));
 	}
@@ -2402,7 +2738,7 @@ class VExpression {
 	 * @pure
 	 * Non-recursively resolve this and all child VExpressions, returning a tree of VElement and VText.
 	 * Does not modify the actual DOM.
-	 * @return {(VElement|VText|VExpression)[][]} */
+	 * @return {(VElement|VText|VExpression|HTMLElement)[][]} */
 	evaluateToVElements() {
 
 		// Remove previous watches.
@@ -2419,7 +2755,7 @@ class VExpression {
 
 
 		let result = [];
-		if (this.type!=='loop') { // simple or complex
+		if (this.type !== 'loop') { // simple or complex
 			//#IFDEV
 			if (!this.xel)
 				throw new Error();
@@ -2429,15 +2765,22 @@ class VExpression {
 				.flat().map(h=>h===undefined?'':h); // undefined becomes empty string
 
 			if (this.isHash) // #{...} template
-				result = [htmls.map(html => new VText(html))]; // TODO: Don't join all the text nodes.  It creates index issues.
-			else
+				result = [htmls.map(html => new VText(html, this.xel))]; // We don't join all the text nodes b/c it creates index issues.
+			else {
+				let scopeVarNames = Object.keys(this.scope);
 				for (let html of htmls) {
-					html += ''; // can be a number.
-					if (html.length) {
-						let vels = VElement.fromHtml(html, Object.keys(this.scope), this).flat();
-						result.push(vels);
+					if (html instanceof HTMLElement) {
+						result.push(html); // not a VElement, but a full HTMLElement
+					}
+					else {
+						html += ''; // can be a number.
+						if (html.length) {
+							let vels = VElement.fromHtml(html, scopeVarNames, this).flat();
+							result.push(vels);
+						}
 					}
 				}
+			}
 
 		} else { // loop
 			let array = this.evaluate();
@@ -2449,12 +2792,14 @@ class VExpression {
 			let i = 0;
 			for (let item of array) {
 				let group = [];
+				let params = [array[i], i, array];
 				for (let template of this.loopItemEls) {
 					let vel = template.clone(this.xel, this);
 					vel.scope = {...this.scope};
 
-					let params = [array[i], i, array];
-					for (let j in this.loopParamNames)
+					// Assign values to the parameters of the function given to .map() that's used to loop.
+					let len2 = this.loopParamNames.length;
+					for (let j=0; j<len2; j++) // Benchmarking shows this loop is about 2% faster than for...in.
 						vel.scope[this.loopParamNames[j]] = params[j];
 
 					group.push(vel);
@@ -2486,7 +2831,7 @@ class VExpression {
 		//if (path[0] !== this.watchPaths[0][1]) // Faster short-circuit for the code below?
 		//	return;
 
-		if (this.type==='loop' && Utils.arrayStartsWith(path.slice(0, -2), this.watchPaths[0].slice(1))) {
+		if (this.type==='loop' && utils.arrayStartsWith(path.slice(0, -2), this.watchPaths[0].slice(1))) {
 			// Do nothing, because the watch should trigger on the child VExpression instead of this one.
 			return;
 		}
@@ -2506,7 +2851,7 @@ class VExpression {
 
 			// If the array is one of our watched paths:
 			// TODO: watchPaths besides 0?  Or only go this way if there's only one watchPath?
-			if (Array.isArray(array) && Utils.arrayEq(this.watchPaths[0].slice(1), arrayPath)) {
+			if (Array.isArray(array) && utils.arrayEq(this.watchPaths[0].slice(1), arrayPath)) {
 
 				let index = parseInt(path[path.length - 1]);
 				if (action === 'remove') { // TODO: Combine with remove step below used for set.
@@ -2527,7 +2872,7 @@ class VExpression {
 						this.vChildren.splice(index, 0, []);
 
 					if (this.type === 'simple')
-						this.vChildren[index] = [new VText(array[index])]; // TODO: Need to evaluate this expression instead of just using the value from the array.
+						this.vChildren[index] = [new VText(array[index], this.xel)]; // TODO: Need to evaluate this expression instead of just using the value from the array.
 					else  // loop
 						this.vChildren[index] = this.loopItemEls.map(vel => vel.clone(this.xel, this));
 
@@ -2617,12 +2962,15 @@ class VExpression {
 	getAllChildrenLength() {
 		let result = 0;
 		for (let group of this.vChildren) {
-			for (let vChild of group) {
-				if (vChild.receiveNotification_) // Faster than vChild instanceof VExpression
-					result += vChild.getAllChildrenLength();
-				else
-					result++;
-			}
+			if (group instanceof HTMLElement)
+				result ++;
+			else
+				for (let vChild of group) {
+					if (vChild.receiveNotification_) // Faster than vChild instanceof VExpression
+						result += vChild.getAllChildrenLength();
+					else
+						result++;
+				}
 		}
 
 		//window.count++;
@@ -2700,7 +3048,7 @@ class VExpression {
 				path = path.slice(1);
 
 			// Allow paths into the current scope to be watched.
-			else if (path[0] in this.scope) {
+			else if (path[0] in this.scope && path.length > 1) {
 
 				// Resolve root to the path of the scope.
 				root = this.scope[path[0]];
@@ -2710,6 +3058,8 @@ class VExpression {
 			// Make sure it's not a primitive b/c we can't subscribe to primitives.
 			// In such cases we should already be subscribed to the parent object/array for changes.
 			if (typeof root === 'object' || Array.isArray(root)) {
+				assert(path.length);
+
 				this.watches.push([root, path, callback]);  // Keep track of the subscription so we can remove it when this VExpr is removed.
 				Watch.add(root, path, callback);
 			}
@@ -2723,7 +3073,7 @@ class VExpression {
 	 *     that trace back to a this.property in the parent Refract, instead of from any variable or js identifier.
 	 * @param vParent {VElement|VExpression}
 	 * @param attrName {string?} If set, this VExpression is part of an attribute, otherwise it creates html child nodes.
-	 * @returns {VExpression} */
+	 * @return {VExpression} */
 	static fromTokens(tokens, scope, vParent, attrName) {
 		let result = new VExpression();
 		result.vParent = vParent;
@@ -2735,12 +3085,12 @@ class VExpression {
 		result.attrName = attrName;
 		scope = (scope || []).slice(); // copy
 
-		result.code = tokens.slice(1, -1).join(''); // So we can quickly see what a VExpression is in the debugger.
+		result.code = tokens.slice(1, -1).map(t=>t.text).join(''); // So we can quickly see what a VExpression is in the debugger.
 
 
 		// remove enclosing ${ }
-		let isHash = tokens[0] == '#{';
-		if ((tokens[0] == '${' || isHash) && tokens[tokens.length-1] == '}') {
+		let isHash = tokens[0].text == '#{';
+		if ((tokens[0].text == '${' || isHash) && tokens[tokens.length-1].text == '}') {
 			result.isHash = isHash;
 			tokens = tokens.slice(1, -1); // Remove ${ and }
 		}
@@ -2805,8 +3155,8 @@ class VExpression {
 			//console.log(tokens.join(''));
 
 			// Trim required.  B/c if there's a line return after return, the function will return undefined!
-			let body = tokens.join('');
-			if (tokens[0] != '{')
+			let body = tokens.map(t=>t.text).join('');
+			if (tokens[0].text != '{')
 				body = 'return (' + body.trim() + ')';
 			result.exec = Class.createFunction(...scope, body);
 		}
@@ -2871,9 +3221,9 @@ class VElement {
 	startIndex = 0;
 
 	/**
-	 * @param tagName {string}
-	 * @param attributes {Object<string, string>} */
-	constructor(tagName, attributes) {
+	 * @param tagName {?string}
+	 * @param attributes {?Object<string, string[]>} */
+	constructor(tagName=null, attributes=null) {
 		this.tagName = tagName || '';
 		this.attributes = attributes || {};
 	}
@@ -2900,7 +3250,7 @@ class VElement {
 			// Because then the slot will be added to the slot, recursively forever.
 			// So we only allow setting content that doesn't have slot tags.
 			if (!el.querySelector('slot'))
-				this.xel.slotHtml = el.innerHTML;
+				this.xel.slotHtml = el.innerHTML; // At this point none of the children will be upgraded to web components?
 			el.innerHTML = '';
 		}
 		// 1B. Create Element
@@ -2916,8 +3266,11 @@ class VElement {
 				let args = [];
 				if (Class.constructorArgs)
 					args = Class.constructorArgs.map(name => {
-						if (name in this.attributes) {
-							let val = this.attributes[name];
+						let lname = name.toLowerCase();
+
+						// TODO: this logic is duplicated in Refract.preCompile()
+						if (name in this.attributes || lname in this.attributes) {
+							let val = name in this.attributes ? this.attributes[name] : this.attributes[lname];
 
 							// A solitary VExpression.
 							if (val && val.length === 1 && val[0] instanceof VExpression)
@@ -2928,15 +3281,50 @@ class VElement {
 								return true;
 
 							// Else evaluate as JSON, or as a string.
-							let result = VElement.evalVAttributeAsString(this, (val || []), this.scope);
+							let result = VElement.evalVAttributeAsString(this.xel, (val || []), this.scope);
 							try {
 								result = JSON.parse(result);
-							} catch (e) {}
+							} catch (e) {
+
+								// A code expression
+								if (result.startsWith('${') && result.endsWith('}')) // Try evaluating as code if it's surrounded with ${}
+									try {
+										result = eval(result.slice(2, -1));
+									} catch(e) {}
+							}
 							return result;
 						}
 					});
 
+				// Firefox:  "Cannot instantiate a custom element inside its own constructor during upgrades"
+				// Chrome:  "TypeError: Failed to construct 'HTMLElement': This instance is already constructed"
+				// Browsers won't let us nest web components inside slots when they're created all from the same html.
+				// So we use this crazy hack to define a new version of the element.
+				// See the Refract.nested.recursive test.
+				let i = 2;
+				let tagName2 = tagName;
+				while (tagName2.toUpperCase() in Refract.constructing) {
+					tagName2 = tagName + '_' + i;
+					var Class2 = customElements.get(tagName2);
+					if (Class2) {
+						Class = Class2;
+						break;
+					}
+
+					else {
+						Class = class extends Class {};
+						customElements.define(tagName2, Class);
+						i++;
+					}
+				}
+
+				// If this code fails in the future due to an element not finished constructing/upgrading,
+				// then modify the Refract constructor injecting code to make sure that
+				// delete Refract.constructing[this.tagName]]
+				// goes at the very end of the constructor.
 				newEl = new Class(...args);
+
+
 			}
 			else if (Refract.inSvg) // SVG's won't render w/o this path.
 				newEl = document.createElementNS('http://www.w3.org/2000/svg', tagName);
@@ -2955,7 +3343,6 @@ class VElement {
 					// Insert into slot if it has one.  TODO: How to handle named slots here?
 					if (p2 !== this.xel && p2.tagName && p2.tagName.includes('-') && newEl.tagName !== 'SLOT')
 						p2 = p2.querySelector('slot') || p2;
-
 					p2.insertBefore(newEl, p2.childNodes[this.startIndex]);
 				}
 			}
@@ -2986,9 +3373,10 @@ class VElement {
 		let isText = this.el.tagName === 'TEXTAREA' || this.attributes['contenteditable'] && (this.attributes['contenteditable']+'') !== 'false';
 		for (let vChild of this.vChildren) {
 			if (isText && (vChild instanceof VExpression))
-				throw new Error('<textarea> and contenteditable cannot have expressions as children.  Use value=${this.variable} instead.');
+				throw new Error('textarea and contenteditable cannot have template expressions as children.  Use value=${this.variable} instead.');
 
 			vChild.scope = {...this.scope}; // copy
+			vChild.xel = this.xel;
 			vChild.startIndex = count;
 			count += vChild.apply(this.el);
 		}
@@ -3038,6 +3426,15 @@ class VElement {
 			}
 		}
 
+		// Attribute expressions
+		for (let expr of this.attributeExpressions) {
+			expr.scope = this.scope;
+			expr.apply(this.el);
+			expr.watch(() => {
+				expr.apply(this.el);
+			});
+		}
+
 
 		// 6. Form field two-way binding.
 		// Listening for user to type in form field.
@@ -3052,7 +3449,7 @@ class VElement {
 				let assignFunc = createFunction(...Object.keys(this.scope), 'val', valueExprs[0].code + '=val;').bind(this.xel);
 
 				// Update the value when the input changes:
-				Utils.watchInput(this.el, (val, e) => {
+				utils.watchInput(this.el, (val, e) => {
 					Refract.currentEvent = e;
 					assignFunc(...Object.values(this.scope), val);
 					Refract.currentEvent = null;
@@ -3080,7 +3477,7 @@ class VElement {
 		*/
 
 
-		// 7. Set initial value for select from value="" attribute.
+		// 8. Set initial value for select from value="" attribute.
 		// List of input types:
 		// https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#input_types
 		if (hasValue) // This should happen after the children are added, e.g. for select <options>
@@ -3097,11 +3494,12 @@ class VElement {
 
 	/**
 	 * @param xel {Refract}
-	 * @param vParent {VElement|VExpression}
-	 * @returns {VElement} */
-	clone(xel, vParent) {
+	 * @param vParent {null|VElement|VExpression}
+	 * @return {VElement} */
+	clone(xel, vParent=null) {
 		let result = new VElement(this.tagName);
 		result.xel = xel || this.xel;
+		result.vParent = vParent;
 
 		for (let attrName in this.attributes) {
 			result.attributes[attrName] = [];
@@ -3112,7 +3510,7 @@ class VElement {
 					result.attributes[attrName].push(piece);
 			}
 		}
-		for (let expr of this.attributeExpressions)
+		for (let expr of this.attributeExpressions) // Expresions that create one or more attributes.
 			result.attributeExpressions.push(expr.clone(result.xel, this));
 
 		for (let child of this.vChildren)
@@ -3143,7 +3541,7 @@ class VElement {
 
 	/**
 	 * TODO: Reduce shared logic between this and evalVAttribute
-	 * If a solitary VExpression, return whatevr object it evaluates to.
+	 * If a solitary VExpression, return whatever object it evaluates to.
 	 * Otherwise merge all pieces into a string and return that.
 	 * value="${'one'}" becomes 'one'
 	 * value="${['one', 'two']}" becomes ['one', 'two']
@@ -3151,7 +3549,7 @@ class VElement {
 	 * @param ref {Refract}
 	 * @param attrParts {(VExpression|string)[]}
 	 * @param scope {object}
-	 * @returns {*|string} */
+	 * @return {*|string} */
 	static evalVAttribute(ref, attrParts, scope={}) {
 		let result = attrParts.map(expr =>
 			expr instanceof VExpression ? expr.exec.apply(ref, Object.values(scope)) : expr
@@ -3161,7 +3559,7 @@ class VElement {
 		if (result.length === 1)
 			return result[0];
 
-		return result.flat().map(Utils.toString).join('');
+		return result.flat().map(utils.toString).join('');
 	}
 
 	/**
@@ -3183,7 +3581,7 @@ class VElement {
 			else
 				result.push(Refract.htmlDecode(attrPart)); // decode because this will be passed to setAttribute()
 		}
-		return result.map(Utils.toString).join('');
+		return result.map(utils.toString).join('');
 	}
 
 	/**
@@ -3191,7 +3589,7 @@ class VElement {
 	 * @param html {string|string[]} Tokens will be removed from the beginning of the array as they're processed.
 	 * @param scopeVars {string[]}
 	 * @param vParent {VElement|VExpression}
-	 * @returns {(VElement|VExpression|string)[]} */
+	 * @return {(VElement|VExpression|string)[]} */
 	static fromHtml(html, scopeVars=[], vParent=null) {
 		let tokens = lex(lexHtmlJs, [html].flat().join(''), 'template');
 		return VElement.fromTokens(tokens, scopeVars, vParent);
@@ -3204,7 +3602,7 @@ class VElement {
 	 * @param vParent {VElement|VExpression?}
 	 * @param limit {int|boolean=} Find no more than this many items.
 	 * @param index {int=} used internally.
-	 * @returns {(VElement|VExpression|string)[]}
+	 * @return {(VElement|VExpression|string)[]}
 	 *     Array with a .index property added, to keep track of what token we're on. */
 	static fromTokens(tokens, scopeVars=[], vParent=null, limit=false, index=0) {
 		if (!tokens.length)
@@ -3216,7 +3614,7 @@ class VElement {
 
 			// Text node
 			if (token.type === 'text')
-				result.push(new VText(token));
+				result.push(new VText(token.text, vParent?.xel));
 
 			// Expression child
 			else if (token.type === 'expr')
@@ -3234,10 +3632,10 @@ class VElement {
 
 				for (let j=0, tagToken; (tagToken = tagTokens[j]); j++) {
 					if (j === 0)
-						vel.tagName = tagToken.slice(1);
+						vel.tagName = tagToken.text.slice(1);
 
 					else if (tagToken.type === 'attribute') {
-						attrName = tagToken;
+						attrName = tagToken.text;
 						vel.attributes[attrName] = []; // Attribute w/o value, or without value yet.
 					}
 
@@ -3251,7 +3649,7 @@ class VElement {
 								if (exprToken.type === 'expr')
 									attrValues.push(VExpression.fromTokens(exprToken.tokens, scopeVars, vParent, attrName));
 								else // string:
-									attrValues.push(exprToken +'');
+									attrValues.push(exprToken.text);
 							}
 						else if (tagToken.type === 'expr') // expr not in string.
 							attrValues.push(VExpression.fromTokens(tagToken.tokens, scopeVars, vParent, attrName));
@@ -3265,14 +3663,15 @@ class VElement {
 					}
 
 					// Expression that creates attribute(s)
-					else if (tagToken.type === 'expr')
-						vel.attributeExpressions.push(VExpression.fromTokens(tagToken.tokens, scopeVars, vParent));
+					else if (tagToken.type === 'expr') {
+						let expr = VExpression.fromTokens(tagToken.tokens, scopeVars, vParent);
+						expr.attributes = []; // Marks it as being an attribute expression.
+						vel.attributeExpressions.push(expr);
+					}
 				}
 
-				let isSelfClosing = tagTokens[tagTokens.length-1] == '/>' ||
-					['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source',
-						'track', 'wbr', 'command', 'keygen', 'menuitem'].includes(vel.tagName);
-					// TODO: What svg elements are self-closing?
+				let isSelfClosing = tagTokens[tagTokens.length-1].text == '/>' || vel.tagName.toLowerCase() in selfClosingTags;
+
 
 				// Process children if not a self-closing tag.
 				if (!isSelfClosing) {
@@ -3324,6 +3723,11 @@ class VElement {
 	} */
 }
 
+// TODO: What svg elements are self-closing?
+var selfClosingTags = {'area':1, 'base':1, 'br':1, 'col':1, 'embed':1, 'hr':1, 'img':1, 'input':1, 'link':1, 'meta':1, 'param':1, 'source':1,
+	'track':1, 'wbr':1, 'command':1, 'keygen':1, 'menuitem':1};
+Object.freeze(selfClosingTags);
+
 // TODO: Pair this with Utils.watchInput() ?
 function setInputValue(ref, el, value, scope) {
 
@@ -3357,6 +3761,7 @@ function setInputValue(ref, el, value, scope) {
 	}
 }
 
+// TODO: Move this into Html.js?
 let cache = {}; // TODO: Cache should exist per-document?
 let divCache = new WeakMap();
 let templateCache = new WeakMap();
@@ -3369,7 +3774,7 @@ let templateCache = new WeakMap();
  * The string will be trimmed so that an element with space before it doesn't create a text node with spaces.
  * @param html {string}
  * @param trim {boolean=}
- * @param doc {HTMLDocument}
+ * @param doc {HTMLDocument|Document}
  * @return {HTMLElement|Node} */
 function createEl(html, trim=true, doc=document) {
 
@@ -3377,7 +3782,7 @@ function createEl(html, trim=true, doc=document) {
 	if (trim)
 		html = html.trim();
 
-	// If creating a web component, don't use a tempalte because it prevents the constructor from being called.
+	// If creating a web component, don't use a template because it prevents the constructor from being called.
 	// And don't use an item from the cache with cloneNode() because that will call the constructor more than once!
 	if (html.match(/^<\S+-\S+/)) {
 
@@ -3411,11 +3816,17 @@ function createEl(html, trim=true, doc=document) {
 }
 
 lexHtmlJs.allowHashTemplates = true;
-
 /**
  * @property createFunction {function} Created temporarily during compilation.
- * @property Refract.elsCreated*/
+ * @property styleId {int} */
 class Refract extends HTMLElement {
+
+	/**
+	 * Keep track of which Refract elements are currently being constructed.  Indexed by tagname.
+	 * This prevents us from creating another instance of an element when it's in the middle of being upgraded,
+	 * which browsers don't like.
+	 * @type {Object<string, boolean>} */
+	static constructing = {};
 
 	/**
 	 * A parsed representation of this class's html.
@@ -3441,6 +3852,15 @@ class Refract extends HTMLElement {
 	 * @type {Event} If within an event, this is the  */
 	static currentEvent;
 
+	/**
+	 * TODO: Every event attribute should call this function.
+	 * This will fix some of the event unit tests where events are added from ${} in odd ways.
+	 * @param event {Event}
+	 * @param el {HTMLElement} I probably don't need this, since i can get it from event.currentTarget */
+	static refractEvent(event, el) {
+
+	}
+
 	/** @type {string} */
 	slotHtml = '';
 
@@ -3450,6 +3870,20 @@ class Refract extends HTMLElement {
 		// Allow setting properties on the object before any html is created:
 		for (let name in props)
 			this[name] = props[name];
+	}
+
+	createDomFromVDom(name) {
+
+		if (!this.virtualElement && this.constructor.name===name) { // If not already created by a super-class
+
+			Refract.constructing[this.tagName]=true;
+
+			this.virtualElement = this.constructor.virtualElement.clone(this);
+			this.virtualElement.apply(null, this);
+
+			// TODO: This needs to be put at the end of the whole constructor, not just the end of our injected code?
+			delete Refract.constructing[this.tagName];
+		}
 	}
 
 	//#IFDEV
@@ -3469,7 +3903,7 @@ class Refract extends HTMLElement {
 		 *
 		 * @param child {(VExpression|VElement|string)[]|VExpression|VElement|string}
 		 * @param inlineText {string}
-		 * @returns {string} */
+		 * @return {string} */
 		let renderItem = (child, inlineText) => {
 
 			if (Array.isArray(child)) {
@@ -3498,7 +3932,7 @@ class Refract extends HTMLElement {
 
 		/**
 		 * @param ve {VElement}
-		 * @returns {string} */
+		 * @return {string} */
 		let renderVEl = ve =>
 			`<div style="color: #f40">
 				<div>
@@ -3513,7 +3947,7 @@ class Refract extends HTMLElement {
 
 		/**
 		 * @param vexpr {VExpression}
-		 * @returns {string} */
+		 * @return {string} */
 		let renderVExpr = vexpr => {
 			if (vexpr.type==='loop')
 				return `
@@ -3568,7 +4002,7 @@ class Refract extends HTMLElement {
 		 *
 		 * @param child {(VExpression|VElement|string)[]|VExpression|VElement|string}
 		 * @param inlineText {string}
-		 * @returns {string} */
+		 * @return {string} */
 		let renderItem = (child, inlineText) => {
 			if (Array.isArray(child)) {
 				let result = [];
@@ -3593,7 +4027,7 @@ class Refract extends HTMLElement {
 
 		/**
 		 * @param ve {VElement}
-		 * @returns {string} */
+		 * @return {string} */
 		let renderVEl = ve =>
 			`<div style="color: #f40">
 				<div>
@@ -3608,7 +4042,7 @@ class Refract extends HTMLElement {
 
 		/**
 		 * @param vexpr {VExpression}
-		 * @returns {string} */
+		 * @return {string} */
 		let renderVExpr = vexpr => {
 			if (vexpr.type==='loop')
 				return `
@@ -3654,63 +4088,20 @@ class Refract extends HTMLElement {
 
 		// 1. Parse into tokens
 		let code = self.toString();
+		//let old = htmljs.allowUnknownTagTokens;
+		//htmljs.allowUnknownTagTokens = true;
 		let tokens = lex(lexHtmlJs, code);
+
+		//htmljs.allowUnknownTagTokens = old;
 		tokens = removeComments(tokens);
 		let htmlIdx = 0, constructorIdx=0;
 
-		// 2. Build the virtual element tree.
-		{
-			// A. Find html template token
-			// Make sure we're finding html = ` and the constructor at the top level, and not inside a function.
-			// This search is also faster than if we use matchFirst() from the first token.
-			// TODO: Use Parse.groupEnd() ?
-			let braceDepth = 0;
-			for (let i = 0, token; token = tokens[i]; i++) {
-				if (token == '{')
-					braceDepth++;
-				else if (token == '}')
-					braceDepth--;
-				else if (braceDepth === 1) {
-					if (!htmlIdx && token == 'html')
-						htmlIdx = i;
-					else if (!constructorIdx && token == 'constructor')
-						constructorIdx = i;
-				}
-				if (htmlIdx && constructorIdx)
-					break;
-			}
-
-			let htmlMatch = fregex.matchFirst(['html', Parse.ws, '=', Parse.ws, fregex.or({type: 'template'}, {type: 'string'}), Parse.ws, fregex.zeroOrOne(';')], tokens, htmlIdx);
-			//#IFDEV
-			if (!htmlMatch)
-				throw new Error(`Class ${self.name} is missing an html property with a template value.`);
-			//#ENDIF
-
-			// Remove the html property, so that when classes are constructed it's not evaluated as a regular template string.
-			let htmlAssign = tokens.splice(htmlMatch.index, htmlMatch.length);
-			let template = htmlAssign.filter(t=>t.tokens || t.type==='string')[0]; // only the template token has sub-tokens.
-
-			// B. Parse html
-			if (template.tokens)
-				var innerTokens = template.tokens.slice(1, -1); // skip open and close quotes.
-			else { // TODO: Is there better a way to unescape "'hello \'everyone'" type strings than eval() ?
-				let code = (template+'').slice(1, -1).replace(/\\'/g, "'");
-				innerTokens = lex(lexHtmlJs, code, 'template');
-			}
-
-			if (innerTokens[0].type === 'text' && !innerTokens[0].trim().length)
-				innerTokens = innerTokens.slice(1); // Skip initial whitespace.
-
-			//let tokens2 = VElement.markValueAttributes(innerTokens);
-
-			result.virtualElement = VElement.fromTokens(innerTokens, [], null, 1)[0];
-		}
 
 
 		// 3. Get the constructorArgs and inject new code.
 		{
 			let constr = fregex.matchFirst(['constructor', Parse.ws, '('], tokens, constructorIdx);
-			let injectIndex, injectCode;
+			let injectIndex, injectLines, injectCode;
 
 			// Modify existing constructor
 			if (constr) { // is null if no match found.
@@ -3739,43 +4130,117 @@ class Refract extends HTMLElement {
 					throw new Error(`Class ${self.name} constructor() { ... } is missing call to super().`);
 				//#ENDIF
 
-				injectIndex = sup.index + sup.length;
-				injectCode = [
-					'//Begin Refract injected code.',
-					...result.constructorArgs.map(argName=>
-						[`if (this.hasAttribute('${argName}')) {`,
-						`   ${argName} = this.constructor.htmlDecode(this.getAttribute('${argName}'));`,
-						`   try { ${argName} = JSON.parse(${argName}) } catch(e) {};`,
-						'}'] // [above] Parse attrib as json if it's valid json.
-					).flat(),
-					`if (!this.virtualElement) {`, // If not already created by a super-class
-					`\tthis.virtualElement = this.constructor.virtualElement.clone(this);`,
-					`\tthis.virtualElement.apply(null, this);`,
-					`}`,
-					'//End Refract injected code.'
-				].join('\r\n\t\t\t');
 
+				injectIndex = sup.index + sup.length;
+				let nextToken = tokens[injectIndex];
+				//console.log(tokens.slice(injectIndex-3, injectIndex+3));
+				injectLines = [
+					nextToken==',' ? ',' : ';',
+
+					// TODO: This arg parsing logic is duplicated in VElement.apply()
+					`(()=>{`, // We wrap this in a function b/c some minifiers will strangely rewrite the super call into another expression.
+						...result.constructorArgs.map(argName=>
+							[`if (this.hasAttribute('${argName}')) {`,
+							`   ${argName} = this.constructor.htmlDecode(this.getAttribute('${argName}'));`,
+							`   try { `,
+							`		${argName} = JSON.parse(${argName}) `,
+							`	} catch(e) {`,
+							`       if (${argName}.startsWith('\${') && ${argName}.endsWith('}'))`, // Try evaluating as code if it's surrounded with ${}
+							`		    try { ${argName} = eval(${argName}.slice(2, -1)) } catch(e) {};`,
+							`   };`,
+							'}'] // [above] Parse attrib as json if it's valid json.
+						).flat(), // [below] this.constructor.name==='${self.name}' is to prevent super class from constructing html for a child class.
+						`this.createDomFromVDom('${self.name}')`,
+					`})()`
+				];
 			}
 
 			// Create new constructor
 			else {
 				injectIndex = fregex.matchFirst(['{'], tokens).index+1;
-				injectCode = [
-					'//Begin Refract injected code.',
+				injectLines = [
 					`constructor() {`,
-					`\tsuper();`,
-					`\tif (!this.virtualElement) {`, // If not already created by a super-class
-					`\t\tthis.virtualElement = this.constructor.virtualElement.clone(this);`,
-					`\t\tthis.virtualElement.apply(null, this);`,
-					'\t}',
-					'}',
-					'//End Refract injected code.'
-				].join('\r\n\t\t');
+					`    super();`,
+					`    this.createDomFromVDom('${self.name}')`,
+					`}`,
+				];
+			}
+			injectCode = '\r\n\t\t' + [
+				'//Begin Refract injected code.',
+				...injectLines,
+				'//End Refract injected code.'
+			].join('\r\n\t\t')
+				+ '\r\n';
+
+
+			// This final line return is needed to prevent minifiers from breaking it.
+			tokens.splice(injectIndex, 0, injectCode);
+		}
+
+
+		// 3. Build the virtual element tree.
+		{
+			// A. Find html template token
+			// Make sure we're finding html = ` and the constructor at the top level, and not inside a function.
+			// This search is also faster than if we use matchFirst() from the first token.
+			// TODO: Use Parse.groupEnd() ?
+			let braceDepth = 0;
+			let i =0;
+			for (let token of tokens) {
+				if (token.text == '{')
+					braceDepth++;
+				else if (token.text == '}')
+					braceDepth--;
+				else if (braceDepth === 1) {
+					if (!htmlIdx && token.text == 'html')
+						htmlIdx = i;
+					else if (!constructorIdx && token.text == 'constructor') {
+						constructorIdx = i;
+					}
+				}
+
+				if (htmlIdx && constructorIdx) {
+					break;
+				}
+				i++;
 			}
 
-			tokens.splice(injectIndex, 0, '\r\n\t\t\t' + injectCode);
-			result.code = tokens.join('');
+			let htmlMatch = fregex.matchFirst([
+				'html', Parse.ws, '=', Parse.ws,
+				fregex.or({type: 'template'}, {type: 'string'}),
+				Parse.ws,
+				fregex.zeroOrOne(';')
+			], tokens, htmlIdx);
+			//#IFDEV
+			if (!htmlMatch)
+				throw new Error(`Class ${self.name} is missing an html property with a template value.`);
+			//#ENDIF
+
+			// Remove the html property, so that when classes are constructed it's not evaluated as a regular template string.
+			let htmlAssign = tokens.splice(htmlMatch.index, htmlMatch.length);
+			let template = htmlAssign.filter(t=>t.tokens || t.type==='string')[0]; // only the template token has sub-tokens.
+
+			// B. Parse html
+
+			// B1 Template
+			if (template.tokens) {
+				var innerTokens = template.tokens.slice(1, -1);
+			}
+
+			// b2 Non-template
+			else { // TODO: Is there better a way to unescape "'hello \'everyone'" type strings than eval() ?
+				let code = eval(template+'');
+				innerTokens = lex(lexHtmlJs, code, 'template');
+			}
+
+			if (innerTokens[0].type === 'text' && !utils.unescapeTemplate(innerTokens[0].text).trim().length)
+				innerTokens = innerTokens.slice(1); // Skip initial whitespace.
+
+			result.virtualElement = VElement.fromTokens(innerTokens, [], null, 1)[0];
+
 		}
+
+		result.code = tokens.join('');
 
 		return result;
 	}
@@ -3815,6 +4280,7 @@ class Refract extends HTMLElement {
 
 
 	/**
+	 * TODO: Replace these with the DOM builtin connectedCallback() and disconnectedCallback()?
 	 * Call a function when a node is added to the DOM.
 	 * @param node {HTMLElement|Node}
 	 * @param callback {function()} */
@@ -3892,8 +4358,12 @@ class Refract extends HTMLElement {
 	}
 }
 
+Refract.constructing = {};
+
 Refract.htmlDecode = Html.decode;
 Refract.htmlEncode = Html.encode;
 
+var h = Html.encode;
+
 export default Refract;
-export { Watch, delve, fregex, lex, lexHtmlJs };
+export { utils as Utils, Watch, delve, fregex, h, lex, lexHtmlJs };

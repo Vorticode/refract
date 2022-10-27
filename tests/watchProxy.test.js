@@ -185,11 +185,18 @@ Deno.test('watchProxy.doubleRef', () => {
 	// watchProxy knows about wp.items[0].name now that it's been accessed the first time.
 	paths = [];
 	var a = wp.items[0].name;
-	wp.item.name = 3;
+	wp.item.name = 4;
 	assert.eqDeep(paths, [
 		['item', 'name'],
 		['items', '0', 'name']
 	]);
+
+	// Value not changed, so we shouldn't get any notifications.
+	paths = [];
+	a = wp.items[0].name;
+	wp.item.name = 4;
+	assert.eqDeep(paths, []);
+
 
 
 	// Set the value via p.items[0].name

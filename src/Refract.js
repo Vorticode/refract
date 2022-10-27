@@ -564,3 +564,4 @@ export {default as lex} from './lex.js';
 export {default as lexHtmlJs} from './lex-htmljs.js';
 export {default as delve} from './delve.js';
 export {default as fregex} from './fregex.js';
+export {default as Utils} from './utils.js';

@@ -275,7 +275,7 @@ export default class VExpression {
 				let scopeVarNames = Object.keys(this.scope);
 				for (let html of htmls) {
 					if (html instanceof HTMLElement) {
-						result.push(html); // not a VElement, but a full HTMLElement
+						result.push(html); // not a VElement[], but a full HTMLElement
 					}
 					else {
 						html += ''; // can be a number.
@@ -418,12 +418,21 @@ export default class VExpression {
 		// 1 Remove watches
 		for (let watch of this.watches)
 			Watch.remove(...watch);
-		this.watches = []; // Probably not necessary.
+		this.watches = [];
 
 		// 2. Remove children, so that their watches are unsubscribed.
 		for (let group of this.vChildren)
-			for (let vChild of group) // TODO: Should group be .slice() like it is in apply() above?
-				vChild.remove();
+			if (group instanceof HTMLElement)
+				group.parentNode.removeChild(group);
+			else
+				for (let vChild of group) // TODO: Should group be .slice() like it is in apply() above?
+					vChild.remove();
+
+		// This is necessary because notification callbacks may try to remove a vexpression more than once.
+		// E.g. one will remove its parent vexpression and another will remove this one ourselves.
+		// If we don't reset the vChildren array after the first remove, we'll try to remove elements more than once.
+		// This is covered by the test: Refract.loop.ExprNested
+		this.vChildren = [];
 
 		// 3. Remove from parent.
 		if (this.vParent instanceof VElement) {

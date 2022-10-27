@@ -118,6 +118,10 @@ import Utils, {removeProxies, isObj, RefractError} from './utils.js';
 
 			newVal = removeProxies(newVal);
 
+			// New:
+			if (oldVal === newVal)
+				return true;
+
 			// Set the value.
 			// TODO: This can trigger notification if field was created on obj by defineOwnProperty().  But that seems to be ok?
 			// Should I use .$disableWatch?
@@ -180,9 +184,6 @@ import Utils, {removeProxies, isObj, RefractError} from './utils.js';
 			return true; // Proxy requires us to return true.
 		}
 	};
-
-
-
 
 
 

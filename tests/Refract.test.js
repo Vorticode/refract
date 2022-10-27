@@ -1260,6 +1260,70 @@ Deno.test('Refract.loop.Expr3', () => { // Make sure attribute quotes are escape
 	assertEquals(a.outerHTML, `<x-765><div title="&quot;">"</div><div title="'">'</div></x-765>`);
 });
 
+Deno.test('Refract.loop._ExprNested', () => {
+
+	// When a vexpression is removed, it removes all of its child elements.
+	// but when the child vexpression is updated, it tried to remove its el that's already been removed.
+
+	class A extends Refract {
+		list = [];
+
+		constructor() {
+			super();
+			this.list = [1];
+
+			window.debug = true;
+			this.type = '2'; // Causes loop item to be re-evaluated
+		}
+
+		html = `
+			<a-766>
+				${this.list.map(item =>
+					false
+						?  console.log(this.type)
+						:  `<div>1</div>`
+				)}
+			</a-766>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	//document.body.append(a);
+
+	assertEquals(a.children.length, 1);
+});
+
+// Same as above, but with slice() and using ${item}.  The scope goes missing!
+Deno.test('Refract.loop._ExprNested2', () => {
+	class A extends Refract {
+		list = [];
+
+		constructor() {
+			super();
+			this.list = [1];
+
+			window.debug = true;
+			this.type = '2'; // Causes loop item to be re-evaluated
+		}
+
+		html = `
+			<a-766>
+				${this.list.slice().map(item =>
+					false
+						?  console.log(this.type)
+						:  `<div>${item}</div>`
+				)}
+			</a-766>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	//document.body.append(a);
+
+	assertEquals(a.children.length, 1);
+});
+
+
 Deno.test('Refract.loop.attributeExpr', () => { // Make sure loop scope is passed to attributes
 
 	class A extends Refract {
@@ -1546,7 +1610,7 @@ Deno.test('Refract.nested.childProp2', () => {
 	console.log(a.outerHTML);
 });
 
-Deno.test('Refract.nested.recursive', () => {
+Deno.test('Refract.nested._recursive', () => {
 	class A extends Refract {
 
 		html = `<a-105 title="c"><slot></slot>b</a-105>`;

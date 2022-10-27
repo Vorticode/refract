@@ -285,6 +285,22 @@ class CarBody extends Refract  {
 
 Any valid JavaScript variable can be passed to the embedded class this way, including functions or complex objects.
 
+Alternatively, one Refract component can be embedded within another using this syntax:
+
+```javascript
+class CarBody extends Refract  {
+    this.wheels = [1, 2, 3, 4];
+    html = `
+        <car-wheel>
+            ${this.wheels.map(wheel => 
+                new CarWheel(wheel)
+            )}
+        </car-wheel>`;
+}
+```
+
+
+
 ==TODO: Document passing eval'd code as constructor args with {}==
 
 ### Scoped Styles
