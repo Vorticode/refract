@@ -315,7 +315,7 @@ export default class Refract extends HTMLElement {
 
 
 
-		// 3. Get the constructorArgs and inject new code.
+		// 2. Get the constructorArgs and inject new code.
 		{
 			let constr = fregex.matchFirst(['constructor', Parse.ws, '('], tokens, constructorIdx);
 			let injectIndex, injectLines, injectCode;
@@ -398,6 +398,7 @@ export default class Refract extends HTMLElement {
 
 
 		// 3. Build the virtual element tree from the html.
+		let htmlMatch;
 		{
 			// A. Find html template token
 			// Make sure we're finding html = ` and the constructor at the top level, and not inside a function.
@@ -424,7 +425,7 @@ export default class Refract extends HTMLElement {
 				i++;
 			}
 
-			let htmlMatch = fregex.matchFirst([
+			htmlMatch = fregex.matchFirst([
 				'html', Parse.ws, '=', Parse.ws,
 				fregex.or({type: 'template'}, {type: 'string'}),
 				Parse.ws,
@@ -461,22 +462,24 @@ export default class Refract extends HTMLElement {
 					break;
 				}
 			}
+		}
 
-			let lastBrace = null;
-			for (let i=tokens.length-1; i>=htmlMatch.index; i--)
-				if (tokens[i].text === '}') {
-					lastBrace = i;
-					break;
-				}
-
-			let renderBeforeConstructor = `
+		// 4.  Insert a property at the very end of the class, to call render().
+		// This allows render() to be called after super() and after the other properties are setup,
+		// but before the rest of the code in the constructor().
+		let lastBrace = null;
+		for (let i=tokens.length-1; i>=htmlMatch.index; i--)
+			if (tokens[i].text === '}') {
+				lastBrace = i;
+				break;
+			}
+		let renderBeforeConstructor = `
 				_renderBeforeConstructor = (() => {
 					if (this.autoRender)
 						this.render(this.constructor.name);
 				})();	
 			`;
-			tokens.splice(lastBrace, 0, renderBeforeConstructor);
-		}
+		tokens.splice(lastBrace, 0, renderBeforeConstructor);
 
 		result.code = tokens.join('');
 

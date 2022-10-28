@@ -1,4 +1,4 @@
-import {assert, assertEquals, Testimony} from './lib/Testimony.js';
+import {assert, assertEquals, Testimony} from './Testimony.js';
 Testimony.enableJsDom();
 
 import ArrayDiff from './../src/ArrayDiff.js';

@@ -243,22 +243,27 @@ Refract elements can also be embedded within the html of other Refract elements:
 
 ```javascript
 class CarWheel extends Refract {
-    constructor(number) {
-        super();
+    constructor(number, parent) {
+        super(false);
         this.number = number;
-    }    
-    html = `<car-wheel>Wheel #{this.number}</car-wheel>`;
+        this.parent = parent;
+        this.render();
+    }
+    html = `<car-wheel>Wheel ${this.number} of ${this.parent.name}</car-wheel>`;
 }
+eval(CarWheel.compile());
 
 class CarBody extends Refract  {
+    name = 'Camero';
     html = `
         <car-body>
-            <car-wheel number="1"></car-wheel>
-            <car-wheel number="2"></car-wheel>
-            <car-wheel number="3"></car-wheel>
-            <car-wheel number="4"></car-wheel>
+            <car-wheel number="1" parent="${this}"></car-wheel>
+            <car-wheel number="2" parent="${this}"></car-wheel>
+            <car-wheel number="3" parent="${this}"></car-wheel>
+            <car-wheel number="4" parent="${this}"></car-wheel>
         </car-body>`;
 }
+eval(CarBody.compile());
 ```
 
 And as seen above, attributes can be used to pass arguments to the nested element constructors.  Alternatively, we could write the CarBody class to use a loop and pass the number argument dynamically.  When one Refract element is embedded within another, constructor arguments can also be passed via `${...}` templates:

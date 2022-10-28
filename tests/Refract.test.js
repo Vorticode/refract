@@ -1,4 +1,4 @@
-import {assert, assertEquals, Testimony} from './lib/Testimony.js';
+import {assert, assertEquals, Testimony} from './Testimony.js';
 Testimony.enableJsDom();
 
 //import Refract from './../dist/Refract.js';
@@ -175,8 +175,7 @@ Deno.test('Refract.basic.deferredRender', "Don't render anything until we call t
 		constructor() {
 			super(false);
 			test1 = this.d;
-			debugger;
-			this.render(this.constructor.name);
+			this.render();
 			test2 = this.d;
 		}
 
@@ -1551,6 +1550,37 @@ Deno.test('Refract.nested.passOBj', () => {
 	assertEquals(a.outerHTML, `<a-95><x-b95 fruits="Banana Cherry DragonFruit">BananaCherryDragonFruit</x-b95></a-95>`);
 	assertEquals(Refract.elsCreated, []);
 });
+
+Deno.test('Refract.nested.passSelf', "Pass a parent's 'this' reference to a child.", () => {
+
+	class CarWheel extends Refract {
+		constructor(number, parent) {
+			super(false);
+			this.number = number;
+			this.parent = parent;
+			this.render();
+		}
+		html = `<car-wheel>Wheel #{this.number} of ${this.parent.name}</car-wheel>`;
+	}
+	eval(CarWheel.compile());
+
+	class CarBody extends Refract  {
+		name = 'Camero';
+		html = `
+        <car-body>
+            <car-wheel number="1" parent="${this}"></car-wheel>
+            <car-wheel number="2" parent="${this}"></car-wheel>
+            <car-wheel number="3" parent="${this}"></car-wheel>
+            <car-wheel number="4" parent="${this}"></car-wheel>
+        </car-body>`;
+	}
+	eval(CarBody.compile());
+
+
+	let b = new CarBody();
+	console.log(b.outerHTML)
+});
+
 
 Deno.test('Refract.nested.loop', () => {
 

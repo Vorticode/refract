@@ -406,8 +406,12 @@ export default class VElement {
 				let val = attrPart.exec.apply(ref, Object.values(scope));
 				if (Array.isArray(val) || (val instanceof Set))
 					val = Array.from(val).join(' '); // Useful for classes.
-				else if (val && typeof val === 'object') // style attribute
-					val = Object.entries(val).map(([name, value]) => `${name}: ${val[name]}; `).join('');
+				else if (val && typeof val === 'object') { // style attribute
+					if (val.constructor === Object) // If a simple object.
+						val = Object.entries(val).map(([name, value]) => `${name}: ${val[name]}; `).join('');
+					else
+						val = ''; // val.constructor.name + '()';
+				}
 				result.push(val)
 			}
 			else

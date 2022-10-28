@@ -1,4 +1,4 @@
-import {assert, assertEquals} from './lib/Testimony.js';
+import {assert, assertEquals} from './Testimony.js';
 import fregex from './../src/fregex.js';
 
 Deno.test('fregex.sequence', () => {

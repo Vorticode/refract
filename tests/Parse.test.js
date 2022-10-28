@@ -1,4 +1,4 @@
-import {assert, assertEquals} from './lib/Testimony.js';
+import {assert, assertEquals} from './Testimony.js';
 import Parse from './../src/Parse.js';
 import lex from "./../src/lex.js";
 import htmljs from "./../src/lex-htmljs.js";

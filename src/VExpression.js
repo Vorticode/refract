@@ -572,10 +572,11 @@ export default class VExpression {
 			// Make sure it's not a primitive b/c we can't subscribe to primitives.
 			// In such cases we should already be subscribed to the parent object/array for changes.
 			if (typeof root === 'object' || Array.isArray(root)) {
-				assert(path.length);
+				if (path.length) { // An expression that's just ${this} won't have a length.  E.g. we might have <child-el parent="${this}"></child-el>
 
-				this.watches.push([root, path, callback]);  // Keep track of the subscription so we can remove it when this VExpr is removed.
-				Watch.add(root, path, callback);
+					this.watches.push([root, path, callback]);  // Keep track of the subscription so we can remove it when this VExpr is removed.
+					Watch.add(root, path, callback);
+				}
 			}
 		}
 	}
