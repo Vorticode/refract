@@ -4,7 +4,7 @@
  * @param grammar
  * @param mode
  * @param current
- * @returns {(*)[]} */
+ * @return {(*)[]} */
 function findFastMatch(grammar, mode, current) {
 	let type;
 	let pattern = grammar.fastMatch[mode];
@@ -30,7 +30,7 @@ function findFastMatch(grammar, mode, current) {
  * @example
  * var token = {text: 'return', valueOf};
  * token == 'return' // true, b/c we use double equals.
- * @returns {string} */
+ * @return {string} */
 function valueOf() {
 	return this.text
 }
@@ -61,7 +61,7 @@ export class Token {
 }
 
 
-window.slowMatches = {};
+//window.slowMatches = {};
 
 /**
  * Parse code into tokens according to rules in a grammar.
@@ -92,15 +92,17 @@ window.slowMatches = {};
  * @param mode {?string}
  * @param line {int=} Start counting from this line.
  * @param col {int=} Start counting from this column.
- * @param index {int} Used internally.
+ * @param options {Object}
+ * @param options.failOnUknown {boolean}
+ * @param index {int} Used internally.  Start reading code at this index.
  *
  * @return Token[] */
-export default function lex(grammar, code, mode=null, line=1, col=1, index=0) {
-
+export default function lex(grammar, code, mode=null, line=1, col=1, options={}, index=0) {
 	mode = mode || Object.keys(grammar)[0]; // start in first mode.
 	code = code+'';
 
 	let result;
+	let unknown ='';
 
 	// Cache small results
 	const cacheLen = 256;
@@ -145,14 +147,25 @@ export default function lex(grammar, code, mode=null, line=1, col=1, index=0) {
 			}
 		}
 
-		//#IFDEV
+
 		if (token === undefined) {
-			let before = code.slice(Math.max(index - 15, 0), index);
-			let after = current.slice(0, 25).replace(/\r/g, '\\r').replace(/\n/g, '\\n')
-			let msg = before + '⚠️' + after;
-			throw new Error(`Unknown token within "${mode}" at ${line}:${col}\r\n"${msg}"`);
+			//#IFDEV
+			if (options.failOnUknown) {
+				let before = code.slice(Math.max(index - 15, 0), index);
+				let after = current.slice(0, 25).replace(/\r/g, '\\r').replace(/\n/g, '\\n')
+				let msg = before + '⚠️' + after;
+				throw new Error(`Unknown token within "${mode}" at ${line}:${col}\r\n"${msg}"`);
+			}
+			//#ENDIF
+			unknown += code.slice(0, 1);
+			code = code.slice(1);
+			continue;
 		}
-		//#ENDIF
+		else if (unknown.length) {
+			token = unknown;
+			matchType = false;
+			unknown = '';
+		}
 
 		// 2. Ascend or descend
 		let newMode = (matchType && matchType !== -1) ? matchType : mode;
@@ -164,7 +177,7 @@ export default function lex(grammar, code, mode=null, line=1, col=1, index=0) {
 			return [...result, tokenObj];
 
 		else if (matchType) { // Descend into new mode
-			let tokens = [tokenObj, ...lex(grammar, code, matchType, line, col+length, index+length)].filter(t=>t.text.length);
+			let tokens = [tokenObj, ...lex(grammar, code, matchType, line, col+length, options, index+length)].filter(t=>t.text.length);
 			length = tokens.reduce((p, c) => {
 				return p + (c.originalLength || c.text.length)
 			}, 0); // add the lengths of the tokens
@@ -204,13 +217,6 @@ export default function lex(grammar, code, mode=null, line=1, col=1, index=0) {
 
 	return result;
 }
-
-function charOccurances (str, char) {
-
-
-	return c;
-}
-
 
 var lexCache = {};
 

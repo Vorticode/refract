@@ -13,6 +13,9 @@ import utils from "./utils.js";
  * @property styleId {int} */
 export default class Refract extends HTMLElement {
 
+	/** @type {string} */
+	static tagName;
+
 	/**
 	 * Keep track of which Refract elements are currently being constructed.  Indexed by tagname.
 	 * This prevents us from creating another instance of an element when it's in the middle of being upgraded,
@@ -64,16 +67,21 @@ export default class Refract extends HTMLElement {
 	/** Has render() benn called at least once to create the DOM */
 	initialRender = false;
 
-	constructor(props={}) {
+
+	__connected = false;
+	__connectedCallbacks = [];
+	__firstConnectedCallbacks = [];
+
+	constructor(autoRender=true) {
 		super();
 
-		if (props === false)
+		if (autoRender === false)
 			this.autoRender = false;
 
-		else // Deprecated path, we can just disable autoRender instead.
+		else if (typeof autoRender === 'object') // Deprecated path, we can just disable autoRender instead.
 			// Allow setting properties on the object before any html is created:
-			for (let name in props)
-				this[name] = props[name];
+			for (let name in autoRender)
+				this[name] = autoRender[name];
 	}
 
 	/**
@@ -287,6 +295,20 @@ export default class Refract extends HTMLElement {
 
 	//#ENDIF
 
+	// TODO: This arg parsing logic is duplicated in VElement.apply()
+	static getConstructorArgCode(constructorArgs) {
+		return constructorArgs.map(argName=>
+			[`if (this.hasAttribute('${argName}')) {`,
+			`   ${argName} = this.constructor.htmlDecode(this.getAttribute('${argName}'));`,
+			`   try { `,
+			`		${argName} = JSON.parse(${argName}) `,
+			`	} catch(e) {`,
+			`       if (${argName}.startsWith('\${') && ${argName}.endsWith('}'))`, // Try evaluating as code if it's surrounded with ${}
+			`		    try { ${argName} = eval('('+${argName}.slice(2, -1)+')') } catch(e) {};`,
+			`   };`,
+			'}']).flat() // [above] Parse attrib as json if it's valid json.
+	}
+
 	static preCompile(self) {
 		let result = {};
 		result.self = self;
@@ -322,9 +344,6 @@ export default class Refract extends HTMLElement {
 
 			// Modify existing constructor
 			if (constr) { // is null if no match found.
-
-
-
 				// Find arguments
 				let argTokens = tokens.slice(constr.index+constr.length, Parse.findGroupEnd(tokens, constr.index+constr.length));
 				result.constructorArgs = Parse.filterArgNames(argTokens);
@@ -354,22 +373,9 @@ export default class Refract extends HTMLElement {
 				let nextToken = tokens[injectIndex];
 				//console.log(tokens.slice(injectIndex-3, injectIndex+3));
 				injectLines = [
-					nextToken==',' ? ',' : ';',
-
-					// TODO: This arg parsing logic is duplicated in VElement.apply()
+					(nextToken==',' ? ',' : ';'),
 					`(()=>{`, // We wrap this in a function b/c some minifiers will strangely rewrite the super call into another expression.
-						...result.constructorArgs.map(argName=>
-							[`if (this.hasAttribute('${argName}')) {`,
-							`   ${argName} = this.constructor.htmlDecode(this.getAttribute('${argName}'));`,
-							`   try { `,
-							`		${argName} = JSON.parse(${argName}) `,
-							`	} catch(e) {`,
-							`       if (${argName}.startsWith('\${') && ${argName}.endsWith('}'))`, // Try evaluating as code if it's surrounded with ${}
-							`		    try { ${argName} = eval(${argName}.slice(2, -1)) } catch(e) {};`,
-							`   };`,
-							'}'] // [above] Parse attrib as json if it's valid json.
-						).flat(), // [below] this.constructor.name==='${self.name}' is to prevent super class from constructing html for a child class.
-						//`this.render('${self.name}')`,
+					...this.getConstructorArgCode(result.constructorArgs),
 					`})()`
 				];
 			}
@@ -380,7 +386,6 @@ export default class Refract extends HTMLElement {
 				injectLines = [
 					`constructor() {`,
 					`    super();`,
-					//`    this.render('${self.name}')`,
 					`}`,
 				];
 			}
@@ -403,13 +408,13 @@ export default class Refract extends HTMLElement {
 			// A. Find html template token
 			// Make sure we're finding html = ` and the constructor at the top level, and not inside a function.
 			// This search is also faster than if we use matchFirst() from the first token.
-			// TODO: Use Parse.groupEnd() ?
+			// TODO: Use ObjectUtil.find() ?
 			let braceDepth = 0;
 			let i =0;
 			for (let token of tokens) {
-				if (token.text == '{')
+				if (token.text === '{' || token.text === '(') // Don't find things within function argument lists, or function bodies.
 					braceDepth++;
-				else if (token.text == '}')
+				else if (token.text === '}' || token.text === ')')
 					braceDepth--;
 				else if (braceDepth === 1) {
 					if (!htmlIdx && token.text == 'html')
@@ -517,12 +522,13 @@ export default class Refract extends HTMLElement {
 
 		// 4. Register the class as an html element.
 		NewClass.htmlTokens = compiled.htmlTokens;
-		customElements.define(compiled.tagName.toLowerCase(), NewClass);
+		NewClass.tagName = compiled.tagName;
+		customElements.define(compiled.tagName, NewClass);
 	}
 
 
 	/**
-	 * TODO: Replace these with the DOM builtin connectedCallback() and disconnectedCallback()?
+	 * @deprecated for onConnect()
 	 * Call a function when a node is added to the DOM.
 	 * @param node {HTMLElement|Node}
 	 * @param callback {function()} */
@@ -537,11 +543,13 @@ export default class Refract extends HTMLElement {
 	}
 
 	/**
+	 * @deprecated for onFirstConnect()
 	 * Call a function when a node is first added to the DOM.
 	 * Or call it immediately if it's already mounted.
 	 * @param node {HTMLElement|Node}
-	 * @param callback {function()} */
-	static onFirstMount(node, callback) {
+	 * @param callback {function()}
+	 * @param doc */
+	static onFirstMount(node, callback, doc=document) {
 
 		function contains2(parent, node) { // same as Node.contains() but also traverses shadow dom.
 			while (node = node.parentNode || node.host)
@@ -550,17 +558,50 @@ export default class Refract extends HTMLElement {
 			return false;
 		}
 
-		if (contains2(document, node))
+		if (contains2(doc, node))
 			callback();
 		else {
 			let observer = new MutationObserver(mutations => {
-				if (mutations[0].addedNodes[0] === node || contains2(document, node)) {
+				if (mutations[0].addedNodes[0] === node || contains2(doc, node)) {
 					observer.disconnect();
 					callback();
 				}
 			});
-			observer.observe(document.body, {childList: true, subtree: true});
+			observer.observe(doc, {childList: true, subtree: true});
 		}
+	}
+
+
+	onConnect(callback) {
+		if (this.__connected)
+			callback();
+		this.__connectedCallbacks.push(callback);
+	}
+
+	onFirstConnect(callback) {
+		if (this.__connected)
+			callback();
+		else
+			this.__firstConnectedCallbacks.push(callback);
+	}
+
+	/**
+	 * This function is called by the browser.
+	 * If you override it, onConnect() and onFirstConnect() won't work. */
+	connectedCallback() {
+		this.__connected = true;
+		for (let cb of this.__connectedCallbacks)
+			cb();
+		for (let cb of this.__firstConnectedCallbacks)
+			cb();
+		this.__firstConnectedCallbacks = [];
+	}
+
+	/**
+	 * This function is called by the browser.
+	 * If you override it, onConnect() and onFirstConnect() won't work. */
+	disconnectedCallback() {
+		this.__connected = false;
 	}
 
 	/**

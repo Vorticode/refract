@@ -24,7 +24,7 @@ import Utils, {removeProxies, isObj, RefractError} from './utils.js';
 		 * And to keep track of the path as we traverse deeper into an object.
 		 * @param obj {Array|object}
 		 * @param field {string} An object key or array index.
-		 * @returns {*} */
+		 * @return {*} */
 		get(obj, field) {
 
 			// Special properties
@@ -109,7 +109,7 @@ import Utils, {removeProxies, isObj, RefractError} from './utils.js';
 		 * @param obj {Array|object} root or an object within root that we're setting a property on.
 		 * @param field {string} An object key or array index.
 		 * @param newVal {*}
-		 * @returns {boolean} */
+		 * @return {boolean} */
 		set(obj, field, newVal) {
 
 			// Don't allow setting proxies on underlying obj.
@@ -146,7 +146,7 @@ import Utils, {removeProxies, isObj, RefractError} from './utils.js';
 		 * Find all paths to the object's field from every root object.
 		 * @param obj {object}
 		 * @param field {string}
-		 * @returns {[object, string][]} Array of root object and watched path. */
+		 * @return {[object, string][]} Array of root object and watched path. */
 		getWatchedPaths(obj, field) {
 			let roots = WatchUtil.getRoots(obj);
 			let paths = [];
@@ -164,7 +164,7 @@ import Utils, {removeProxies, isObj, RefractError} from './utils.js';
 		 * Trap called whenever anything in an array or object is deleted.
 		 * @param obj {Array|object} root or an object within root that we're deleting a property on.
 		 * @param field {int|string} An object key or array index.
-		 * @returns {boolean} */
+		 * @return {boolean} */
 		deleteProperty(obj, field) {
 			if (Array.isArray(obj))
 				obj.splice(field, 1);
@@ -210,7 +210,7 @@ import Utils, {removeProxies, isObj, RefractError} from './utils.js';
 		/**
 		 * Get or create proxy for an object.
 		 * An object will never have more than one proxy.
-		 * @returns {Proxy} */
+		 * @return {Proxy} */
 		getProxy(obj) {
 			let proxy = WatchUtil.proxies.get(obj);
 			if (!proxy) {
@@ -257,7 +257,7 @@ import Utils, {removeProxies, isObj, RefractError} from './utils.js';
 		 * @param array {Array} Array the function is called upon.
 		 * @param func {string} Name of the function to call.
 		 * @param args {*[]} Arguments passed to the function.
-		 * @returns {*} The return value of func.  */
+		 * @return {*} The return value of func.  */
 		arrayFunction(array, func, args) {
 			let originalLength = array.length;
 			let startIndex = 0;
@@ -401,7 +401,7 @@ import Utils, {removeProxies, isObj, RefractError} from './utils.js';
 		/**
 		 * Get all roots that have paths to obj.
 		 * @param obj
-		 * @returns {Set.<Object>|Array} An iterable list. */
+		 * @return {Set.<Object>|Array} An iterable list. */
 		getRoots(obj)	{
 			obj = obj.$removeProxy || obj;
 			return WatchUtil.roots.get(obj) || [];
@@ -515,7 +515,7 @@ import Utils, {removeProxies, isObj, RefractError} from './utils.js';
 	 * @param root {Object}
 	 * @param callback {function(action:string, path:string[], value:string?)} Action is 'set' or 'delete'.
 	 *     'insert' and 'remove' operations are for adding or removing elements within arrays.
-	 * @returns {Proxy} */
+	 * @return {Proxy} */
 	var watchProxy = (root, callback) => {
 		//#IFDEV
 		if (!isObj(root))

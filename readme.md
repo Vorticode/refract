@@ -92,14 +92,16 @@ class RaceTeam extends Refract {
     html = `
         <race-team>
             <input id="driver" value="Vermin Supreme">
-            <div data-id="car">Lightning McQueen</div>
+            <div data-id="car">Cutlas Supreme</div>
+            <div data-id="instructor.name">Lightning McQueen</div>
         </race-team>`;
 }
 eval(RaceTeam.compile());
 
 var team = new RaceTeam();
 console.log(team.driver.value);    // "Vermin Supreme"
-console.log(team.car.textContent); // "Lightning McQueen"
+console.log(team.car.textContent); // "Cutlas Supreme"
+console.log(team.instructor.name.textContent); // "Lightning McQueen"
 car.driver.value = 'Chuck Norris'; // Replaces text in input box.
 car.driver = 3; // Error, property is read-only.
 

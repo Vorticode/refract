@@ -278,6 +278,10 @@ import utils from './utils.js';
 		// Setting this true can cause problems in parsing css, since {} surrounds the rules.
 		// Perhaps add a css mode?
 		allowHashTemplates: false,
+
+		/**
+		 * @deprecated for lex.options.failOnUnknown.
+		 */
 		allowUnknownTagTokens: false
 	};
 

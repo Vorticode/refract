@@ -1553,32 +1553,31 @@ Deno.test('Refract.nested.passOBj', () => {
 
 Deno.test('Refract.nested.passSelf', "Pass a parent's 'this' reference to a child.", () => {
 
-	class CarWheel extends Refract {
-		constructor(number, parent) {
+	class B extends Refract {
+		parent = null;
+
+		constructor(parent) {
 			super(false);
-			this.number = number;
 			this.parent = parent;
 			this.render();
 		}
-		html = `<car-wheel>Wheel #{this.number} of ${this.parent.name}</car-wheel>`;
+		html = `<b-96>${this.parent.fruits}</b-96>`;
 	}
-	eval(CarWheel.compile());
+	eval(B.compile());
 
-	class CarBody extends Refract  {
-		name = 'Camero';
-		html = `
-        <car-body>
-            <car-wheel number="1" parent="${this}"></car-wheel>
-            <car-wheel number="2" parent="${this}"></car-wheel>
-            <car-wheel number="3" parent="${this}"></car-wheel>
-            <car-wheel number="4" parent="${this}"></car-wheel>
-        </car-body>`;
+
+	class A extends Refract {
+		fruits = ['Apple', 'Banana'];
+		html = `<a-96><b-96 parent="${this}"></b-96></a-96>`;
 	}
-	eval(CarBody.compile());
+	eval(A.compile());
 
+	let a = new A();
+	assert.eq(a.outerHTML, `<a-96><b-96 parent="">AppleBanana</b-96></a-96>`);
 
-	let b = new CarBody();
-	console.log(b.outerHTML)
+	// Make sure child subscribes to parent.
+	a.fruits.push('Cherry');
+	assert.eq(a.outerHTML, `<a-96><b-96 parent="">AppleBananaCherry</b-96></a-96>`);
 });
 
 

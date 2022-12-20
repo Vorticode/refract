@@ -6,6 +6,7 @@ import htmljs from "./lex-htmljs.js";
 htmljs.allowHashTemplates = true;
 import {div} from "./Html.js";
 import Utils from "./utils.js";
+import delve from "./delve.js";
 
 /**
  * A virtual representation of an Element.
@@ -238,8 +239,10 @@ export default class VElement {
 
 
 			// Id
-			if (name === 'id' || name === 'data-id')
-				this.xel[this.el.getAttribute(name)] = this.el;
+			if (name === 'id' || name === 'data-id') {
+				let path = this.el.getAttribute(name).split('.');
+				delve(this.xel, path, this.el);
+			}
 
 			// Events
 			else if (name.startsWith('on') && (name in div)) {
@@ -543,7 +546,7 @@ export default class VElement {
 	 * These expressions are then read again later in VElement.apply()
 	 *
 	 * @param tokens {Token[]}
-	 * @returns {Token[]}
+	 * @return {Token[]}
 	static markValueAttributes(tokens) {
 
 		// let valueAttrs = fregex.matchAll(['value', '='], tokens);

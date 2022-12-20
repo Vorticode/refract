@@ -33,7 +33,7 @@ export default function fregex(...rules) {
 /**
  * Advance the number of tokens used by the first child that matches true.
  * TODO: Automatically treat an array given to an and() as an or() ?
- * @return {function(tokens:Token[]):int|bool}
+ * @return {function(tokens:*[]):int|bool}
  *     A function that returns the number of elements matched, or false if none were matched. */
 fregex.or = (...rules) => {
 	rules = prepare(rules);
@@ -54,7 +54,7 @@ fregex.or = (...rules) => {
 
 /**
  * Equivalent of /!(a&b&c)/
- * @return {function(tokens:Token[]):int|bool}
+ * @return {function(tokens:*[]):int|bool}
  *     A function that returns the number of elements matched, or false if none were matched. */
 fregex.not = (...rules) => {
 	let f = fregex(rules); // re-use
@@ -70,7 +70,7 @@ fregex.not = (...rules) => {
 /**
  * Advance one token if none of the children match.  A "nor"
  * Equivalent to /[^abc]/
- * @return {function(tokens:Token[]):int|bool}
+ * @return {function(tokens:*[]):int|bool}
  *     A function that returns the number of elements matched, or false if none were matched. */
 fregex.nor = (...rules) => {
 	rules = prepare(rules);
@@ -91,7 +91,7 @@ fregex.nor = (...rules) => {
 
 /**
  * Consume either zero or one of the sequences given.
- * @return {function(tokens:Token[]):int|bool}
+ * @return {function(tokens:*[]):int|bool}
  *     A function that returns the number of elements matched, or false if none were matched. */
 fregex.zeroOrOne = (...rules) => {
 	let f = fregex(rules);
@@ -111,7 +111,7 @@ fregex.zeroOrOne = (...rules) => {
  *
  * @param x
  * @param rules
- * @return {function(tokens:Token[]):int|bool}
+ * @return {*[]|function(tokens:*[]):int|bool}
  *     A function that returns the number of elements matched, or false if none were matched. */
 fregex.xOrMore = (x, ...rules) => {
 	let f = fregex(rules); // re-use
@@ -137,21 +137,21 @@ fregex.xOrMore = (x, ...rules) => {
 /**
  *
  * @param rules
- * @return {function(tokens:Token[]):int|bool}
+ * @return {*[]|function(tokens:*[]):int|bool}
  *     A function that returns the number of elements matched, or false if none were matched. */
 fregex.zeroOrMore = (...rules) => fregex.xOrMore(0, ...rules);
 
 /**
  *
  * @param rules
- * @return {function(tokens:Token[]):int|bool}
+ * @return {*[]|function(tokens:*[]):int|bool}
  *     A function that returns the number of elements matched, or false if none were matched. */
 fregex.oneOrMore = (...rules) => fregex.xOrMore(1, ...rules);
 
 
 /**
  * Find the first squence in haystack that matches the pattern.
- * @param pattern {function(tokens:Token[]):int|bool}
+ * @param pattern {*[]|function(tokens:*[]):int|bool}
  * @param haystack {array}
  * @param startIndex {int}
  * @return {*[]} A slice of the items in haystack that match.

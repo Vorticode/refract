@@ -1,5 +1,5 @@
 // TODO: Move this into Html.js?
-let cache = {}; // TODO: Cache should exist per-document?
+let cache = new Map(); // We use a map so we can cache properties like 'constructor' // TODO: Cache should exist per-document?
 let divCache = new WeakMap();
 let templateCache = new WeakMap();
 
@@ -11,7 +11,7 @@ let templateCache = new WeakMap();
  * The string will be trimmed so that an element with space before it doesn't create a text node with spaces.
  * @param html {string}
  * @param trim {boolean=}
- * @param doc {HTMLDocument|Document}
+ * @param doc {Document|HTMLDocument}
  * @return {HTMLElement|Node} */
 export default function(html, trim=true, doc=document) {
 
@@ -30,7 +30,7 @@ export default function(html, trim=true, doc=document) {
 		return div.removeChild(div.firstChild)
 	}
 
-	let existing = cache[html];
+	let existing = cache.get(html);
 	if (existing)
 		return existing.cloneNode(true);
 
@@ -47,7 +47,7 @@ export default function(html, trim=true, doc=document) {
 	// Because if we use cloneNode with a custom element that has slots, it will take all of the regular, non-slot
 	// children of the element and insert them into the slot.
 	if (!template.content.querySelector('slot'))
-		cache[html] = template.content.firstChild.cloneNode(true);
+		cache.set(html, template.content.firstChild.cloneNode(true));
 
 	return template.content.removeChild(template.content.firstChild);
 }

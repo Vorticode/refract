@@ -1,6 +1,7 @@
 var dontCreateValue = {};
 
 /**
+ * Follow a path into a object.
  * @param obj {object}
  * @param path {string[]}
  * @param createVal {*}  If set, non-existant paths will be created and value at path will be set to createVal.
