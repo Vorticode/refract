@@ -136,7 +136,7 @@ class WatchProperties {
 
 		// Create the full path if it doesn't exist.
 		// TODO: Can this part be removed?
-		delve(this.fields_, path, undefined);
+		//delve(this.fields_, path, undefined);
 
 
 		// Add to subscriptions

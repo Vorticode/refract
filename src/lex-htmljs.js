@@ -26,7 +26,7 @@ import utils from './utils.js';
 		'=== !=== == != >= > <= < ' +   // Comparison operators
 		'= **= += -= *= /= %= ??= ' +   // Assignment operators 2
 		'++ -- ** + - * / % ' +         // Arithmetic operators
-		', ... . ( ) [ ] ? :'			// Other operators
+		', ... . ( ) [ ] ?. ? :'		// Other operators
 	).split(/ /g);
 
 	let operatorMap = {};
@@ -280,8 +280,7 @@ import utils from './utils.js';
 		allowHashTemplates: false,
 
 		/**
-		 * @deprecated for lex.options.failOnUnknown.
-		 */
+		 * @deprecated for lex.options.failOnUnknown. */
 		allowUnknownTagTokens: false
 	};
 

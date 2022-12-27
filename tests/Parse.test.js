@@ -95,7 +95,15 @@ Deno.test('Parse.varExpressionWithinParens', () => {
 	assert.eqJson(paths, [['sport', '0', 'name']]);
 });
 
+Deno.test('Parse.varExpressionOptionalChaining', () => {
+	let code = 'this?.[0]?.name';
+	let tokens = lex(htmljs, code, 'js');
+	console.log(tokens)
+	let pathTokens = Parse.varExpressions_(tokens);
+	let paths = pathTokens.map(Parse.varExpressionToPath_);
 
+	assert.eqJson(paths, [['this', '0', 'name']]);
+});
 
 Deno.test('Parse.findFunction.arrow1', () => {
 	let code = 'b=3;a => a+1; b=4;';

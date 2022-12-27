@@ -27,7 +27,7 @@ var Parse = {
 
 
 	/**
-	 * Given theh tokens of a function(...) definition, find the argument names.
+	 * Given the tokens of a function(...) definition, find the argument names.
 	 * @param tokens {Token[]}
 	 * @return {string[]} */
 	filterArgNames(tokens) {
@@ -358,7 +358,7 @@ var Parse = {
 		// E.g. we dont' want to return "a.b" and also the "b" from the second part of that path.
 		// TODO: But what about when one expression is within another:
 		// this.items[this.index]
-		return result.filter(path => tokens[path.index-1] != '.');
+		return result.filter(path => tokens[path.index-1] != '.' && tokens[path.index-1] != '?.');
 	},
 
 	/**
@@ -404,8 +404,8 @@ let terminator = fregex.lookAhead([
 ]);
 let property = fregex(
 	fregex.or(
-		fregex(Parse.ws,'.', Parse.ws, {type: 'identifier'}), //.item
-		fregex(Parse.ws,'[', Parse.ws, fregex.or(...indexType), Parse.ws, ']') // ['item']
+		fregex(Parse.ws, fregex.or('.', '?.') , Parse.ws, {type: 'identifier'}), //.item
+		fregex(Parse.ws, fregex.zeroOrOne('?.'), '[',  Parse.ws, fregex.or(...indexType), Parse.ws, ']') // ['item']
 	),
 	terminator // TODO: Why is the terminator here?
 );
