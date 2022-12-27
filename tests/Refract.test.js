@@ -349,6 +349,22 @@ Deno.test('Refract.expr.var2', () => {
 	assertEquals(a.childNodes.length, 1);
 });
 
+Deno.test('Refract.expr.optionalChaining', () => {
+	class A extends Refract {
+		path1 = {
+			path2: {}
+		}
+		html = `<x-172>${this.path1?.path2?.path3}</x-172>`;
+	}
+	eval(A.compile());
+	let a = new A();
+
+	assertEquals(a.outerHTML, '<x-172></x-172>');
+
+	a.path1.path2.path3 = 'a';
+	assertEquals(a.outerHTML, '<x-172>a</x-172>');
+});
+
 Deno.test('Refract.expr.scope', () => {
 	var fruit = 'apple';
 

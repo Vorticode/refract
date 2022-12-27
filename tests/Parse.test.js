@@ -98,7 +98,6 @@ Deno.test('Parse.varExpressionWithinParens', () => {
 Deno.test('Parse.varExpressionOptionalChaining', () => {
 	let code = 'this?.[0]?.name';
 	let tokens = lex(htmljs, code, 'js');
-	console.log(tokens)
 	let pathTokens = Parse.varExpressions_(tokens);
 	let paths = pathTokens.map(Parse.varExpressionToPath_);
 
