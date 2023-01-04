@@ -65,7 +65,6 @@ Deno.test('Refract.basic.constructor', () => {
 
 		constructor(a, from, b=window) {
 			super();
-			console.log('constructor');
 			constructorCalled++;
 		}
 
@@ -106,6 +105,86 @@ Deno.test('Refract.basic.constructor2', () => {
 
 	assertEquals(constructorCalled, 2);
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Deno.test('Refract.basic.newConstructor', () => {
+
+	class A extends Refract {
+		test = 3;
+
+		constructor(str, json, expr, win=window) {
+			super();
+			console.log([str, json, expr, win]);
+
+			console.log(this.getAttrib('str'));
+			console.log(this.getAttrib('json'));
+			console.log(this.getAttrib('expr'));
+			console.log(this.getAttrib('win', win));
+		}
+
+		html = `<a-23>hi</a-23>`;
+	}
+	eval(A.compile());
+
+	let a = createEl('<a-23 str="a" json="[2]" expr="${1+2}"></a-23>');
+	console.log(a)
+});
+
+
+
+Deno.test('Refract.basic.newConstructor2', () => {
+
+	class B extends Refract {
+		constructor(str, json, expr, win=window) {
+			super();
+		}
+
+		init(str, json, expr, win=window) {
+			console.log([str, json, expr, win])
+		}
+
+		html = `<b-25>hi</b-25>`;
+	}
+	eval(B.compile());
+
+	class A extends Refract {
+
+		html = `<a-25><b-25 str="a" json="[2]" expr="${1+2}"></b-25></a-25>`;
+	}
+	eval(A.compile());
+
+	let a = new A();
+	console.log(a)
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 Deno.test('Refract.basic.slash', () => {
 	class A extends Refract {
@@ -1509,6 +1588,7 @@ Deno.test('Refract.nested.basic', () => {
 		name = '';
 		constructor(name) {
 			super();
+			//debugger;
 			this.name = name;
 		}
 		html = `<b-90>${this.name}</b-90>`;

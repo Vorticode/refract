@@ -30,9 +30,19 @@ export default class Refract extends HTMLElement {
 	 * @type VElement */
 	static virtualElement;
 
+
+	static currentVElement = null;
+
 	/**
 	 * @type {string[]} Names of the constructor's arguments. */
 	static constructorArgs = [];
+
+
+	/**
+	 * Whenever an element is created, it's added here to this global map, pointing back to its velement.
+	 * TODO: This currently isn't used.
+	 * @type {WeakMap<HTMLElement, VElement|VText>} */
+	static virtualElements = new WeakMap();
 
 	/**
 	 * Change this from false to an empty array [] to keep a list of every element created by ever class that inherits
@@ -57,6 +67,7 @@ export default class Refract extends HTMLElement {
 	static refractEvent(event, el) {
 
 	}
+
 
 	/** @type {string} */
 	slotHtml = '';
@@ -83,6 +94,12 @@ export default class Refract extends HTMLElement {
 			// Allow setting properties on the object before any html is created:
 			for (let name in autoRender)
 				this[name] = autoRender[name];
+
+		if (this.init) {
+			let args = this.constructor.constructorArgs.map(arg => this.getAttrib(arg));
+			this.init(...args);
+		}
+
 	}
 
 	/**
@@ -101,7 +118,7 @@ export default class Refract extends HTMLElement {
 
 		// If not already created by a super-class.  Is ` this.constructor.name===name` still needed?
 		if (!this.virtualElement && (!name || this.constructor.name===name)) {
-			Refract.constructing[this.tagName]=true;
+			Refract.constructing[this.tagName] = true;
 
 			this.virtualElement = this.constructor.virtualElement.clone(this);
 			this.virtualElement.apply(null, this);
@@ -299,15 +316,42 @@ export default class Refract extends HTMLElement {
 	// TODO: This arg parsing logic is duplicated in VElement.apply()
 	static getConstructorArgCode(constructorArgs) {
 		return constructorArgs.map(argName=>
-			[`if (this.hasAttribute('${argName}')) {`,
-			`   ${argName} = this.constructor.htmlDecode(this.getAttribute('${argName}'));`,
-			`   try { `,
-			`		${argName} = JSON.parse(${argName}) `,
-			`	} catch(e) {`,
-			`       if (${argName}.startsWith('\${') && ${argName}.endsWith('}'))`, // Try evaluating as code if it's surrounded with ${}
-			`		    try { ${argName} = eval('('+${argName}.slice(2, -1)+')') } catch(e) {};`,
-			`   };`,
-			'}']).flat() // [above] Parse attrib as json if it's valid json.
+			[`\t${argName} = this.getAttrib('${argName}', ${argName});`]).flat() // [above] Parse attrib as json if it's valid json.
+	}
+
+	/**
+	 * Get the evaluated version of an attribute.
+	 * @param name {string}
+	 * @param alt {*}
+	 * @return {*} */
+	getAttrib(name, alt=null) {
+		let velement = Refract.currentVElement; // Refract.virtualElements.get(this);
+		if (velement) {
+			return velement.getAttrib(name);
+		}
+		else {
+			let hval = this.getAttribute(name);
+			if (!hval)
+				return alt;
+
+			let val = Refract.htmlDecode(hval);
+
+			// As JSON
+			try {
+				return JSON.parse(val);
+			}
+			catch {}
+
+			// As an expression
+			if (val.startsWith('${') && val.endsWith('}'))
+				try { // Is it possible to eval() in the context of the calling function?
+					return eval('(' + val.slice(2, -1) + ')');
+				}
+				catch {}
+
+			// As a string
+			return val;
+		}
 	}
 
 	static preCompile(self) {
@@ -341,7 +385,7 @@ export default class Refract extends HTMLElement {
 		// 2. Get the constructorArgs and inject new code.
 		{
 			let constr = fregex.matchFirst(['constructor', Parse.ws, '('], tokens, constructorIdx);
-			let injectIndex, injectLines, injectCode;
+			let injectIndex, injectCode;
 
 			// Modify existing constructor
 			if (constr) { // is null if no match found.
@@ -373,33 +417,22 @@ export default class Refract extends HTMLElement {
 				injectIndex = sup.index + sup.length;
 				let nextToken = tokens[injectIndex];
 				//console.log(tokens.slice(injectIndex-3, injectIndex+3));
-				injectLines = [
+				let injectLines = [
 					(nextToken==',' ? ',' : ';'),
 					`(()=>{`, // We wrap this in a function b/c some minifiers will strangely rewrite the super call into another expression.
 					...this.getConstructorArgCode(result.constructorArgs),
 					`})()`
 				];
+				injectCode = '\r\n\t\t' + [
+						'//Begin Refract injected code.',
+						...injectLines,
+						'//End Refract injected code.'
+					].join('\r\n\t\t')
+					+ '\r\n';
+
+				// This final line return is needed to prevent minifiers from breaking it.
+				tokens.splice(injectIndex, 0, injectCode);
 			}
-
-			// Create new constructor
-			else {
-				injectIndex = fregex.matchFirst(['{'], tokens).index+1;
-				injectLines = [
-					`constructor() {`,
-					`    super();`,
-					`}`,
-				];
-			}
-			injectCode = '\r\n\t\t' + [
-				'//Begin Refract injected code.',
-				...injectLines,
-				'//End Refract injected code.'
-			].join('\r\n\t\t')
-				+ '\r\n';
-
-
-			// This final line return is needed to prevent minifiers from breaking it.
-			tokens.splice(injectIndex, 0, injectCode);
 		}
 
 

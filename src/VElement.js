@@ -75,6 +75,7 @@ export default class VElement {
 			Refract.inSvg = true;
 		var oldEl = this.el;
 
+
 		// 1A. Binding to existing element.
 		if (el) {
 			this.el = el;
@@ -89,6 +90,7 @@ export default class VElement {
 		// 1B. Create Element
 		else {
 			var newEl;
+			Refract.currentVElement = this;
 
 			// Special path, because we can't use document.createElement() to create an element whose constructor
 			//     adds attributes and child nodes.
@@ -98,36 +100,7 @@ export default class VElement {
 
 				let args = []
 				if (Class.constructorArgs)
-					args = Class.constructorArgs.map(name => {
-						let lname = name.toLowerCase();
-
-						// TODO: this logic is duplicated in Refract.preCompile()
-						if (name in this.attributes || lname in this.attributes) {
-							let val = name in this.attributes ? this.attributes[name] : this.attributes[lname];
-
-							// A solitary VExpression.
-							if (val && val.length === 1 && val[0] instanceof VExpression)
-								return val[0].exec.apply(this.xel, Object.values(this.scope));
-
-							// Attribute with no value.
-							if (Array.isArray(val) && !val.length)
-								return true;
-
-							// Else evaluate as JSON, or as a string.
-							let result = VElement.evalVAttributeAsString(this.xel, (val || []), this.scope);
-							try {
-								result = JSON.parse(result);
-							} catch (e) {
-
-								// A code expression
-								if (result.startsWith('${') && result.endsWith('}')) // Try evaluating as code if it's surrounded with ${}
-									try {
-										result = eval(result.slice(2, -1))
-									} catch(e) {}
-							}
-							return result;
-						}
-					});
+					args = Class.constructorArgs.map(name => this.getAttrib(name));
 
 				// Firefox:  "Cannot instantiate a custom element inside its own constructor during upgrades"
 				// Chrome:  "TypeError: Failed to construct 'HTMLElement': This instance is already constructed"
@@ -155,9 +128,10 @@ export default class VElement {
 				// then modify the Refract constructor injecting code to make sure that
 				// delete Refract.constructing[this.tagName]]
 				// goes at the very end of the constructor.
+				//console.log(Refract.currentVElement.tagName, Object.keys(Refract.currentVElement.attributes))
+
 				newEl = new Class(...args);
-
-
+				//console.log(Refract.currentVElement.tagName, Object.keys(Refract.currentVElement.attributes))
 			}
 			else if (Refract.inSvg) // SVG's won't render w/o this path.
 				newEl = document.createElementNS('http://www.w3.org/2000/svg', tagName);
@@ -179,7 +153,13 @@ export default class VElement {
 					p2.insertBefore(newEl, p2.childNodes[this.startIndex]);
 				}
 			}
+
+
+			Refract.virtualElements.set(newEl, this);
 			this.el = newEl;
+
+
+			Refract.currentVElement = null;
 
 			if (Refract.elsCreated)
 				Refract.elsCreated.push('<'+tagName + '>');
@@ -351,6 +331,39 @@ export default class VElement {
 		for (let child of this.vChildren)
 			result.vChildren.push(child.clone(result.xel, result)); // string for text node.
 
+		return result;
+	}
+
+
+	/**
+	 * Get the value of an attribute to use as a constructor argument.
+	 * TODO: Reduce shared logic between this and evalVAttribute()
+	 * @param name {string}
+	 * @return {*} */
+	getAttrib(name) {
+		let lname = name.toLowerCase();
+		let val = name in this.attributes ? this.attributes[name] : this.attributes[lname];
+
+		// A solitary VExpression.
+		if (val && val.length === 1 && val[0] instanceof VExpression)
+			return val[0].exec.apply(this.xel, Object.values(this.scope));
+
+		// Attribute with no value.
+		if (Array.isArray(val) && !val.length)
+			return true;
+
+		// Else evaluate as JSON, or as a string.
+		let result = VElement.evalVAttributeAsString(this.xel, (val || []), this.scope);
+		try {
+			result = JSON.parse(result);
+		} catch (e) {
+
+			// A code expression
+			if (result.startsWith('${') && result.endsWith('}')) // Try evaluating as code if it's surrounded with ${}
+				try {
+					result = eval(result.slice(2, -1))
+				} catch(e) {}
+		}
 		return result;
 	}
 
