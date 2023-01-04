@@ -1664,20 +1664,20 @@ Deno.test('Refract.nested.childProp2', () => {
 			this.name = 'banana';
 		}
 
-		html = `<b-1>${this.name}</b-1>`;
+		html = `<b-103>${this.name}</b-103>`;
 	}
 	eval(B.compile());
 
 	class A extends Refract {
-		html = `<a-1><b-1 id="b"></b-1>${this.b.name}</a-1>`;
+		html = `<a-103><b-103 id="b"></b-103>${this.b.name}</a-103>`;
 	}
 	eval(A.compile());
 
 	let a = new A();
-	console.log(a.b.name);
+	assert.eq(a.b.name, 'apple');
 
 	a.b.update();
-	console.log(a.outerHTML);
+	assert.eq(a.outerHTML, '<a-103><b-103 id="b">banana</b-103>apple</a-103>');
 });
 
 Deno.test('Refract.nested._recursive', () => {
@@ -2289,7 +2289,7 @@ Deno.test('Refract.scopedStyle', () => {
 	eval(A.compile());
 
 	let a = new A();
-	console.log(a.outerHTML)
+	assert.eq(a.outerHTML, '<a-440 data-style="1"><style>a-440[data-style="1"] { background: red }</style></a-440>');
 });
 
 
@@ -2345,8 +2345,8 @@ Deno.test('Refract.misc.htmlFirst', () => {
 	}
 	eval(A.compile());
 
-	let a = createEl(`<5-421>hi</5-421>`);
-	console.log(a.outerHTML)
+	let a = createEl(`<a-521>hi</a-521>`);
+	assert.eq(a.outerHTML, '<a-521>hi</a-521>')
 
 });
 
