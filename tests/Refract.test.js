@@ -86,8 +86,11 @@ Deno.test('Refract.basic.constructor2', () => {
 	let constructorCalled = 0;
 
 	class A extends Refract {
-		constructor(a, b=x=>x+1, c=function(){ return (1+1)}, d={}) {
+		constructor(int, json, expr=x=>x+1, func=function(){ return (1+1)}, d={}) {
 			super({});
+			assert.eq(int, 1);
+			assert.eq(json, [2]);
+			assert.eq(expr, 3);
 			constructorCalled++;
 		}
 
@@ -95,83 +98,50 @@ Deno.test('Refract.basic.constructor2', () => {
 	}
 	eval(A.compile());
 
-	let a = new A();
-
-	// Make sure constructor is called when instantiative via createEl.
+	// Check constructor params when instaniated from javascript.
+	let a = new A(1, [2], 3);
 	assertEquals(constructorCalled, 1);
 
 
-	let a2 = createEl('<a-22></a-22>');
-
+	// Check constructor params when instantiative via createEl.
+	let a2 = createEl('<a-22 int="1" json="[2]" expr="${1+2}"></a-22>');
 	assertEquals(constructorCalled, 2);
 });
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-Deno.test('Refract.basic.newConstructor', () => {
+Deno.test('Refract.basic._init', () => {
+	let constructorCalled = 0;
 
 	class A extends Refract {
 		test = 3;
 
-		constructor(str, json, expr, win=window) {
-			super();
-			console.log([str, json, expr, win]);
+		init(int, json, expr, func) {
+			// console.log([int, json, expr, func]);
+			//
+			// assert.eq(int, 1);
+			// assert.eq(json, [2]);
+			// assert.eq(expr, 3);
 
-			console.log(this.getAttrib('str'));
-			console.log(this.getAttrib('json'));
-			console.log(this.getAttrib('expr'));
-			console.log(this.getAttrib('win', win));
+			constructorCalled++;
 		}
 
-		html = `<a-23>hi</a-23>`;
+		html() {
+			return
+				`<a-23>hi</a-23>`
+		}
 	}
 	eval(A.compile());
 
-	let a = createEl('<a-23 str="a" json="[2]" expr="${1+2}"></a-23>');
-	console.log(a)
+	// Check constructor params when instaniated from javascript.
+	let a = new A(1, [2], 3);
+	assertEquals(constructorCalled, 1);
+
+
+	// Check constructor params when instantiative via createEl.
+	let a2 = createEl('<a-23 int="1" json="[2]" expr="${1+2}"></a-23>');
+	assertEquals(constructorCalled, 2);
 });
-
-
-
-Deno.test('Refract.basic.newConstructor2', () => {
-
-	class B extends Refract {
-		constructor(str, json, expr, win=window) {
-			super();
-		}
-
-		init(str, json, expr, win=window) {
-			console.log([str, json, expr, win])
-		}
-
-		html = `<b-25>hi</b-25>`;
-	}
-	eval(B.compile());
-
-	class A extends Refract {
-
-		html = `<a-25><b-25 str="a" json="[2]" expr="${1+2}"></b-25></a-25>`;
-	}
-	eval(A.compile());
-
-	let a = new A();
-	console.log(a)
-});
-
-
 
 
 

@@ -313,11 +313,6 @@ export default class Refract extends HTMLElement {
 
 	//#ENDIF
 
-	// TODO: This arg parsing logic is duplicated in VElement.apply()
-	static getConstructorArgCode(constructorArgs) {
-		return constructorArgs.map(argName=>
-			[`\t${argName} = this.getAttrib('${argName}', ${argName});`]).flat() // [above] Parse attrib as json if it's valid json.
-	}
 
 	/**
 	 * Get the evaluated version of an attribute.
@@ -385,7 +380,6 @@ export default class Refract extends HTMLElement {
 		// 2. Get the constructorArgs and inject new code.
 		{
 			let constr = fregex.matchFirst(['constructor', Parse.ws, '('], tokens, constructorIdx);
-			let injectIndex, injectCode;
 
 			// Modify existing constructor
 			if (constr) { // is null if no match found.
@@ -404,7 +398,6 @@ export default class Refract extends HTMLElement {
 				supEnd += e;
 
 				let s = sup.index;
-
 				sup = tokens.slice(sup.index, supEnd);
 				sup.index = s;
 
@@ -414,16 +407,15 @@ export default class Refract extends HTMLElement {
 				//#ENDIF
 
 
-				injectIndex = sup.index + sup.length;
+				let injectIndex = sup.index + sup.length;
 				let nextToken = tokens[injectIndex];
-				//console.log(tokens.slice(injectIndex-3, injectIndex+3));
 				let injectLines = [
 					(nextToken==',' ? ',' : ';'),
 					`(()=>{`, // We wrap this in a function b/c some minifiers will strangely rewrite the super call into another expression.
-					...this.getConstructorArgCode(result.constructorArgs),
+					...result.constructorArgs.map(argName=> [`\t${argName} = this.getAttrib('${argName}', ${argName});`]),
 					`})()`
 				];
-				injectCode = '\r\n\t\t' + [
+				let injectCode = '\r\n\t\t' + [
 						'//Begin Refract injected code.',
 						...injectLines,
 						'//End Refract injected code.'
@@ -436,8 +428,13 @@ export default class Refract extends HTMLElement {
 		}
 
 
+
+
+
+
 		// 3. Build the virtual element tree from the html.
-		let htmlMatch;
+
+
 		{
 			// A. Find html template token
 			// Make sure we're finding html = ` and the constructor at the top level, and not inside a function.
@@ -464,12 +461,15 @@ export default class Refract extends HTMLElement {
 				i++;
 			}
 
-			htmlMatch = fregex.matchFirst([
-				'html', Parse.ws, '=', Parse.ws,
+
+
+			let htmlMatch = fregex.matchFirst([
+				'html', Parse.ws, '=', Parse.ws, fregex.zeroOrOne('(', Parse.ws ,')', Parse.ws, '=>'), Parse.ws,
 				fregex.or({type: 'template'}, {type: 'string'}),
 				Parse.ws,
 				fregex.zeroOrOne(';')
 			], tokens, htmlIdx);
+
 			//#IFDEV
 			if (!htmlMatch)
 				throw new Error(`Class ${self.name} is missing an html property with a template value.`);
@@ -507,7 +507,7 @@ export default class Refract extends HTMLElement {
 		// This allows render() to be called after super() and after the other properties are setup,
 		// but before the rest of the code in the constructor().
 		let lastBrace = null;
-		for (let i=tokens.length-1; i>=htmlMatch.index; i--)
+		for (let i=tokens.length-1; true; i--)
 			if (tokens[i].text === '}') {
 				lastBrace = i;
 				break;
