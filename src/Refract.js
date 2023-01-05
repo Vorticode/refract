@@ -112,13 +112,10 @@ export default class Refract extends HTMLElement {
 	 * @param name {?string} Name of the class calling render.  What is this for? */
 	render(name=null) {
 
-
-
-
 		// Parse the html tokens to Virtual DOM
 		if (!this.constructor.virtualElement) {
 			if (!this.constructor.htmlTokens)
-				this.constructor.htmlTokens = Parse.htmlFunction(this.html.toString());
+				this.constructor.htmlTokens = Parse.htmlFunctionReturn(this.html.toString());
 
 			this.constructor.virtualElement = VElement.fromTokens(this.constructor.htmlTokens, [], null, this.constructor, 1)[0];
 			this.constructor.htmlTokens = null; // We don't need them any more.

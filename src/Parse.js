@@ -53,43 +53,6 @@ var Parse = {
 	},
 
 	/**
-	 * Recursively replace #{...} with ${ClassName.htmlEncode(...)}
-	 * @param tokens {Token[]}
-	 * @param mode
-	 * @param className
-	 * @return {Token[]} */
-	replaceHashExpr(tokens, mode, className) {
-		let result = [];
-		let isHash = false;
-		for (let token of tokens) {
-			// TODO: Completely recreate the original tokens, instead of just string versions of them:
-			if (token.tokens) {
-				let tokens = Parse.replaceHashExpr(token.tokens, token.mode, className);
-				result.push({text: tokens.map(t=>t.text).join(''), type: token.type, tokens, mode: token.mode});
-			}
-			else if (token.text == '#{' && token.type == 'expr') {
-				result.push(new Token('${'), new Token(className), new Token('.'), new Token('htmlEncode'), new Token('('));
-				isHash = true;
-			}
-			else
-				result.push(token);
-		}
-
-		if (isHash) { // Add the closing paren around htmlEncode
-			let extra = [];
-			if (mode === 'squote') // Escape quotes if we're inside an attribute
-				extra = [new Token(','), new Token(`"'"`)];
-			else if (mode === 'dquote')
-				extra = [new Token(','), new Token(`'"'`)];
-
-			result.splice(result.length - 1, 0, ...extra, new Token(')'));
-		}
-
-
-		return result;
-	},
-
-	/**
 	 * TODO: test search direction.
 	 * @param tokens {Token[]}
 	 * @param start {int} Index directly after start token.
@@ -195,6 +158,28 @@ var Parse = {
 		return null;
 	},
 
+
+	/**
+	 * Replace `${`string`}` with `\${\`string\`}`, but not within function bodies.
+	 * @param tokens {Token[]}
+	 * @return {Token[]} */
+	escape$(tokens) {
+
+		let result = tokens.map(t=>({...t}));// copy each
+		let fstart = this.findFunctionStart(result);
+		for (let i=0, token; token=result[i]; i++) {
+
+			if (i===fstart) {
+				i = this.findFunctionEnd(result, i);
+				fstart = this.findFunctionStart(result, i);
+			}
+
+			if (token.type === 'template')
+				result[i].text = '`'+ token.text.slice(1, -1).replace(/\${/g, '\\${').replace(/`/g, '\\`') + '`';
+		}
+		return result;
+	},
+
 	/**
 	 * Find the start and end of the first function within tokens.
 	 * @param tokens {Token[]}
@@ -217,25 +202,99 @@ var Parse = {
 		return [functionStart, end];
 	},
 
+	/**
+	 * Get the tag name from the html() function.
+	 * A fast heuristic instead of an actual parsing.  But it's hard to think of
+	 * a real-world case where this would fail.
+	 * A better version would use lex but stop lexxing after we get to the tag name.
+	 * @param code {string} The code returned by function.toString().
+	 * @returns {string} */
+	htmlFunctionTagName(code) {
+		code = code
+			.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, '')  // remove js comments - stackoverflow.com/a/15123777/
+			.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*|<!--[\s\S]*?-->$/) // remove html comments.
+
+		code = Utils.munchUntil(code, '{');
+		code = Utils.munchUntil(code, 'return');
+		code = Utils.munchUntil(code, ['`', `"`, "'"]);
+		code = Utils.munchUntil(code, ['<']);
+		let match = code.match(/<(\w+-[\w-]+)/);
+		return match[1]; // 1 to get part in parenthesees.
+	},
 
 	/**
-	 * Replace `${`string`}` with `\${\`string\`}`, but not within function bodies.
-	 * @param tokens {Token[]}
+	 * Parse the return value of the html function into tokens.
+	 * @param tokens {string|Token[]} The code returned by function.toString().
 	 * @return {Token[]} */
-	escape$(tokens) {
+	htmlFunctionReturn(tokens) {
+		if (typeof tokens === 'string')
+			tokens = lex(lexHtmlJs, tokens, 'js');
 
-		let result = tokens.map(t=>({...t}));// copy each
-		let fstart = this.findFunctionStart(result);
-		for (let i=0, token; token=result[i]; i++) {
+		let htmlMatch = fregex.matchFirst([
+			fregex.or({type: 'template'}, {type: 'string'}),
+			Parse.ws,
+			fregex.zeroOrOne(';')
+		], tokens);
 
-			if (i===fstart) {
-				i = this.findFunctionEnd(result, i);
-				fstart = this.findFunctionStart(result, i);
-			}
+		//#IFDEV
+		if (!htmlMatch && !self.prototype.html)
+			throw new Error(`Class ${self.name} is missing an html function with a template value.`);
+		//#ENDIF
 
-			if (token.type === 'template')
-				result[i].text = '`'+ token.text.slice(1, -1).replace(/\${/g, '\\${').replace(/`/g, '\\`') + '`';
+		let template = htmlMatch.filter(t=>t.tokens || t.type==='string')[0]; // only the template token has sub-tokens.
+
+
+		// 1 Template
+		if (template.tokens)
+			var innerTokens = template.tokens.slice(1, -1);
+
+		// 2 Non-template
+		else { // TODO: Is there better a way to unescape "'hello \'everyone'" type strings than eval() ?
+			let code = eval(template+'');
+			innerTokens = lex(htmljs, code, 'template');
 		}
+
+		// Skip initial whitespace and comments inside template string.
+		while (innerTokens[0].type !== 'openTag')
+			innerTokens = innerTokens.slice(1);
+
+		return innerTokens;
+	},
+
+	/**
+	 * Recursively replace #{...} with ${ClassName.htmlEncode(...)}
+	 * @param tokens {Token[]}
+	 * @param mode
+	 * @param className
+	 * @return {Token[]} */
+	replaceHashExpr(tokens, mode, className) {
+		let result = [];
+		let isHash = false;
+		for (let token of tokens) {
+			// TODO: Completely recreate the original tokens, instead of just string versions of them:
+			if (token.tokens) {
+				let tokens = Parse.replaceHashExpr(token.tokens, token.mode, className);
+				result.push({text: tokens.map(t=>t.text).join(''), type: token.type, tokens, mode: token.mode});
+			}
+			else if (token.text == '#{' && token.type == 'expr') {
+				result.push(new Token('${'), new Token(className), new Token('.'), new Token('htmlEncode'), new Token('('));
+				isHash = true;
+			}
+			else
+				result.push(token);
+		}
+
+		if (isHash) { // Add the closing paren around htmlEncode
+			let extra = [];
+			if (mode === 'squote') // Escape quotes if we're inside an attribute
+				extra = [new Token(','), new Token(`"'"`)];
+			else if (mode === 'dquote')
+				extra = [new Token(','), new Token(`'"'`)];
+
+			result.splice(result.length - 1, 0, ...extra, new Token(')'));
+		}
+
+
 		return result;
 	},
 
@@ -334,63 +393,6 @@ var Parse = {
 		}
 
 		return [null, null];
-	},
-
-
-
-	/**
-	 * Get the tag name from the html() function.
-	 * A fast heuristic instead of an actual parsing.  But it's hard to think of
-	 * a real-world case where this would fail.
-	 * A better version would use lex but stop lexxing after we get to the tag name.
-	 * @param code
-	 * @returns {string}
-	 */
-	htmlFunctionTagName(code) {
-		code = code
-			.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, '')  // remove js comments - stackoverflow.com/a/15123777/
-			.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*|<!--[\s\S]*?-->$/) // remove html comments.
-
-		code = Utils.munchUntil(code, '{');
-		code = Utils.munchUntil(code, 'return');
-		code = Utils.munchUntil(code, ['`', `"`, "'"]);
-		code = Utils.munchUntil(code, ['<']);
-		let match = code.match(/<(\w+-[\w-]+)/);
-		return match[1]; // 1 to get part in parenthesees.
-	},
-
-	htmlFunction(code, startAt) {
-		let tokens = lex(lexHtmlJs, code, 'js');
-
-		let htmlMatch = fregex.matchFirst([
-			fregex.or({type: 'template'}, {type: 'string'}),
-			Parse.ws,
-			fregex.zeroOrOne(';')
-		], tokens, startAt);
-
-		//#IFDEV
-		if (!htmlMatch && !self.prototype.html)
-			throw new Error(`Class ${self.name} is missing an html property with a template value.`);
-		//#ENDIF
-
-		let template = htmlMatch.filter(t=>t.tokens || t.type==='string')[0]; // only the template token has sub-tokens.
-
-
-		// B1 Template
-		if (template.tokens)
-			var innerTokens = template.tokens.slice(1, -1);
-
-		// b2 Non-template
-		else { // TODO: Is there better a way to unescape "'hello \'everyone'" type strings than eval() ?
-			let code = eval(template+'');
-			innerTokens = lex(htmljs, code, 'template');
-		}
-
-		// Skip initial whitespace and comments inside template string.
-		while (innerTokens[0].type !== 'openTag')
-			innerTokens = innerTokens.slice(1);
-
-		return innerTokens;
 	},
 
 	/**
