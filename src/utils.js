@@ -23,6 +23,28 @@ export {assert};
 
 export default {
 
+
+
+	/**
+	 * Return a slice from the beginning of the string up until any item from limiters is found.
+	 * @param string {string}
+	 * @param limiters {string|string[]}
+	 * @param offset {int=}
+	 * @return {string} */
+	munchUntil(string, limiters, offset) {
+		if (typeof limiters === 'string')
+			limiters = [limiters];
+		offset = offset || 0;
+		var limitersLength = limiters.length; // probably makes no difference?
+		for (let i=offset; i<string.length; i++)
+			for (let j=0; j<limitersLength; j++) {
+				let limiter = limiters[j];
+				if (string.slice(i, i+limiter.length) === limiter) // inline startsWith()
+					return string.slice(i); // Return the string up until the limiter.
+			}
+		return string;
+	},
+
 	removeProxy(obj) {
 		return (obj && obj.$removeProxy) || obj;
 	},

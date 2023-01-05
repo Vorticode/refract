@@ -8,6 +8,8 @@ import VExpression from "./VExpression.js";
 import createEl from './createEl.js'; // TODO: This is erroneously still included when minified b/c rollup includes the //# IFDEV blocks.
 import Html from "./Html.js";
 import utils from "./utils.js";
+
+
 /**
  * @property createFunction {function} Created temporarily during compilation.
  * @property styleId {int} */
@@ -23,7 +25,7 @@ export default class Refract extends HTMLElement {
 	 * @type {Object<string, boolean>} */
 	static constructing = {};
 
-	static tokens = null;
+	static htmlTokens = null;
 
 	/**
 	 * A parsed representation of this class's html.
@@ -110,8 +112,14 @@ export default class Refract extends HTMLElement {
 	 * @param name {?string} Name of the class calling render.  What is this for? */
 	render(name=null) {
 
+
+
+
 		// Parse the html tokens to Virtual DOM
 		if (!this.constructor.virtualElement) {
+			if (!this.constructor.htmlTokens)
+				this.constructor.htmlTokens = Parse.htmlFunction(this.html.toString());
+
 			this.constructor.virtualElement = VElement.fromTokens(this.constructor.htmlTokens, [], null, this.constructor, 1)[0];
 			this.constructor.htmlTokens = null; // We don't need them any more.
 		}
@@ -433,9 +441,18 @@ export default class Refract extends HTMLElement {
 
 
 		// 3. Build the virtual element tree from the html.
+		if (self.prototype.html) {
 
 
-		{
+			// Get tagname
+			let code = self.prototype.html.toString()
+
+			result.tagName = Parse.htmlFunctionTagName(code);
+
+		}
+
+		if (!result.tagName) {
+
 			// A. Find html template token
 			// Make sure we're finding html = ` and the constructor at the top level, and not inside a function.
 			// This search is also faster than if we use matchFirst() from the first token.
@@ -464,14 +481,14 @@ export default class Refract extends HTMLElement {
 
 
 			let htmlMatch = fregex.matchFirst([
-				'html', Parse.ws, '=', Parse.ws, fregex.zeroOrOne('(', Parse.ws ,')', Parse.ws, '=>'), Parse.ws,
+				'html', Parse.ws, '=', Parse.ws,
 				fregex.or({type: 'template'}, {type: 'string'}),
 				Parse.ws,
 				fregex.zeroOrOne(';')
 			], tokens, htmlIdx);
 
 			//#IFDEV
-			if (!htmlMatch)
+			if (!htmlMatch && !self.prototype.html)
 				throw new Error(`Class ${self.name} is missing an html property with a template value.`);
 			//#ENDIF
 

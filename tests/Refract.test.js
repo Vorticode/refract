@@ -114,7 +114,6 @@ Deno.test('Refract.basic._init', () => {
 	let constructorCalled = 0;
 
 	class A extends Refract {
-		test = 3;
 
 		init(int, json, expr, func) {
 			// console.log([int, json, expr, func]);
@@ -127,8 +126,7 @@ Deno.test('Refract.basic._init', () => {
 		}
 
 		html() {
-			return
-				`<a-23>hi</a-23>`
+			return `<a-23>hi</a-23>`;
 		}
 	}
 	eval(A.compile());
