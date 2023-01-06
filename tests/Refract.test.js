@@ -110,17 +110,17 @@ Deno.test('Refract.basic.constructor2', () => {
 
 
 
-Deno.test('Refract.basic._init', () => {
+Deno.test('Refract.basic.init', () => {
 	let constructorCalled = 0;
 
 	class A extends Refract {
 
-		init(int, json, expr, func) {
-			// console.log([int, json, expr, func]);
-			//
-			// assert.eq(int, 1);
-			// assert.eq(json, [2]);
-			// assert.eq(expr, 3);
+		init(int, json, expr, undef) {
+
+			assert.eq(int, 1);
+			assert.eq(json, [2]);
+			assert.eq(expr, 3);
+			assert.eq(undef, undefined);
 
 			constructorCalled++;
 		}
@@ -131,17 +131,61 @@ Deno.test('Refract.basic._init', () => {
 	}
 	eval(A.compile());
 
-	// Check constructor params when instaniated from javascript.
+	// Check init(...params) params when instaniated from javascript.
 	let a = new A(1, [2], 3);
 	assertEquals(constructorCalled, 1);
 
 
-	// Check constructor params when instantiative via createEl.
+	// Check init(...params) params when instantiative via createEl.
 	let a2 = createEl('<a-23 int="1" json="[2]" expr="${1+2}"></a-23>');
 	assertEquals(constructorCalled, 2);
 });
 
 
+
+Deno.test('Refract.basic.initNamed', 'Test named init() parameters', () => {
+	let constructorCalled = 0;
+
+	class A extends Refract {
+
+		// noinspection JSUnusedGlobalSymbols
+		init({int, json, expr, undef}={}) {
+
+			assert.eq(int, 1);
+			assert.eq(json, [2]);
+			assert.eq(expr, 3);
+			assert.eq(undef, undefined);
+
+			constructorCalled++;
+		}
+
+		html() {
+			return `<a-24>hi</a-24>`;
+		}
+	}
+	eval(A.compile());
+
+	// Check init(...params) when instaniated from javascript.
+	let a = new A({int:1, json:[2], expr:3});
+	assertEquals(constructorCalled, 1);
+
+
+	// Check init(...params) params when instantiative via createEl.
+	let a2 = createEl('<a-24 int="1" json="[2]" expr="${1+2}"></a-24>');
+	assertEquals(constructorCalled, 2);
+
+	// Check init(...params) params when instantiative from another Refract element.
+	class B extends Refract {
+		html() {
+			return `<b-24><a-24 int="1" json="[2]" expr="${1+2}"></a-24></b-24>`;
+		}
+	}
+	eval(B.compile());
+
+
+	let b = new B();
+	assertEquals(constructorCalled, 3);
+});
 
 
 

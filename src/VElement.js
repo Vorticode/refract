@@ -99,8 +99,10 @@ export default class VElement {
 				let Class = customElements.get(tagName);
 
 				let args = []
-				if (Class.constructorArgs)
+				if (Class.constructorArgs) // old path that uses constructor()
 					args = Class.constructorArgs.map(name => this.getAttrib(name));
+				else // new path with init()
+					args = Refract.getArgsFromAttributes(this, Class.prototype.init);
 
 				// Firefox:  "Cannot instantiate a custom element inside its own constructor during upgrades"
 				// Chrome:  "TypeError: Failed to construct 'HTMLElement': This instance is already constructed"
@@ -343,6 +345,8 @@ export default class VElement {
 	getAttrib(name) {
 		let lname = name.toLowerCase();
 		let val = name in this.attributes ? this.attributes[name] : this.attributes[lname];
+		if (val === undefined || val === null)
+			return val;
 
 		// A solitary VExpression.
 		if (val && val.length === 1 && val[0] instanceof VExpression)

@@ -61,7 +61,6 @@ export class Token {
 }
 
 
-//window.slowMatches = {};
 
 /**
  * Parse code into tokens according to rules in a grammar.
@@ -88,16 +87,22 @@ export class Token {
  *
  * Token.originalLength stores the length of a token before escaping occurs.
  *
+ * TODO: A more flexible version of lex() would be a generator and yield one token at a time.
+ * Then we could stop processing when we reach what we're looking for.
+ * It would flatten all tokens from recursion, but yield lex.descend and lex.ascend when going into or out of a nested language.
+ * The cache would then be moved external to this function.
+ *
  * @param code {string} String to parse.
  * @param mode {?string}
  * @param line {int=} Start counting from this line.
  * @param col {int=} Start counting from this column.
  * @param options {Object}
  * @param options.failOnUknown {boolean}
+ * @param options.callback
  * @param index {int} Used internally.  Start reading code at this index.
  *
  * @return Token[] */
-export default function lex(grammar, code, mode=null, line=1, col=1, options={}, index=0) {
+export default function lex(grammar, code, mode=null, options={}, line=1, col=1, index=0) {
 	mode = mode || Object.keys(grammar)[0]; // start in first mode.
 	code = code+'';
 
@@ -177,7 +182,10 @@ export default function lex(grammar, code, mode=null, line=1, col=1, options={},
 			return [...result, tokenObj];
 
 		else if (matchType) { // Descend into new mode
-			let tokens = [tokenObj, ...lex(grammar, code, matchType, line, col+length, options, index+length)].filter(t=>t.text.length);
+			let subTokens = lex(grammar, code, matchType, options, line, col+length, index+length);
+			if (subTokens === false) // callback returned false, bail.
+				return false;
+			let tokens = [tokenObj, ...subTokens].filter(t=>t.text.length);
 			length = tokens.reduce((p, c) => {
 				return p + (c.originalLength || c.text.length)
 			}, 0); // add the lengths of the tokens
@@ -195,6 +203,11 @@ export default function lex(grammar, code, mode=null, line=1, col=1, options={},
 			// 3. Process token
 			index += length;
 			result.push(tokenObj);
+			if (options.callback) {
+				let status = options.callback(tokenObj);
+				if (!status)
+					return false;
+			}
 
 			// 4. Increment line/col number.
 			// line += (token.match(/\n/g) || []).length; // count line returns
@@ -218,9 +231,6 @@ export default function lex(grammar, code, mode=null, line=1, col=1, options={},
 	return result;
 }
 
+
 var lexCache = {};
-
-
-// var types = {};
-// setTimeout(() => console.log(types), 1800);
-//setTimeout(() => console.log(callTime), 1800);
+//window.slowMatches = {};

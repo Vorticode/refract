@@ -86,10 +86,10 @@ export default class Refract extends HTMLElement {
 	__firstConnectedCallbacks = [];
 	__disconnectedCallbacks = [];
 
-	constructor(autoRender=true) {
+	constructor(args) {
 		super();
 
-		if (autoRender === false)
+		if (args === false)
 			this.autoRender = false;
 
 		else if (typeof autoRender === 'object') // Deprecated path, we can just disable autoRender instead.
@@ -98,10 +98,43 @@ export default class Refract extends HTMLElement {
 				this[name] = autoRender[name];
 
 		if (this.init) {
-			let args = this.constructor.constructorArgs.map(arg => this.getAttrib(arg));
+			let args = [];
+			if (this.parentElement)
+				args = Refract.getArgsFromAttributes(this, this.init);
+			else
+				args = arguments;
+
 			this.init(...args);
 		}
 
+	}
+
+	/**
+	 * Get the arguments to the init function from the attributes.
+	 * @param el
+	 * @param func
+	 * @returns {*[]} */
+	static getArgsFromAttributes(el, func) {
+		let args = [];
+
+		const populateObject = obj => {
+			for (let name in obj)
+				if (obj[name])
+					populateObject(obj[name]);
+				else
+					obj[name] = el.getAttrib(name);
+			return obj;
+		}
+
+		let argNames = [...Parse.findFunctionArgNames2(func)];
+
+		for (let arg of argNames)
+			if (typeof arg === 'string')
+				args.push(el.getAttrib(arg));
+			else
+				args.push(populateObject(arg));
+
+		return args;
 	}
 
 	/**
@@ -322,9 +355,9 @@ export default class Refract extends HTMLElement {
 	/**
 	 * Get the evaluated version of an attribute.
 	 * @param name {string}
-	 * @param alt {*}
+	 * @param alt {*} Defaults to undefined because that's what we get if the argument isn't specified by the caller.
 	 * @return {*} */
-	getAttrib(name, alt=null) {
+	getAttrib(name, alt=undefined) {
 		let velement = Refract.currentVElement; // Refract.virtualElements.get(this);
 		if (velement) {
 			return velement.getAttrib(name);
@@ -357,7 +390,7 @@ export default class Refract extends HTMLElement {
 	static preCompile(self) {
 		let result = {};
 		result.self = self;
-		result.constructorArgs = [];
+		result.constructorArgs = null;
 
 		function removeComments(tokens)	{
 			let result = [];
@@ -374,7 +407,7 @@ export default class Refract extends HTMLElement {
 		let code = self.toString();
 		//let old = htmljs.allowUnknownTagTokens;
 		//htmljs.allowUnknownTagTokens = true;
-		let tokens = lex(htmljs, code);
+		let tokens = [...lex(htmljs, code)];
 
 		//htmljs.allowUnknownTagTokens = old;
 		tokens = removeComments(tokens);
@@ -390,7 +423,7 @@ export default class Refract extends HTMLElement {
 			if (constr) { // is null if no match found.
 				// Find arguments
 				let argTokens = tokens.slice(constr.index+constr.length, Parse.findGroupEnd(tokens, constr.index+constr.length));
-				result.constructorArgs = Parse.filterArgNames(argTokens);
+				result.constructorArgs = Parse.findFunctionArgNames(argTokens);
 
 				// Find super call in constructor body
 				let sup = fregex.matchFirst(

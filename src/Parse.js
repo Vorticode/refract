@@ -29,29 +29,6 @@ var Parse = {
 		);
 	},
 
-
-	/**
-	 * Given the tokens of a function(...) definition, find the argument names.
-	 * @param tokens {Token[]}
-	 * @return {string[]} */
-	filterArgNames(tokens) {
-
-		let result = [];
-		let find = 1, depth=0; // Don't find identifiers after an =.
-		for (let token of tokens) {
-			if (find === 1 && token.type === 'identifier' && !depth)
-				result.push(token + '');
-			else if (token == '(' || token == '{' || token == '[')
-				depth++;
-			else if (token == ')' || token == '}' || token == ']')
-				depth --;
-
-			if (!depth)
-				find = {',': 1, '=': -1}[token] || find;
-		}
-		return result;
-	},
-
 	/**
 	 * TODO: test search direction.
 	 * @param tokens {Token[]}
@@ -75,6 +52,119 @@ var Parse = {
 		return null;
 	},
 
+
+	/**
+	 * Given the tokens of a function(...) definition from findFunctionArgToken(), find the argument names.
+	 * @param tokens {Token[]}
+	 * @return {string[]} */
+	findFunctionArgNames(tokens) {
+		let result = [];
+		let find = 1, depth=0; // Don't find identifiers after an =.
+		for (let token of tokens) {
+			if (find === 1 && token.type === 'identifier' && !depth)
+				result.push(token + '');
+			else if (token == '(' || token == '{' || token == '[')
+				depth++;
+			else if (token == ')' || token == '}' || token == ']')
+				depth --;
+
+			if (!depth)
+				find = {',': 1, '=': -1}[token] || find;
+		}
+		return result;
+	},
+
+	/**
+	 * Get all the function argument names from the function tokens.
+	 * This will stop parsing when it reaches the end of the function.
+	 * It also supports function argument destructuring.
+	 *
+	 * @example
+	 * let code = (function({a, b}={}, c) { return a+1 }).toString();
+	 * let tokens = lex(htmljs, code, 'js');
+	 * let args = [...Parse.findFunctionArgNames3(tokens)];
+	 *
+	 *
+	 * TODO: Perhaps this should call a special function to skip ahead to
+	 * the next non-nested comma when it encounters an '=' ?
+	 *
+	 * @param tokens {Token[]|function|string} A function, the .toString() value of a function,
+	 *     or the parsed tokens of that string.  If tokens, the first token must be the start of the function.
+	 * @param start {int}
+	 * @return {Generator<object|string>} */
+	*findFunctionArgNames2(tokens, start=0) {
+		if (typeof tokens === 'function')
+			tokens = tokens.toString();
+		if (typeof tokens === 'string')
+			tokens = lex(htmljs, tokens, 'js');
+
+		const isSingleParamArrow = tokens[start].text != '(' && tokens[start].text !== 'function'
+			&& tokens.find(token => token.text.trim().length).text === '=>';
+		if (isSingleParamArrow)
+			yield tokens[start].text;
+
+		else {
+			// Find start
+			while (tokens[start].text !== '(' && start < tokens.length)
+				start++;
+			start++;
+
+			let arg = undefined; // Current argument.
+			let subArg = undefined; // Current node in arg.
+			let stack = []; // Help subArg find its way back to arg.
+			let lastName = null; // Last argument or property name we found.
+			let find = true; // If we're in the proper context to find variable names.
+			let depth = 0;
+
+			for (let token of tokens.slice(start)) {
+				let text = token.text;
+
+				if (token.type === 'identifier' && find) {
+					lastName = text;
+					if (!arg)
+						arg = lastName;
+					else if (subArg)
+						subArg[lastName] = undefined;
+				}
+				else if (text == '(' || text == '{' || text == '[') {
+					depth++;
+					find = true;
+					if (!arg && text == '{')
+						arg = subArg = {};
+					if (lastName) {
+						subArg = subArg[lastName] = {};
+						stack.push(subArg);
+					}
+				}
+				else if (text == ')' || text == '}' || text == ']') {
+					depth--;
+					subArg = stack.pop();
+				}
+				else if (text === ',')
+					find = true;
+				else if (text === ':')
+					find = false;
+				else if (text === ':' || text === '=') {
+					find = false;
+					lastName = null;
+				}
+
+				if (depth < 0) {
+					if (arg)
+						yield arg;
+					return; // Exited function arguments.
+				}
+
+				// If a top-level comma, go to next arg
+				if (text === ',' && depth === 0) {
+					yield arg
+					arg = subArg = undefined;
+				}
+			}
+		}
+	},
+
+
 	/**
 	 * Find all tokens that are function arguments, not counting any open or close parens.
 	 * @param tokens {Token[]} Should start at the beginning of a function.
@@ -84,13 +174,12 @@ var Parse = {
 	 *   function foo(a,b) {...}
 	 *   a => a+1
 	 *   (a) => a+1*/
-	findFunctionArgs(tokens, start=0) {
+	findFunctionArgRange(tokens, start=0) {
 		const isArrow = tokens[start] != 'function';
 		if (isArrow && tokens[start] != '(')
-			return [start, start+1];
+			return [start, start+1]; // single argument 'item => item+1'
 		while (tokens[start] != '(' && start < tokens.length)
 			start++;
-
 
 		return [start+1, this.findGroupEnd(tokens, start+1)];
 	},
@@ -345,9 +434,9 @@ var Parse = {
 			return [null, null];
 		funcTokens = funcTokens.slice(...functionIndices);
 
-		let argIndices = Parse.findFunctionArgs(funcTokens);
+		let argIndices = Parse.findFunctionArgRange(funcTokens);
 		let argTokens = funcTokens.slice(...argIndices);
-		let loopParamNames = Parse.filterArgNames(argTokens);
+		let loopParamNames = Parse.findFunctionArgNames(argTokens);
 
 
 

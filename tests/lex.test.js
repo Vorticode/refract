@@ -176,7 +176,7 @@ Deno.test('lex.error', () => {
 
 	jsHtml.allowUnknownTagTokens = false;
 	try {
-		lex(jsHtml, code, 'tag', 1, 1, {failOnUknown: true});
+		lex(jsHtml, code, 'tag', {failOnUknown: true});
 	}
 	catch (e) {
 		msg = e.message;

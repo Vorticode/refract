@@ -75,6 +75,7 @@ function isSame( x, y ) {
 }
 
 const assertEquals = assert.eq = (expected, actual) => {
+
 	// JUnit, PhpUnit, and mocha all use the order: expected, actual.
 	if (!isSame(expected, actual)) {
 		if (Testimony.debugOnAssertFail)
