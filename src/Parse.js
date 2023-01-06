@@ -184,13 +184,19 @@ var Parse = {
 	 * @return {?int} The index of the end token, or terminator if supplied.  Null if no match.*/
 	findGroupEnd(tokens, start=0, open=['(', '{'], close=[')', '}'], terminators=[], dir=1) {
 		let depth = 0;
+		let startOnOpen = open.includes(tokens[start].text);
+
 		for (let i=start, token; token = tokens[i]; i+= dir) {
 			let text = token.text || token+'';
 			if (open.includes(text))
 				depth += dir;
 			else if (close.includes(text)) {
 				depth -= dir;
-				if (depth < 0)
+				if (startOnOpen) {
+					if (depth === 0)
+						return i + 1;
+				}
+				else if (depth < 0)
 					return i;
 			}
 			else if (!depth && terminators.includes(text))

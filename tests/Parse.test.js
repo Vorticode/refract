@@ -289,6 +289,27 @@ Deno.test('Parse.function.arrowParams', () => {
 	assert.eq(toText(pf.bodyTokens), ['a', '+', '1', ';']);
 });
 
+Deno.test('Parse.function.arrowParamBrace', () => {
+	let code = 'a => {return a+1} b=4';
+
+	let pf = new ParseFunction(code);
+
+	assert.eq(pf.name, undefined);
+	assert.eq(toText(pf.argTokens), ['a']);
+	assert.eq(toText(pf.bodyTokens), ['{', 'return', ' ', 'a', '+', '1', '}']);
+
+});
+
+Deno.test('Parse.function.arrowParamsBrace', () => {
+	let code = '(a, b=()=>{}) => {return a+1;} b=4';
+
+	let pf = new ParseFunction(code);
+
+	assert.eq(pf.name, undefined);
+	console.log(pf)
+	assert.eq(toText(pf.argTokens).join(''), 'a, b=()=>{}');
+	assert.eq(toText(pf.bodyTokens), ['{', 'return', ' ', 'a', '+', '1', ';', '}']);
+});
 
 
 
