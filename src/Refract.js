@@ -37,7 +37,7 @@ export default class Refract extends HTMLElement {
 
 	/**
 	 * @type {string[]} Names of the constructor's arguments. */
-	static constructorArgs = [];
+	static constructorArgs = null;
 
 
 	/**
@@ -86,9 +86,11 @@ export default class Refract extends HTMLElement {
 	__firstConnectedCallbacks = [];
 	__disconnectedCallbacks = [];
 
+
 	constructor(args) {
 		super();
 
+		// old path from before we used init()
 		if (args === false)
 			this.autoRender = false;
 
@@ -97,44 +99,7 @@ export default class Refract extends HTMLElement {
 			for (let name in autoRender)
 				this[name] = autoRender[name];
 
-		if (this.init) {
-			let args = [];
-			if (this.parentElement)
-				args = Refract.getArgsFromAttributes(this, this.init);
-			else
-				args = arguments;
-
-			this.init(...args);
-		}
-
-	}
-
-	/**
-	 * Get the arguments to the init function from the attributes.
-	 * @param el
-	 * @param func
-	 * @returns {*[]} */
-	static getArgsFromAttributes(el, func) {
-		let args = [];
-
-		const populateObject = obj => {
-			for (let name in obj)
-				if (obj[name])
-					populateObject(obj[name]);
-				else
-					obj[name] = el.getAttrib(name);
-			return obj;
-		}
-
-		let argNames = [...Parse.findFunctionArgNames2(func)];
-
-		for (let arg of argNames)
-			if (typeof arg === 'string')
-				args.push(el.getAttrib(arg));
-			else
-				args.push(populateObject(arg));
-
-		return args;
+		this.constructorArgs2 = arguments;
 	}
 
 	/**
@@ -387,195 +352,234 @@ export default class Refract extends HTMLElement {
 		}
 	}
 
+
+
+	/**
+	 * Get the arguments to the init function from the attributes.
+	 * @param el
+	 * @param func
+	 * @returns {*[]} */
+	static getArgsFromAttributes(el, func) {
+		let args = [];
+
+		const populateObject = obj => {
+			for (let name in obj)
+				if (obj[name])
+					populateObject(obj[name]);
+				else
+					obj[name] = el.getAttrib(name);
+			return obj;
+		}
+
+		let argNames = [...Parse.findFunctionArgNames2(func)];
+
+		for (let arg of argNames)
+			if (typeof arg === 'string')
+				args.push(el.getAttrib(arg));
+			else
+				args.push(populateObject(arg));
+
+		return args;
+	}
+
 	static preCompile(self) {
 		let result = {};
 		result.self = self;
-		result.constructorArgs = null;
 
-		function removeComments(tokens)	{
-			let result = [];
-			for (let token of tokens) {
-				if (token.type !== 'comment')
-					result.push(token);
-				if (token.tokens)
-					token.tokens = removeComments(token.tokens);
-			}
-			return result;
+		// This code runs after the call to super() and after all the other properties are initialized.
+		let preInitCode = `
+			__preInit = (() => {
+				if (this.autoRender)
+					this.render(this.constructor.name);
+				
+				if (this.init) {
+					let args = this.parentElement
+						? Refract.getArgsFromAttributes(this, this.init)
+						: this.constructorArgs2;
+					this.init(...args);
+				}
+			})();`;
+
+		// New path.
+		if (self.prototype.html) {
+			result.tagName = Parse.htmlFunctionTagName(self.prototype.html.toString());
+			result.code = self.toString().slice(0, -1) + preInitCode + '}';
 		}
 
-		// 1. Parse into tokens
-		let code = self.toString();
-		//let old = htmljs.allowUnknownTagTokens;
-		//htmljs.allowUnknownTagTokens = true;
-		let tokens = [...lex(htmljs, code)];
+		// Old path.  All of this will go away eventually:
+		else {
 
-		//htmljs.allowUnknownTagTokens = old;
-		tokens = removeComments(tokens);
-		let htmlIdx = 0, constructorIdx=0;
+			function removeComments(tokens)	{
+				let result = [];
+				for (let token of tokens) {
+					if (token.type !== 'comment')
+						result.push(token);
+					if (token.tokens)
+						token.tokens = removeComments(token.tokens);
+				}
+				return result;
+			}
 
 
 
-		// 2. Get the constructorArgs and inject new code.
-		{
-			let constr = fregex.matchFirst(['constructor', Parse.ws, '('], tokens, constructorIdx);
+			// 1. Parse into tokens
+			let code = self.toString();
+			//let old = htmljs.allowUnknownTagTokens;
+			//htmljs.allowUnknownTagTokens = true;
+			let tokens = [...lex(htmljs, code)];
 
-			// Modify existing constructor
-			if (constr) { // is null if no match found.
-				// Find arguments
-				let argTokens = tokens.slice(constr.index+constr.length, Parse.findGroupEnd(tokens, constr.index+constr.length));
-				result.constructorArgs = Parse.findFunctionArgNames(argTokens);
+			//htmljs.allowUnknownTagTokens = old;
+			tokens = removeComments(tokens);
+			let htmlIdx = 0, constructorIdx = 0;
 
-				// Find super call in constructor body
-				let sup = fregex.matchFirst(
-					['super', Parse.ws, '('],
-					tokens,
-					constr.index+constr.length+argTokens.length);
 
-				let supEnd = Parse.findGroupEnd(tokens, sup.index+sup.length)+1;
-				let e = fregex(Parse.ws, ';')(tokens.slice(supEnd));
-				supEnd += e;
+			// 2. Get the constructorArgs and inject new code.
+			{
+				let constr = fregex.matchFirst(['constructor', Parse.ws, '('], tokens, constructorIdx);
 
-				let s = sup.index;
-				sup = tokens.slice(sup.index, supEnd);
-				sup.index = s;
+				// Modify existing constructor
+				if (constr) { // is null if no match found.
+					// Find arguments
+					let argTokens = tokens.slice(constr.index + constr.length, Parse.findGroupEnd(tokens, constr.index + constr.length));
+					result.constructorArgs = Parse.findFunctionArgNames(argTokens);
+
+					// Find super call in constructor body
+					let sup = fregex.matchFirst(
+						['super', Parse.ws, '('],
+						tokens,
+						constr.index + constr.length + argTokens.length);
+
+					let supEnd = Parse.findGroupEnd(tokens, sup.index + sup.length) + 1;
+					let e = fregex(Parse.ws, ';')(tokens.slice(supEnd));
+					supEnd += e;
+
+					let s = sup.index;
+					sup = tokens.slice(sup.index, supEnd);
+					sup.index = s;
+
+					//#IFDEV
+					if (!sup)
+						throw new Error(`Class ${self.name} constructor() { ... } is missing call to super().`);
+					//#ENDIF
+
+
+					let injectIndex = sup.index + sup.length;
+					let nextToken = tokens[injectIndex];
+					let injectLines = [
+						(nextToken == ',' ? ',' : ';'),
+						`(()=>{`, // We wrap this in a function b/c some minifiers will strangely rewrite the super call into another expression.
+						...result.constructorArgs.map(argName => [`\t${argName} = this.getAttrib('${argName}', ${argName});`]),
+						`})()`
+					];
+					let injectCode = '\r\n\t\t' + [
+							'//Begin Refract injected code.',
+							...injectLines,
+							'//End Refract injected code.'
+						].join('\r\n\t\t')
+						+ '\r\n';
+
+					// This final line return is needed to prevent minifiers from breaking it.
+					tokens.splice(injectIndex, 0, injectCode);
+				}
+			}
+
+
+			// 3. Parse html property
+			{
+
+				// A. Find html template token
+				// Make sure we're finding html = ` and the constructor at the top level, and not inside a function.
+				// This search is also faster than if we use matchFirst() from the first token.
+				// TODO: Use ObjectUtil.find() ?
+				let braceDepth = 0;
+				let i = 0;
+				for (let token of tokens) {
+					if (token.text === '{' || token.text === '(') // Don't find things within function argument lists, or function bodies.
+						braceDepth++;
+					else if (token.text === '}' || token.text === ')')
+						braceDepth--;
+					else if (braceDepth === 1) {
+						if (!htmlIdx && token.text == 'html')
+							htmlIdx = i;
+						else if (!constructorIdx && token.text == 'constructor') {
+							constructorIdx = i;
+						}
+					}
+
+					if (htmlIdx && constructorIdx) {
+						break;
+					}
+					i++;
+				}
+
+
+				let htmlMatch = fregex.matchFirst([
+					'html', Parse.ws, '=', Parse.ws,
+					fregex.or({type: 'template'}, {type: 'string'}),
+					Parse.ws,
+					fregex.zeroOrOne(';')
+				], tokens, htmlIdx);
 
 				//#IFDEV
-				if (!sup)
-					throw new Error(`Class ${self.name} constructor() { ... } is missing call to super().`);
+				if (!htmlMatch && !self.prototype.html)
+					throw new Error(`Class ${self.name} is missing an html property with a template value.`);
 				//#ENDIF
 
+				// Remove the html property, so that when classes are constructed it's not evaluated as a regular template string.
+				let htmlAssign = tokens.splice(htmlMatch.index, htmlMatch.length);
+				let template = htmlAssign.filter(t => t.tokens || t.type === 'string')[0]; // only the template token has sub-tokens.
 
-				let injectIndex = sup.index + sup.length;
-				let nextToken = tokens[injectIndex];
-				let injectLines = [
-					(nextToken==',' ? ',' : ';'),
-					`(()=>{`, // We wrap this in a function b/c some minifiers will strangely rewrite the super call into another expression.
-					...result.constructorArgs.map(argName=> [`\t${argName} = this.getAttrib('${argName}', ${argName});`]),
-					`})()`
-				];
-				let injectCode = '\r\n\t\t' + [
-						'//Begin Refract injected code.',
-						...injectLines,
-						'//End Refract injected code.'
-					].join('\r\n\t\t')
-					+ '\r\n';
+				// B. Parse html
 
-				// This final line return is needed to prevent minifiers from breaking it.
-				tokens.splice(injectIndex, 0, injectCode);
-			}
-		}
+				// B1 Template
+				if (template.tokens)
+					var innerTokens = template.tokens.slice(1, -1);
 
+				// b2 Non-template
+				else { // TODO: Is there better a way to unescape "'hello \'everyone'" type strings than eval() ?
+					let code = eval(template + '');
+					innerTokens = lex(htmljs, code, 'template');
+				}
 
+				if (innerTokens[0].type === 'text' && !utils.unescapeTemplate(innerTokens[0].text).trim().length)
+					innerTokens = innerTokens.slice(1); // Skip initial whitespace.
 
-
-
-
-		// 3. Build the virtual element tree from the html.
-		if (self.prototype.html) {
-
-
-			// Get tagname
-			let code = self.prototype.html.toString()
-
-			result.tagName = Parse.htmlFunctionTagName(code);
-
-		}
-
-		if (!result.tagName) {
-
-			// A. Find html template token
-			// Make sure we're finding html = ` and the constructor at the top level, and not inside a function.
-			// This search is also faster than if we use matchFirst() from the first token.
-			// TODO: Use ObjectUtil.find() ?
-			let braceDepth = 0;
-			let i =0;
-			for (let token of tokens) {
-				if (token.text === '{' || token.text === '(') // Don't find things within function argument lists, or function bodies.
-					braceDepth++;
-				else if (token.text === '}' || token.text === ')')
-					braceDepth--;
-				else if (braceDepth === 1) {
-					if (!htmlIdx && token.text == 'html')
-						htmlIdx = i;
-					else if (!constructorIdx && token.text == 'constructor') {
-						constructorIdx = i;
+				result.htmlTokens = innerTokens;
+				for (let token of innerTokens) {
+					if (token.type === 'openTag') {
+						result.tagName = token.tokens[0].text.slice(1); // Get '<open-tag' w/o first character.
+						break;
 					}
 				}
+			}
 
-				if (htmlIdx && constructorIdx) {
+			// 4.  Insert a property at the very end of the class, to call render().
+			// This allows render() to be called after super() and after the other properties are setup,
+			// but before the rest of the code in the constructor().
+			let lastBrace = null;
+			for (let i = tokens.length - 1; true; i--)
+				if (tokens[i].text === '}') {
+					lastBrace = i;
 					break;
 				}
-				i++;
-			}
 
+			tokens.splice(lastBrace, 0, preInitCode);
 
-
-			let htmlMatch = fregex.matchFirst([
-				'html', Parse.ws, '=', Parse.ws,
-				fregex.or({type: 'template'}, {type: 'string'}),
-				Parse.ws,
-				fregex.zeroOrOne(';')
-			], tokens, htmlIdx);
-
-			//#IFDEV
-			if (!htmlMatch && !self.prototype.html)
-				throw new Error(`Class ${self.name} is missing an html property with a template value.`);
-			//#ENDIF
-
-			// Remove the html property, so that when classes are constructed it's not evaluated as a regular template string.
-			let htmlAssign = tokens.splice(htmlMatch.index, htmlMatch.length);
-			let template = htmlAssign.filter(t=>t.tokens || t.type==='string')[0]; // only the template token has sub-tokens.
-
-			// B. Parse html
-
-			// B1 Template
-			if (template.tokens)
-				var innerTokens = template.tokens.slice(1, -1);
-
-			// b2 Non-template
-			else { // TODO: Is there better a way to unescape "'hello \'everyone'" type strings than eval() ?
-				let code = eval(template+'');
-				innerTokens = lex(htmljs, code, 'template');
-			}
-
-			if (innerTokens[0].type === 'text' && !utils.unescapeTemplate(innerTokens[0].text).trim().length)
-				innerTokens = innerTokens.slice(1); // Skip initial whitespace.
-
-			result.htmlTokens = innerTokens;
-			for (let token of innerTokens) {
-				if (token.type === 'openTag') {
-					result.tagName = token.tokens[0].text.slice(1); // Get '<open-tag' w/o first character.
-					break;
-				}
-			}
+			result.code = tokens.join('');
 		}
-
-		// 4.  Insert a property at the very end of the class, to call render().
-		// This allows render() to be called after super() and after the other properties are setup,
-		// but before the rest of the code in the constructor().
-		let lastBrace = null;
-		for (let i=tokens.length-1; true; i--)
-			if (tokens[i].text === '}') {
-				lastBrace = i;
-				break;
-			}
-		let renderBeforeConstructor = `
-				_renderBeforeConstructor = (() => {
-					if (this.autoRender)
-						this.render(this.constructor.name);
-				})();	
-			`;
-		tokens.splice(lastBrace, 0, renderBeforeConstructor);
-
-		result.code = tokens.join('');
 
 		return result;
 	}
 
 	static decorate(NewClass, compiled) {
+
 		// 1. Set Properties
+		NewClass.tagName = compiled.tagName;
+
+		// Old path only:
 		NewClass.constructorArgs = compiled.constructorArgs;
-		NewClass.virtualElement  = compiled.virtualElement;
+		NewClass.virtualElement = compiled.virtualElement;
+		NewClass.htmlTokens = compiled.htmlTokens;
 
 		// 2. Copy methods and fields from old class to new class, so that debugging within them will still work.
 		for (let name of Object.getOwnPropertyNames(compiled.self.prototype))
@@ -588,22 +592,20 @@ export default class Refract extends HTMLElement {
 				NewClass[staticField] = compiled.self[staticField];
 
 
-		// Re-evaluate the function so that any references to its own class points to the new instance and not the old one.
+		// Re-evaluate static functions so that any references to its own class points to the new instance and not the old one.
 		// TODO: This doesn't get the arguments of the function.
 		// TODO: Does this need to be done for non-static methos also?
 		// TODO: Can this be combined with step 3 above?
-    /*
+		/*
 		for (let name of Reflect.ownKeys(NewClass))
 			if ((typeof NewClass[name] === 'function') && name !== 'createFunction') {
 				let code = NewClass[name].toString();
 				code = code.slice(code.indexOf('{')+1, code.lastIndexOf('}'));
 				NewClass[name] = NewClass.createFunction(code);
 			}
-  */
+		*/
 
 		// 4. Register the class as an html element.
-		NewClass.htmlTokens = compiled.htmlTokens;
-		NewClass.tagName = compiled.tagName;
 		customElements.define(compiled.tagName, NewClass);
 	}
 

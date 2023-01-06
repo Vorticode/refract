@@ -587,6 +587,7 @@ export default class VExpression {
 	 * @param scope {string[]} Variables created by parent loops.  This lets us build watchPaths only of variables
 	 *     that trace back to a this.property in the parent Refract, instead of from any variable or js identifier.
 	 * @param vParent {VElement|VExpression}
+	 * @param Class
 	 * @param attrName {string?} If set, this VExpression is part of an attribute, otherwise it creates html child nodes.
 	 * @return {VExpression} */
 	static fromTokens(tokens, scope, vParent, Class, attrName) {

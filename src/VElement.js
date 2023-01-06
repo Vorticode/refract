@@ -101,7 +101,7 @@ export default class VElement {
 				let args = []
 				if (Class.constructorArgs) // old path that uses constructor()
 					args = Class.constructorArgs.map(name => this.getAttrib(name));
-				else // new path with init()
+				else if (Class.prototype.init) // new path with init()
 					args = Refract.getArgsFromAttributes(this, Class.prototype.init);
 
 				// Firefox:  "Cannot instantiate a custom element inside its own constructor during upgrades"
@@ -130,10 +130,8 @@ export default class VElement {
 				// then modify the Refract constructor injecting code to make sure that
 				// delete Refract.constructing[this.tagName]]
 				// goes at the very end of the constructor.
-				//console.log(Refract.currentVElement.tagName, Object.keys(Refract.currentVElement.attributes))
 
 				newEl = new Class(...args);
-				//console.log(Refract.currentVElement.tagName, Object.keys(Refract.currentVElement.attributes))
 			}
 			else if (Refract.inSvg) // SVG's won't render w/o this path.
 				newEl = document.createElementNS('http://www.w3.org/2000/svg', tagName);

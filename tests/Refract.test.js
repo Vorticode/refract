@@ -12,7 +12,7 @@ Refract.elsCreated = [];
  * Comment test. */
 Deno.test('Refract.basic.empty', () => {
 	class A extends Refract {
-		html = `<x-10></x-10>`;
+		html() { return `<x-10></x-10>` }
 	}
 	eval(A.compile());
 
@@ -23,7 +23,7 @@ Deno.test('Refract.basic.empty', () => {
 
 Deno.test('Refract.basic.nonTemplate', () => {
 	class A extends Refract {
-		html = '<x-15>everyone\'s <b \t>happy</b></x-15>';
+		html() { return '<x-15>everyone\'s <b \t>happy</b></x-15>'}
 	}
 	eval(A.compile());
 
@@ -34,7 +34,7 @@ Deno.test('Refract.basic.nonTemplate', () => {
 
 Deno.test('Refract.basic.escaped', () => {
 	class A extends Refract {
-		html = `\r\n\t<x-16>everyone's ${`<b \t>happy</b>`}</x-16>`;
+		html() { return `\r\n\t<x-16>everyone's ${`<b \t>happy</b>`}</x-16>`}
 	}
 	eval(A.compile());
 
@@ -46,7 +46,7 @@ Deno.test('Refract.basic.escaped', () => {
 
 Deno.test('Refract.basic.nonTemplateEscaped', () => {
 	class A extends Refract {
-		html = '\r\n\t<x-17>everyone\'s ${`<b \t>happy</b>`}</x-17>';
+		html() { return '\r\n\t<x-17>everyone\'s ${`<b \t>happy</b>`}</x-17>'}
 	}
 	eval(A.compile());
 
@@ -68,7 +68,7 @@ Deno.test('Refract.basic.constructor', () => {
 			constructorCalled++;
 		}
 
-		html = `<a-20>hi</a-20>`;
+		html() { return `<a-20>hi</a-20>`}
 	}
 	eval(A.compile());
 
@@ -150,6 +150,7 @@ Deno.test('Refract.basic.initNamed', 'Test named init() parameters', () => {
 
 		// noinspection JSUnusedGlobalSymbols
 		init({int, json, expr, undef}={}) {
+
 
 			assert.eq(int, 1);
 			assert.eq(json, [2]);
@@ -283,7 +284,7 @@ Deno.test('Refract.basic.deferredRender', "Don't render anything until we call t
 
 Deno.test('Refract.expr.string', () => {
 	class A extends Refract {
-		html = `<b-80>${'hi'}</b-80>`;
+		html() { return `<b-80>${'hi'}</b-80>` }
 	}
 	eval(A.compile());
 	let a = new A();
@@ -304,7 +305,7 @@ Deno.test('Refract.expr.template', () => {
 // Make sure parser leaves spaces.
 Deno.test('Refract.expr.basic', () => {
 	class A extends Refract {
-		html = `<x-123>${new Date('2010-02-01 00:00:00').getUTCFullYear()}</x-123>`;
+		html() { return `<x-123>${new Date('2010-02-01 00:00:00').getUTCFullYear()}</x-123>`}
 	}
 	eval(A.compile());
 	let a = new A();
@@ -315,7 +316,7 @@ Deno.test('Refract.expr.basic', () => {
 Deno.test('Refract.expr.undefinedText', () => {
 	class A extends Refract {
 		value = undefined;
-		html = `<x-130>${this.value}</x-130>`;
+		html() { return `<x-130>${this.value}</x-130>` }
 	}
 	eval(A.compile());
 	let a = new A();
@@ -380,7 +381,12 @@ Deno.test('Refract.expr.undefinedInputVal', () => {
 Deno.test('Refract.expr.var', () => {
 	class A extends Refract {
 		value = 'Apple';
-		html = `<x-140>${this.value}</x-140>`;
+
+		constructor() {
+			super();
+		}
+
+		html() { return `<x-140>${this.value}</x-140>` }
 	}
 	eval(A.compile());
 	let a = new A();
