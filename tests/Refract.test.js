@@ -382,7 +382,7 @@ Deno.test('Refract.expr.var', () => {
 	class A extends Refract {
 		value = 'Apple';
 
-		constructor() {
+		constructor(a, b=()=>{}, c) {
 			super();
 		}
 
@@ -1397,37 +1397,31 @@ Deno.test('Refract.loop.Expr3', () => { // Make sure attribute quotes are escape
 	assertEquals(a.outerHTML, `<x-765><div title="&quot;">"</div><div title="'">'</div></x-765>`);
 });
 
-Deno.test('Refract.loop._ExprNested', () => {
+Deno.test('Refract.loop.Expr4', () => {
 
-	// When a vexpression is removed, it removes all of its child elements.
-	// but when the child vexpression is updated, it tried to remove its el that's already been removed.
 
 	class A extends Refract {
 		list = [];
+		type = 1;
 
-		constructor() {
-			super();
+		init() {
 			this.list = [1];
 
-			window.debug = true;
-			this.type = '2'; // Causes loop item to be re-evaluated
+			// This will call receiveNotification on both the loop and the item VExpressions.
+			// But the loop VExpression will remove the original item VExpression after it's evaluated, and create a new one.
+			// So here we make sure it's not evaluated again.  Before this was fixed we'd have '2' printed twice.
+			this.type = '2';
 		}
 
-		html = `
-			<a-766>
-				${this.list.map(item =>
-					false
-						?  console.log(this.type)
-						:  `<div>1</div>`
-				)}
-			</a-766>`;
+		html() { return `
+			<a-766>${this.list.map(item =>
+					this.type
+				)}</a-766>`}
 	}
 	eval(A.compile());
 
 	let a = new A();
-	//document.body.append(a);
-
-	assertEquals(a.children.length, 1);
+	assert.eq(a.outerHTML, '<a-766>2</a-766>');
 });
 
 // Same as above, but with slice() and using ${item}.  The scope goes missing!

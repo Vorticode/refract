@@ -329,7 +329,7 @@ export default class Refract extends HTMLElement {
 		}
 		else {
 			let hval = this.getAttribute(name);
-			if (!hval)
+			if (hval === null)
 				return alt;
 
 			let val = Refract.htmlDecode(hval);
@@ -360,7 +360,6 @@ export default class Refract extends HTMLElement {
 	 * @param func
 	 * @returns {*[]} */
 	static getArgsFromAttributes(el, func) {
-		let args = [];
 
 		const populateObject = obj => {
 			for (let name in obj)
@@ -372,14 +371,14 @@ export default class Refract extends HTMLElement {
 		}
 
 		let argNames = [...Parse.findFunctionArgNames2(func)];
-
+		let result = [];
 		for (let arg of argNames)
 			if (typeof arg === 'string')
-				args.push(el.getAttrib(arg));
+				result.push(el.getAttrib(arg));
 			else
-				args.push(populateObject(arg));
+				result.push(populateObject(arg));
 
-		return args;
+		return result;
 	}
 
 	static preCompile(self) {

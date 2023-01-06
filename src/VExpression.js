@@ -326,12 +326,19 @@ export default class VExpression {
 	 * @param oldVal {string} not used.
 	 * @param root {object|array} The unproxied root object that the path originates form. */
 	receiveNotification_(action, path, value, oldVal, root) {
+
+		// .remove() has already been called on this VExpression by another operation, don't update anything.
+		if (!this.vParent)
+			return;
+
 		//window.requestAnimationFrame(() => {
 
-		// if (window.debug) // This happens when a path on an element is watched, but the path doesn't exist?
-		// debugger;
+		if (window.debug) { // This happens when a path on an element is watched, but the path doesn't exist?
+			console.log(action, path, value)
+			debugger;
+		}
 
-		// Path 1:  If modifying a property within an array.
+		// Path 1:  If modifying a property on a single array item.
 		// TODO: watchPaths besides 0?
 		//if (path[0] !== this.watchPaths[0][1]) // Faster short-circuit for the code below?
 		//	return;
@@ -451,9 +458,12 @@ export default class VExpression {
 				let index = group.indexOf(this);
 				if (index >= 0) {
 					group.splice(index, 1);
-					return;
+					break;
 				}
 			}
+
+		// This is an easy way to test of a vexpression has been removed.
+		this.vParent = null;
 	}
 
 	/**
@@ -601,15 +611,15 @@ export default class VExpression {
 		result.attrName = attrName;
 		scope = (scope || []).slice(); // copy
 
-		result.code = tokens.slice(1, -1).map(t=>t.text).join(''); // So we can quickly see what a VExpression is in the debugger.
-
-
 		// remove enclosing ${ }
 		let isHash = tokens[0].text == '#{';
 		if ((tokens[0].text == '${' || isHash) && tokens[tokens.length-1].text == '}') {
 			result.isHash = isHash;
 			tokens = tokens.slice(1, -1); // Remove ${ and }
 		}
+
+		result.code = tokens.map(t=>t.text).join('').trim(); // So we can quickly see what a VExpression is in the debugger.
+
 
 		// Find the watchPathTokens before we call fromTokens() on child elements.
 		// That way we don't descend too deep.
