@@ -1399,7 +1399,6 @@ Deno.test('Refract.loop.Expr3', () => { // Make sure attribute quotes are escape
 
 Deno.test('Refract.loop.Expr4', () => {
 
-
 	class A extends Refract {
 		list = [];
 		type = 1;
@@ -1415,8 +1414,8 @@ Deno.test('Refract.loop.Expr4', () => {
 
 		html() { return `
 			<a-766>${this.list.map(item =>
-					this.type
-				)}</a-766>`}
+				this.type
+			)}</a-766>`}
 	}
 	eval(A.compile());
 
@@ -1438,21 +1437,22 @@ Deno.test('Refract.loop._ExprNested2', () => {
 		items = [];
 
 		constructor() {
-			super();
+			super(false);
 			this.items = [1];
+			this.render();
 
 			//window.debug = true;
 			this.items[0] = 2; // Causes loop item to be re-evaluated
 		}
 
+		// Below, the ${ gets escaped so it can be watched and evaluated later.
+		// But because of the slice(), item isn't added to the scope.
 		html = `
-			<a-766>
-				${this.items.slice().map(item =>
+			<a-766>${this.items.slice().map(item =>
 					false
 						?  console.log(this.type)
 						:  `${item}`
-				)}
-			</a-766>`;
+				)}</a-766>`;
 	}
 	eval(A.compile());
 

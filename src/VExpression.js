@@ -669,6 +669,7 @@ export default class VExpression {
 			 * so we escape them, so they're not evaluated as part of the outer template.
 			 * Unless we do this, their own variables will be evaluated immediately, instead of parsed and watched. */
 			// console.log(tokens.join(''));
+
 			tokens = Parse.escape$(tokens);
 			//console.log(tokens.join(''));
 

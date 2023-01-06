@@ -7,6 +7,149 @@ import lexHtmlJs from "./lex-htmljs.js";
 
 let varExpressionCache = {};
 
+export class ParseFunction {
+
+
+	name;
+
+	/**
+	 * @type {string} Can be 'function', 'method', 'arrowParam', 'arrowParams', 'arrowParamBrace', 'arrowParamsBrace' */
+	type;
+
+	/**
+	 * @type {int} index of first token that's an identifier among the function arguments.
+	 * If no arguments will point to the index of ')' */
+	argsStartIndex;
+
+	/** @type {Token[]} Does not include open and close parentheses. */
+	argTokens;
+
+	/**
+	 * @type {int} Opening brace or first real token after the => in an arrow function. */
+	bodyStartIndex;
+
+	/** @type {Token[]} Includes start and end brace if present. */
+	bodyTokens;
+
+	constructor(tokens, parseBody=true, onError=null) {
+		if (typeof tokens === 'function')
+			tokens = tokens.toString();
+		if (typeof tokens === 'string')
+			tokens = lex(htmljs, tokens, 'js'); // TODO: Stop at function end.
+
+		onError = onError || (msg=> { throw new Error(msg)});
+
+
+		/**
+		 * @return {int} Index of token after the last arg token. */
+		const parseArgTokens = (tokens, start=0) => {
+			let groupEndIndex = Parse.findGroupEnd(tokens, start+1);
+			if (groupEndIndex === null)
+				return -1;
+
+			this.argTokens = tokens.slice(start+1, groupEndIndex);
+			return groupEndIndex+1;
+		}
+
+		// Function
+		if (tokens[0].text === 'function') {
+			this.type = 'function';
+			let index = tokens.findIndex(token => !['whitespace', 'ln', 'comment'].includes(token.type));
+			if (index === -1)
+				return onError('Not enough tokens to be a function.');
+
+			if (tokens[index].type === 'identifier') {
+				this.name = tokens[index].text;
+				index = tokens.findIndex(token => token.text === '(');
+				if (index === -1)
+					return onError('Cannot find opening ( for function arguments.');
+				this.argsStartIndex = index + 1;
+
+				let argEndIndex = parseArgTokens(tokens, this.argsStartIndex);
+				if (argEndIndex === -1)
+					return onError('Cannot find closing ) and end of arguments list.');
+
+				this.bodyStartIndex = tokens.slice(argEndIndex).findIndex(token => token.text === '{')
+				if (this.bodyStartIndex === -1)
+					return onError('Cannot find start of function body.');
+			}
+		}
+
+		// Method
+		else if (tokens[0].type === 'identifier') {
+			let nextOpIndex = tokens.findIndex(token => token.type==='operator');
+
+			if (nextOpIndex !== -1 && tokens[nextOpIndex]?.text === '(') {
+				this.type = 'method';
+				this.name = tokens[0].text;
+				this.argsStartIndex = nextOpIndex+1;
+
+				let argEndIndex = parseArgTokens(tokens, this.argsStartIndex);
+				if (argEndIndex === -1)
+					return onError('Cannot find ) and end of arguments list.');
+
+				this.bodyStartIndex = tokens.slice(argEndIndex).findIndex(token => token.text === '{')
+				if (this.bodyStartIndex === -1)
+					return onError('Cannot find start of function body.');
+			}
+			// else is a single param arrow function
+		}
+
+		// Arrow function
+		if (!this.type) {
+
+			// Arrow function with multiple params
+			let type, argEndIndex;
+			if (tokens[0].text === '(') {
+				this.argsStartIndex = 1;
+				argEndIndex = parseArgTokens(tokens);
+				if (argEndIndex === -1)
+					return onError('Cannot find ) and end of arguments list.');
+				type = 'Params';
+			}
+
+			// Arrow function with single param
+			else {
+				argEndIndex = 1;
+				type = 'Param';
+				this.argTokens = [tokens[0]];
+			}
+
+
+
+			// Find arrow
+			let arrowIndex = tokens.slice(argEndIndex).findIndex(token => token.type === 'operator');
+			if (arrowIndex === -1)
+				return onError('Cannot find function body.');
+
+			// Find first real token after arrow
+			let bodyStartIndex = tokens.slice(argEndIndex + arrowIndex + 1).findIndex(token => !['whitespace', 'ln', 'comment'].includes(token.type))
+			if (bodyStartIndex === -1)
+				return onError('Cannot find function body.');
+			this.bodyStartIndex = argEndIndex + arrowIndex + 1 + bodyStartIndex;
+			if (tokens[this.bodyStartIndex]?.text === '{')
+				this.type = `arrow${type}Brace`;
+			else
+				this.type = `arrow${type}`;
+		}
+
+		// Find body.
+		if (parseBody) {
+			let terminator = this.type.startsWith('arrow') ? [';', '\r\n', '\n'] : [];
+
+			let bodyEnd = Parse.findGroupEnd(tokens, this.bodyStartIndex, ['{', '('], ['}', ')'], terminator);
+			if (bodyEnd === null)
+				return onError('Cannot find end of function body.');
+
+			if (terminator.length && tokens[bodyEnd].text === ';')
+				bodyEnd ++;
+
+			this.bodyTokens = tokens.slice(this.bodyStartIndex, bodyEnd);
+		}
+	}
+
+}
+
 var Parse = {
 	/**
 	 * Create a fregex to find expressions that start with "this" or with local variables.
@@ -31,22 +174,26 @@ var Parse = {
 
 	/**
 	 * TODO: test search direction.
+	 * TODO: Move a more general version of this function to arrayUtil
 	 * @param tokens {Token[]}
 	 * @param start {int} Index directly after start token.
+	 * @param open {string[]}
+	 * @param close {string[]}
+	 * @param terminators {(Token|string)[]}
 	 * @param dir {int} Direction.  Must be 1 or -1;  A value of 0 will cause an infinite loop.
-	 * @param terminator {?Token|string}
-	 * @return {?int} The index of the end token, or terminator if supplied.*/
-	findGroupEnd(tokens, start=0, dir=1, terminator=null) {
+	 * @return {?int} The index of the end token, or terminator if supplied.  Null if no match.*/
+	findGroupEnd(tokens, start=0, open=['(', '{'], close=[')', '}'], terminators=[], dir=1) {
 		let depth = 0;
 		for (let i=start, token; token = tokens[i]; i+= dir) {
-			if (token == '(' || token == '{')
-				depth+=dir;
-			else if (token == ')' || token == '}') {
-				depth-=dir;
+			let text = token.text || token+'';
+			if (open.includes(text))
+				depth += dir;
+			else if (close.includes(text)) {
+				depth -= dir;
 				if (depth < 0)
 					return i;
 			}
-			else if (!depth && token == terminator)
+			else if (!depth && terminators.includes(text))
 				return i;
 		}
 		return null;
@@ -54,6 +201,7 @@ var Parse = {
 
 
 	/**
+	 * @deprecated for findFunctionArgNames2
 	 * Given the tokens of a function(...) definition from findFunctionArgToken(), find the argument names.
 	 * @param tokens {Token[]}
 	 * @return {string[]} */
@@ -74,6 +222,8 @@ var Parse = {
 		return result;
 	},
 
+
+
 	/**
 	 * Get all the function argument names from the function tokens.
 	 * This will stop parsing when it reaches the end of the function.
@@ -85,7 +235,7 @@ var Parse = {
 	 * let args = [...Parse.findFunctionArgNames3(tokens)];
 	 *
 	 *
-	 * TODO: Perhaps this should call a special function to skip ahead to
+	 * TODO: Perhaps this should call findGroupEnd() to skip ahead to
 	 * the next non-nested comma when it encounters an '=' ?
 	 *
 	 * @param tokens {Token[]|function|string} A function, the .toString() value of a function,
@@ -205,7 +355,7 @@ var Parse = {
 				// TODO: Use findGroupEnd
 				let depth = 0;
 				for (let j=-1, token; token=tokens[i+j]; j--) {
-					if (token.type === 'whitespace' || token.type === 'ln')
+					if (token.type === 'whitespace' || token.type === 'ln' || token.type === 'comment')
 						continue;
 					if (token == ')')
 						depth++;
@@ -225,14 +375,15 @@ var Parse = {
 	 * @param start {int} Must be the index of the first token of the function.
 	 * @return {int|null} */
 	findFunctionEnd(tokens, start) {
-		let isArrow = tokens[start] != 'function';
-		let depth = 0, groups = isArrow && tokens[start] != '(' ? 1 : 2;
+		let isArrow = tokens[start].text !== 'function';
+		let depth = 0, groups = (isArrow && tokens[start] != '(') ? 1 : 2;
 		for (let i=start, token; token = tokens[i]; i++) {
 
 			if (!depth && isArrow && (token == ';' || token == ')'))
 				return i;
 
-			// TODO: Use findGroupEnd
+			// TODO: Use findGroupEnd?
+
 			if (token == '(' || token == '{')
 				depth++;
 			else if (token == ')' || token == '}') {
@@ -253,11 +404,11 @@ var Parse = {
 	 * @param tokens {Token[]}
 	 * @return {Token[]} */
 	escape$(tokens) {
-
 		let result = tokens.map(t=>({...t}));// copy each
 		let fstart = this.findFunctionStart(result);
 		for (let i=0, token; token=result[i]; i++) {
 
+			// Skip function bodies.
 			if (i===fstart) {
 				i = this.findFunctionEnd(result, i);
 				fstart = this.findFunctionStart(result, i);

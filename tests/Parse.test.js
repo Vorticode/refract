@@ -1,5 +1,5 @@
 import {assert} from './Testimony.js';
-import Parse from './../src/Parse.js';
+import Parse, {ParseFunction} from './../src/Parse.js';
 import lex from "./../src/lex.js";
 import htmljs from "./../src/lex-htmljs.js";
 
@@ -22,6 +22,9 @@ function tokensToText(array) {
 	return result;
 }
 
+function toText(tokens) {
+	return tokens.map(token => token.text);
+}
 
 
 Deno.test('Parse.singleVar', () => {
@@ -162,6 +165,14 @@ Deno.test('Parse.findFunction.arrow7', () => {
 	assert.eqJson(tokensToText(tokens.slice(...result)).join(''), '() => a+1');
 });
 
+Deno.test('Parse.findFunction.arrow8', () => {
+	let code = 'item =>false ? log(item) : `item`';
+	let tokens = lex(htmljs, code, 'js');
+
+	let result = Parse.findFunction(tokens);
+	console.log(tokensToText(tokens.slice(...result)).join(''));
+});
+
 Deno.test('Parse.findFunction.func', () => {
 	let code = 'b=3;function(a) { return a+1 }; b=4;';
 	let tokens = lex(htmljs, code, 'js');
@@ -169,10 +180,6 @@ Deno.test('Parse.findFunction.func', () => {
 	let result = Parse.findFunction(tokens);
 	assert.eqJson(tokensToText(tokens.slice(...result)).join(''), 'function(a) { return a+1 }');
 });
-
-
-var result = ({a, b}) => a+b;
-
 
 Deno.test('Parse.findFunctionArgs.arrow1', () => {
 	let code = 'a => a+1';
@@ -253,6 +260,35 @@ Deno.test('Parse.findFunctionArgNames.named2', () => {
 
 	assert.eq(args, [{a: undefined, b: {c: undefined}}, 'e', 'g', 'h']);
 });
+
+
+
+
+
+
+
+Deno.test('Parse.function.arrowParam', () => {
+	let code = 'a => a+1; b=4';
+
+	let pf = new ParseFunction(code);
+
+	assert.eq(pf.name, undefined);
+	assert.eq(toText(pf.argTokens), ['a']);
+	assert.eq(toText(pf.bodyTokens), ['a', '+', '1', ';']);
+
+});
+
+Deno.test('Parse.function.arrowParams', () => {
+	let code = '(a, b=()=>{}) => a+1; b=4';
+
+	let pf = new ParseFunction(code);
+
+	assert.eq(pf.name, undefined);
+	console.log(pf)
+	assert.eq(toText(pf.argTokens).join(''), 'a, b=()=>{}');
+	assert.eq(toText(pf.bodyTokens), ['a', '+', '1', ';']);
+});
+
 
 
 
