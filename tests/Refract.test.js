@@ -1420,38 +1420,46 @@ Deno.test('Refract.loop.Expr4', () => {
 	}
 	eval(A.compile());
 
+	Refract.elsCreated = [];
+
 	let a = new A();
 	assert.eq(a.outerHTML, '<a-766>2</a-766>');
+
+	a.type = '3';
+	assert.eq(a.outerHTML, '<a-766>3</a-766>');
+
+	// Make sure we didn't do more work than necessary.
+	assert.eq(Refract.elsCreated, ['1', '2', '3']);
 });
 
 // Same as above, but with slice() and using ${item}.  The scope goes missing!
 Deno.test('Refract.loop._ExprNested2', () => {
 	class A extends Refract {
-		list = [];
+		items = [];
 
 		constructor() {
 			super();
-			this.list = [1];
+			this.items = [1];
 
-			window.debug = true;
-			this.type = '2'; // Causes loop item to be re-evaluated
+			//window.debug = true;
+			this.items[0] = 2; // Causes loop item to be re-evaluated
 		}
 
 		html = `
 			<a-766>
-				${this.list.slice().map(item =>
+				${this.items.slice().map(item =>
 					false
 						?  console.log(this.type)
-						:  `<div>${item}</div>`
+						:  `${item}`
 				)}
 			</a-766>`;
 	}
 	eval(A.compile());
 
 	let a = new A();
-	//document.body.append(a);
 
-	assertEquals(a.children.length, 1);
+	console.log(a.outerHTML)
+	assertEquals(a.childNodes.length, 1);
 });
 
 

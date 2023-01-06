@@ -67,7 +67,7 @@ export default class VExpression {
 	/** @type {HTMLElement} */
 	parent = null;
 
-	/** @type {VElement} */
+	/** @type {VElement|VExpression} */
 	vParent = null;
 
 	/**
@@ -116,19 +116,20 @@ export default class VExpression {
 	 * @param el {HTMLElement} Unused.
 	 * @return {int} Number of elements created. d*/
 	apply(parent=null, el=null) {
-		//#IFDEV
-		if (this.attrName)
-			throw new Error("Cannot apply an VExpression that's for an attribute.  Use evalVAttribute() or .exec.apply() instead.");
-		//#ENDIF
-
 		this.parent = parent || this.parent;
 
 		//#IFDEV
+		if (this.attrName)
+			throw new Error("Cannot apply an VExpression that's for an attribute.  Use evalVAttribute() or .exec.apply() instead.");
+
 		// Make sure we're not applying on an element that's been removed.
 		if (!('virtualElement' in this.parent) && !this.parent.parentNode)
 			return 0;
 		//#ENDIF
-		if (this.attributes) { // An Expression that creates one or more attributes.
+
+
+		// VExpression creates one or more attributes.
+		if (this.attributes) {
 			for (let attr of this.attributes)
 				parent.removeAttribute(attr);
 			this.attributes = [];
@@ -157,14 +158,7 @@ export default class VExpression {
 			return 0;
 		}
 
-
-		else if (this.attrName) {
-			//#IFDEV
-			// Make sure we're not applying on an element that's been removed.
-			throw new Error();
-			//#ENDIF
-		}
-
+		// VExpression creates DOM nodes.
 		else {
 
 			// Remove old children.
@@ -327,7 +321,8 @@ export default class VExpression {
 	 * @param root {object|array} The unproxied root object that the path originates form. */
 	receiveNotification_(action, path, value, oldVal, root) {
 
-		// .remove() has already been called on this VExpression by another operation, don't update anything.
+		// VExpression.remove() sets vParent = null.
+		// This check makes sure that this VExpression wasn't already removed by another operation triggered by the same watch.
 		if (!this.vParent)
 			return;
 
@@ -350,9 +345,6 @@ export default class VExpression {
 
 
 		this.childCount = this.getAllChildrenLength();
-
-		//if (this.watchPaths.length > 1)
-		//	debugger;
 
 		// Path 2:  If inserting, removing, or replacing a whole item within an array that matches certain criteria.
 		if (this.type !== 'complex' && path[path.length - 1].match(/^\d+$/)) {
@@ -483,6 +475,8 @@ export default class VExpression {
 	// 	return result;
 	// }
 
+	/**
+	 * @return {int} */
 	getAllChildrenLength() {
 		let result = 0;
 		for (let group of this.vChildren) {
@@ -490,14 +484,12 @@ export default class VExpression {
 				result ++;
 			else
 				for (let vChild of group) {
-					if (vChild.receiveNotification_) // Faster than vChild instanceof VExpression
+					if (vChild.receiveNotification_) // Faster than (vChild instanceof VExpression)
 						result += vChild.getAllChildrenLength();
 					else
 						result++;
 				}
 		}
-
-		//window.count++;
 
 		return result;
 	}
