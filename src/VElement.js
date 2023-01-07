@@ -7,7 +7,6 @@ htmljs.allowHashTemplates = true;
 import {div} from "./Html.js";
 import Utils from "./utils.js";
 import delve from "./delve.js";
-import {ParsedFunction} from "./ParsedFunction.js";
 
 /**
  * A virtual representation of an Element.
@@ -73,7 +72,7 @@ export default class VElement {
 		let tagName = this.tagName;
 
 		if (tagName === 'svg')
-			Refract.inSvg = true;
+			inSvg = true;
 		var oldEl = this.el;
 
 
@@ -104,7 +103,7 @@ export default class VElement {
 					args = Class.constructorArgs.map(name => this.getAttrib(name));
 
 				else if (Class.prototype.init) {// new path with init()
-					args = Refract.getArgsFromAttributes(this, Class.getInitArgs());
+					args = Refract.compiler.populateArgsFromAttribs(this, Class.getInitArgs());
 				}
 
 				// Firefox:  "Cannot instantiate a custom element inside its own constructor during upgrades"
@@ -136,7 +135,7 @@ export default class VElement {
 
 				newEl = new Class(...args);
 			}
-			else if (Refract.inSvg) // SVG's won't render w/o this path.
+			else if (inSvg) // SVG's won't render w/o this path.
 				newEl = document.createElementNS('http://www.w3.org/2000/svg', tagName);
 			else
 				newEl = document.createElement(tagName);
@@ -304,7 +303,7 @@ export default class VElement {
 
 
 		if (tagName === 'svg')
-			Refract.inSvg = false;
+			inSvg = false;
 
 		return 1; // 1 element created, not counting children.
 	}
@@ -583,7 +582,14 @@ export default class VElement {
 // TODO: What svg elements are self-closing?
 var selfClosingTags = {'area':1, 'base':1, 'br':1, 'col':1, 'embed':1, 'hr':1, 'img':1, 'input':1, 'link':1, 'meta':1, 'param':1, 'source':1,
 	'track':1, 'wbr':1, 'command':1, 'keygen':1, 'menuitem':1}
-Object.freeze(selfClosingTags);
+
+
+/**
+ * Used by VElement.apply() to keep track of whether we're within an svg tag.
+ * @type {boolean} */
+var inSvg = false;
+
+
 
 // TODO: Pair this with Utils.watchInput() ?
 function setInputValue(ref, el, value, scope) {

@@ -2362,7 +2362,7 @@ Deno.test('Refract._debugRender', () => {
 	eval(A.compile());
 
 
-	let el = A.debugRender();
+	let el = A.compiler.debugRender();
 	document.body.append(el);
 });
 
