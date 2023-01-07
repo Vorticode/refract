@@ -189,16 +189,6 @@ Deno.test('Refract.basic.initNamed', 'Test named init() parameters', () => {
 });
 
 
-
-
-
-
-
-
-
-
-
-
 Deno.test('Refract.basic.slash', () => {
 	class A extends Refract {
 		a = '//';

@@ -8,6 +8,7 @@ import VExpression from "./VExpression.js";
 import createEl from './createEl.js'; // TODO: This is erroneously still included when minified b/c rollup includes the //# IFDEV blocks.
 import Html from "./Html.js";
 import utils from "./utils.js";
+import {ParseFunction} from "./ParseFunction.js";
 
 
 /**
@@ -370,7 +371,9 @@ export default class Refract extends HTMLElement {
 			return obj;
 		}
 
-		let argNames = [...Parse.findFunctionArgNames2(func)];
+		let pf = new ParseFunction(func, false);
+
+		let argNames = [...pf.getArgNames()];
 		let result = [];
 		for (let arg of argNames)
 			if (typeof arg === 'string')
