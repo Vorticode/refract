@@ -1422,7 +1422,7 @@ Deno.test('Refract.loop.Expr4', () => {
 });
 
 // Same as above, but with slice() and using ${item}.  The scope goes missing!
-Deno.test('Refract.loop._ExprNested2', () => {
+Deno.test('Refract.loop.Expr5', () => {
 	class A extends Refract {
 		items = [];
 
@@ -1431,24 +1431,20 @@ Deno.test('Refract.loop._ExprNested2', () => {
 			this.items = [1];
 			this.render();
 
-			//window.debug = true;
 			this.items[0] = 2; // Causes loop item to be re-evaluated
 		}
 
-		// Below, the ${ gets escaped so it can be watched and evaluated later.
-		// But because of the slice(), item isn't added to the scope.
 		html = `
-			<a-766>${this.items.slice().map(item =>
+			<a-767>${this.items.slice().map(item =>
 					false
 						?  console.log(this.type)
 						:  `${item}`
-				)}</a-766>`;
+				)}</a-767>`;
 	}
 	eval(A.compile());
 
 	let a = new A();
-
-	console.log(a.outerHTML)
+	assert.eq(a.outerHTML, '<a-767>2</a-767>');
 	assertEquals(a.childNodes.length, 1);
 });
 

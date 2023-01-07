@@ -3,6 +3,7 @@ import lex, {Token} from './lex.js';
 import Utils from "./utils.js";
 import htmljs from "./lex-htmljs.js";
 import lexHtmlJs from "./lex-htmljs.js";
+import {ParseFunction} from "./ParseFunction.js";
 
 let varExpressionCache = {};
 
@@ -184,7 +185,8 @@ var Parse = {
 
 			// Skip function bodies.
 			if (i===fstart) {
-				i = this.findFunctionEnd(result, i);
+				let pf = new ParseFunction(result.slice(fstart));
+				i = fstart + pf.bodyStartIndex +pf.bodyTokens.length + 1;
 				fstart = this.findFunctionStart(result, i);
 			}
 

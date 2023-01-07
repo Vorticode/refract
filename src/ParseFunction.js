@@ -132,13 +132,49 @@ export class ParseFunction {
 
 		// Find body.
 		if (parseBody) {
-			let terminator = this.type.startsWith('arrow') ? [';', '\r\n', '\n'] : [];
 
-			let bodyEnd = Parse.findGroupEnd(tokens, this.bodyStartIndex, ['{', '('], ['}', ')'], terminator);
+			// Knowing when an unbraced arrow function ends can be difficult.
+			// E.g. consider this code:  https://jsfiddle.net/kjmzbvyt/
+			// We look for a semicolon at depth zero or a line return not preceeded by an operator.
+			let bodyEnd;
+			let isBracelessArrow = ['arrowParam', 'arrowParams'].includes(this.type);
+			if (isBracelessArrow) {
+				const open = ['{', '(', '['];
+				const close = ['}', ')', ']'];
+				const terminators = [';', ',', ...close];
+				let hanging = false;
+				for (let i=this.bodyStartIndex, token; token=tokens[i]; i++) {
+					if (['whitespace', 'comment'].includes(token.type))
+						continue;
+					if (open.includes(token.text))
+						i = Parse.findGroupEnd(tokens, i, open, close)
+
+					// Here we're implicitly at depth zero because of the Parse.findGroupEnd() above.
+					else if (terminators.includes(token.text)) {
+						bodyEnd = i;
+						break;
+					}
+					else if (token.type === 'operator')
+						hanging = true;
+					else if (!hanging && token.type === 'ln') {
+						let nextToken = tokens.slice(i).find(token => !['whitespace', 'ln', 'comment'].includes(token.type))
+						if (terminators.includes(nextToken) || nextToken.type !== 'operator') {
+							bodyEnd = i;
+							break
+						}
+					}
+					else
+						hanging = false;
+				}
+			}
+			else
+				bodyEnd = Parse.findGroupEnd(tokens, this.bodyStartIndex);
+
+
 			if (bodyEnd === null)
 				return onError('Cannot find end of function body.');
 
-			if (terminator.length && tokens[bodyEnd].text === ';')
+			if (isBracelessArrow && tokens[bodyEnd]?.text === ';')
 				bodyEnd++;
 
 			this.bodyTokens = tokens.slice(this.bodyStartIndex, bodyEnd);
