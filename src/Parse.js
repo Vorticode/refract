@@ -1,8 +1,7 @@
 import fregex from "./fregex.js";
 import lex, {Token} from './lex.js';
-import Utils from "./utils.js";
+import Utils, {assert} from "./utils.js";
 import htmljs from "./lex-htmljs.js";
-import utils from "./utils.js";
 import lexHtmlJs from "./lex-htmljs.js";
 
 let varExpressionCache = {};
@@ -41,59 +40,59 @@ export class ParseFunction {
 
 
 		/**
+		 * @param tokens {Token[]}
+		 * @param start {int} Index of the first token after an optional open parenthesis.
 		 * @return {int} Index of token after the last arg token. */
 		const parseArgTokens = (tokens, start=0) => {
-			let groupEndIndex = Parse.findGroupEnd(tokens, start+1);
+			assert(tokens[start].type === 'identifier' || tokens[0].text === ')');
+			let groupEndIndex = Parse.findGroupEnd(tokens, start);
 			if (groupEndIndex === null)
 				return -1;
 
-			this.argTokens = tokens.slice(start+1, groupEndIndex);
-			return groupEndIndex+1;
+			this.argTokens = tokens.slice(start, groupEndIndex);
+			return groupEndIndex;
 		}
 
 		// Function
 		if (tokens[0].text === 'function') {
 			this.type = 'function';
-			let index = tokens.findIndex(token => !['whitespace', 'ln', 'comment'].includes(token.type));
+			let index = tokens.slice(1).findIndex(token => !['whitespace', 'ln', 'comment'].includes(token.type));
 			if (index === -1)
 				return onError('Not enough tokens to be a function.');
 
-			if (tokens[index].type === 'identifier') {
-				this.name = tokens[index].text;
-				index = tokens.findIndex(token => token.text === '(');
-				if (index === -1)
-					return onError('Cannot find opening ( for function arguments.');
-				this.argsStartIndex = index + 1;
+			// Optional function name
+			if (tokens[index+1].type === 'identifier')
+				this.name = tokens[index+1].text;
 
-				let argEndIndex = parseArgTokens(tokens, this.argsStartIndex);
-				if (argEndIndex === -1)
-					return onError('Cannot find closing ) and end of arguments list.');
-
-				this.bodyStartIndex = tokens.slice(argEndIndex).findIndex(token => token.text === '{')
-				if (this.bodyStartIndex === -1)
-					return onError('Cannot find start of function body.');
-			}
+			let argStartIndex = tokens.slice(index+1).findIndex(token => token.text === '(');
+			if (argStartIndex === -1)
+				return onError('Cannot find opening ( for function arguments.');
+			this.argsStartIndex = index + 1 + argStartIndex + 1;
 		}
 
 		// Method
 		else if (tokens[0].type === 'identifier') {
 			let nextOpIndex = tokens.findIndex(token => token.type==='operator');
-
 			if (nextOpIndex !== -1 && tokens[nextOpIndex]?.text === '(') {
 				this.type = 'method';
 				this.name = tokens[0].text;
 				this.argsStartIndex = nextOpIndex+1;
-
-				let argEndIndex = parseArgTokens(tokens, this.argsStartIndex);
-				if (argEndIndex === -1)
-					return onError('Cannot find ) and end of arguments list.');
-
-				this.bodyStartIndex = tokens.slice(argEndIndex).findIndex(token => token.text === '{')
-				if (this.bodyStartIndex === -1)
-					return onError('Cannot find start of function body.');
 			}
-			// else is a single param arrow function
 		}
+
+		// Find args and body start
+		if (['function', 'method'].includes(this.type)) {
+			let argEndIndex = parseArgTokens(tokens, this.argsStartIndex);
+			if (argEndIndex === -1)
+				return onError('Cannot find closing ) and end of arguments list.');
+
+			let bodyStartIndex = tokens.slice(argEndIndex).findIndex(token => token.text === '{')
+			if (this.bodyStartIndex === -1)
+				return onError('Cannot find start of function body.');
+
+			this.bodyStartIndex = argEndIndex + bodyStartIndex;
+		}
+
 
 		// Arrow function
 		if (!this.type) {
@@ -102,7 +101,7 @@ export class ParseFunction {
 			let type, argEndIndex;
 			if (tokens[0].text === '(') {
 				this.argsStartIndex = 1;
-				argEndIndex = parseArgTokens(tokens);
+				argEndIndex = parseArgTokens(tokens, 1);
 				if (argEndIndex === -1)
 					return onError('Cannot find ) and end of arguments list.');
 				type = 'Params';
@@ -118,9 +117,9 @@ export class ParseFunction {
 
 
 			// Find arrow
-			let arrowIndex = tokens.slice(argEndIndex).findIndex(token => token.type === 'operator');
+			let arrowIndex = tokens.slice(argEndIndex).findIndex(token => token.text === '=>');
 			if (arrowIndex === -1)
-				return onError('Cannot find function body.');
+				return onError('Cannot find arrow before function body.');
 
 			// Find first real token after arrow
 			let bodyStartIndex = tokens.slice(argEndIndex + arrowIndex + 1).findIndex(token => !['whitespace', 'ln', 'comment'].includes(token.type))
