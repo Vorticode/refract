@@ -8,7 +8,7 @@ import VExpression from "./VExpression.js";
 import createEl from './createEl.js'; // TODO: This is erroneously still included when minified b/c rollup includes the //# IFDEV blocks.
 import Html from "./Html.js";
 import utils from "./utils.js";
-import {ParseFunction} from "./ParseFunction.js";
+import {ParsedFunction} from "./ParsedFunction.js";
 
 
 /**
@@ -39,6 +39,8 @@ export default class Refract extends HTMLElement {
 	/**
 	 * @type {string[]} Names of the constructor's arguments. */
 	static constructorArgs = null;
+
+	static initArgs = null;
 
 
 	/**
@@ -358,9 +360,9 @@ export default class Refract extends HTMLElement {
 	/**
 	 * Get the arguments to the init function from the attributes.
 	 * @param el
-	 * @param func
+	 * @param argNames
 	 * @returns {*[]} */
-	static getArgsFromAttributes(el, func) {
+	static getArgsFromAttributes(el, argNames) {
 
 		const populateObject = obj => {
 			for (let name in obj)
@@ -371,9 +373,6 @@ export default class Refract extends HTMLElement {
 			return obj;
 		}
 
-		let pf = new ParseFunction(func, false);
-
-		let argNames = [...pf.getArgNames()];
 		let result = [];
 		for (let arg of argNames)
 			if (typeof arg === 'string')
@@ -382,6 +381,14 @@ export default class Refract extends HTMLElement {
 				result.push(populateObject(arg));
 
 		return result;
+	}
+
+	static getInitArgs() {
+		if (!this.initArgs && this.prototype.init) {
+			let pf = new ParsedFunction(this.prototype.init, false);
+			this.initArgs = [...pf.getArgNames()];
+		}
+		return this.initArgs || [];
 	}
 
 	static preCompile(self) {
@@ -396,7 +403,7 @@ export default class Refract extends HTMLElement {
 				
 				if (this.init) {
 					let args = this.parentElement
-						? Refract.getArgsFromAttributes(this, this.init)
+						? Refract.getArgsFromAttributes(this, this.constructor.getInitArgs())
 						: this.constructorArgs2;
 					this.init(...args);
 				}

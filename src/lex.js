@@ -184,7 +184,7 @@ export default function lex(grammar, code, mode=null, options={}, line=1, col=1,
 		else if (matchType) { // Descend into new mode
 			let subTokens = lex(grammar, code, matchType, options, line, col+length, index+length);
 			if (subTokens === false) // callback returned false, bail.
-				return false;
+				return result;
 			let tokens = [tokenObj, ...subTokens].filter(t=>t.text.length);
 			length = tokens.reduce((p, c) => {
 				return p + (c.originalLength || c.text.length)
@@ -205,8 +205,8 @@ export default function lex(grammar, code, mode=null, options={}, line=1, col=1,
 			result.push(tokenObj);
 			if (options.callback) {
 				let status = options.callback(tokenObj);
-				if (!status)
-					return false;
+				if (status === false)
+					return result;
 			}
 
 			// 4. Increment line/col number.

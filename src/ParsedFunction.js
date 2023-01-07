@@ -3,7 +3,7 @@ import htmljs from "./lex-htmljs.js";
 import {assert} from "./utils.js";
 import Parse from "./Parse.js";
 
-export class ParseFunction {
+export class ParsedFunction {
 
 
 	name;
@@ -30,8 +30,24 @@ export class ParseFunction {
 	constructor(tokens, parseBody = true, onError = null) {
 		if (typeof tokens === 'function')
 			tokens = tokens.toString();
-		if (typeof tokens === 'string')
-			tokens = lex(htmljs, tokens, 'js'); // TODO: Stop at body end, or body beginning if parseBody=false
+		if (typeof tokens === 'string') {
+			let callback;
+			if (!parseBody) {
+				let depth = 0;
+
+				// Stop when we get to { or =>
+				callback = token => {
+					if (token.text === '(')
+						depth++
+					else if (token.text === ')')
+						depth --;
+					if (depth === 0 && token.text === '{' || token.text === '=>')
+						return false;
+				};
+			}
+
+			tokens = lex(htmljs, tokens, 'js', {callback}); // TODO: Stop at body end, or body beginning if parseBody=false
+		}
 
 		onError = onError || (msg => {
 			throw new Error(msg)

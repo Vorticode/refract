@@ -7,6 +7,7 @@ htmljs.allowHashTemplates = true;
 import {div} from "./Html.js";
 import Utils from "./utils.js";
 import delve from "./delve.js";
+import {ParsedFunction} from "./ParsedFunction.js";
 
 /**
  * A virtual representation of an Element.
@@ -101,8 +102,10 @@ export default class VElement {
 				let args = []
 				if (Class.constructorArgs) // old path that uses constructor()
 					args = Class.constructorArgs.map(name => this.getAttrib(name));
-				else if (Class.prototype.init) // new path with init()
-					args = Refract.getArgsFromAttributes(this, Class.prototype.init);
+
+				else if (Class.prototype.init) {// new path with init()
+					args = Refract.getArgsFromAttributes(this, Class.getInitArgs());
+				}
 
 				// Firefox:  "Cannot instantiate a custom element inside its own constructor during upgrades"
 				// Chrome:  "TypeError: Failed to construct 'HTMLElement': This instance is already constructed"

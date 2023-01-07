@@ -2,7 +2,7 @@ import {assert} from './Testimony.js';
 import Parse from './../src/Parse.js';
 import lex from "./../src/lex.js";
 import htmljs from "./../src/lex-htmljs.js";
-import {ParseFunction} from "../src/ParseFunction.js";
+import {ParsedFunction} from "../src/ParsedFunction.js";
 
 
 /**
@@ -247,7 +247,7 @@ Deno.test('Parse.findFunctionArgTokens.func', () => {
 Deno.test('ParseFunction.construct.arrowParam', () => {
 	let code = 'a => a+1; b=4';
 
-	let pf = new ParseFunction(code);
+	let pf = new ParsedFunction(code);
 
 	assert.eq(pf.name, undefined);
 	assert.eq(toText(pf.argTokens), ['a']);
@@ -257,7 +257,7 @@ Deno.test('ParseFunction.construct.arrowParam', () => {
 Deno.test('ParseFunction.construct.arrowParams', () => {
 	let code = '(a, b=()=>{}) => a+1; b=4';
 
-	let pf = new ParseFunction(code);
+	let pf = new ParsedFunction(code);
 
 	assert.eq(pf.name, undefined);
 	assert.eq(toText(pf.argTokens).join(''), 'a, b=()=>{}');
@@ -269,7 +269,7 @@ Deno.test('ParseFunction.construct.arrowParams', () => {
 Deno.test('ParseFunction.construct.arrowParamsEmpty', () => {
 	let code = '() => 2+1\r\nb=4';
 
-	let pf = new ParseFunction(code);
+	let pf = new ParsedFunction(code);
 
 	assert.eq(pf.name, undefined);
 	assert.eq(pf.argTokens, []);
@@ -279,7 +279,7 @@ Deno.test('ParseFunction.construct.arrowParamsEmpty', () => {
 Deno.test('ParseFunction.construct.arrowParamBrace', () => {
 	let code = 'a => {return a+1} b=4';
 
-	let pf = new ParseFunction(code);
+	let pf = new ParsedFunction(code);
 
 	assert.eq(pf.name, undefined);
 	assert.eq(toText(pf.argTokens), ['a']);
@@ -289,7 +289,7 @@ Deno.test('ParseFunction.construct.arrowParamBrace', () => {
 
 Deno.test('ParseFunction.construct.arrowParamsBrace', () => {
 	let code = '(a, b=()=>{}, c) => {return a+1;} b=4';
-	let pf = new ParseFunction(code);
+	let pf = new ParsedFunction(code);
 
 	assert.eq(pf.name, undefined);
 	assert.eq(toText(pf.argTokens).join(''), 'a, b=()=>{}, c');
@@ -298,7 +298,7 @@ Deno.test('ParseFunction.construct.arrowParamsBrace', () => {
 
 Deno.test('ParseFunction.construct.arrowParamsEmptyBrace', () => {
 	let code = '() => {return 2+1;} b=4';
-	let pf = new ParseFunction(code);
+	let pf = new ParsedFunction(code);
 
 	assert.eq(pf.name, undefined);
 	assert.eq(pf.argTokens, []);
@@ -309,7 +309,7 @@ Deno.test('ParseFunction.construct.arrowParamsEmptyBrace', () => {
 
 Deno.test('ParseFunction.construct.function', () => {
 	let code = 'function (a, b=()=>{}) {return a+1;} b=4';
-	let pf = new ParseFunction(code);
+	let pf = new ParsedFunction(code);
 
 	assert.eq(pf.name, undefined);
 	assert.eq(toText(pf.argTokens).join(''), 'a, b=()=>{}');
@@ -319,7 +319,7 @@ Deno.test('ParseFunction.construct.function', () => {
 
 Deno.test('ParseFunction.construct.functionName', () => {
 	let code = 'function test(a, b=()=>{}) {return a+1;} b=4';
-	let pf = new ParseFunction(code);
+	let pf = new ParsedFunction(code);
 
 	assert.eq(pf.name, 'test');
 	assert.eq(toText(pf.argTokens).join(''), 'a, b=()=>{}');
@@ -328,7 +328,7 @@ Deno.test('ParseFunction.construct.functionName', () => {
 
 Deno.test('ParseFunction.construct.functionNamedArgs', () => {
 	let code = 'function test({a, b=()=>{}}, c) {return a+1;} b=4';
-	let pf = new ParseFunction(code);
+	let pf = new ParsedFunction(code);
 
 	assert.eq(pf.name, 'test');
 	assert.eq(toText(pf.argTokens).join(''), '{a, b=()=>{}}, c');
@@ -337,7 +337,7 @@ Deno.test('ParseFunction.construct.functionNamedArgs', () => {
 
 Deno.test('ParseFunction.construct.functionParamsEmpty', () => {
 	let code = 'function test() {return 2+1;} b=4';
-	let pf = new ParseFunction(code);
+	let pf = new ParsedFunction(code);
 
 	assert.eq(pf.name, 'test');
 	assert.eq(pf.argTokens, []);
@@ -347,7 +347,7 @@ Deno.test('ParseFunction.construct.functionParamsEmpty', () => {
 
 Deno.test('ParseFunction.construct.method', () => {
 	let f = {test(a, b=()=>{}) {return a+1;}}.test;
-	let pf = new ParseFunction(f);
+	let pf = new ParsedFunction(f);
 
 	assert.eq(pf.name, 'test');
 	assert.eq(toText(pf.argTokens).join(''), 'a, b=()=>{}');
@@ -358,7 +358,7 @@ Deno.test('ParseFunction.construct.method', () => {
 
 Deno.test('ParseFunction.getArgNames.basic', () => {
 	let f = function(a, b=window) { return a+1 };
-	let args = [...new ParseFunction(f).getArgNames()];
+	let args = [...new ParsedFunction(f).getArgNames()];
 	assert.eq(args, ['a', 'b']);
 });
 
@@ -367,7 +367,7 @@ Deno.test('ParseFunction.getArgNames.basic', () => {
 
 Deno.test('ParseFunction.getArgNames.named', () => {
 	let f = function({a, b}={}, c) { return a+1 };
-	let args = [...new ParseFunction(f).getArgNames()];
+	let args = [...new ParsedFunction(f).getArgNames()];
 	assert.eq(args, [{a:undefined, b:undefined}, 'c']);
 });
 
@@ -375,7 +375,7 @@ Deno.test('ParseFunction.getArgNames.named', () => {
 Deno.test('ParseFunction.getArgNames.named2', () => {
 	let f = function({a, b: {c:d}}, e={f:2}, g=function() { return {window, document} }, h) { return a+1 };
 
-	let args = [...new ParseFunction(f).getArgNames()];
+	let args = [...new ParsedFunction(f).getArgNames()];
 
 	assert.eq(args, [{a: undefined, b: {c: undefined}}, 'e', 'g', 'h']);
 });
