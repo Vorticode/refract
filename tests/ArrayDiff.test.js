@@ -3,7 +3,7 @@ Testimony.enableJsDom();
 
 import ArrayDiff from './../src/ArrayDiff.js';
 
-Deno.test('ArrayDiff.removeEnd', () => {
+Testimony.test('ArrayDiff.removeEnd', () => {
 	let array1 = [{name: 'A'}, {name: 'B'}, {name: 'C'}];
 	let array2 = [array1[0], array1[1]];
 	let ops = (new ArrayDiff(array1)).ops(array2);
@@ -11,7 +11,7 @@ Deno.test('ArrayDiff.removeEnd', () => {
 	assertEquals(ops, [['remove', 2]]);
 });
 
-Deno.test('ArrayDiff.removeStart', () => {
+Testimony.test('ArrayDiff.removeStart', () => {
 	let array1 = [{name: 'A'}, {name: 'B'}, {name: 'C'}];
 	let array2 = [array1[1], array1[2]];
 	let ops = (new ArrayDiff(array1)).ops(array2);
@@ -19,7 +19,7 @@ Deno.test('ArrayDiff.removeStart', () => {
 	assertEquals(ops, [['remove', 0]]);
 });
 
-Deno.test('ArrayDiff.removeMiddle', () => {
+Testimony.test('ArrayDiff.removeMiddle', () => {
 	let array1 = [{name: 'A'}, {name: 'B'}, {name: 'C'}];
 	let array2 = [array1[0], array1[2]];
 	let ops = (new ArrayDiff(array1)).ops(array2);
@@ -29,7 +29,7 @@ Deno.test('ArrayDiff.removeMiddle', () => {
 
 
 
-Deno.test('ArrayDiff.insertEnd', () => {
+Testimony.test('ArrayDiff.insertEnd', () => {
 	let array1 = [{name: 'A'}, {name: 'B'}];
 	let array2 = [array1[0], array1[1], {name: 'C'}];
 	let ops = (new ArrayDiff(array1)).ops(array2);
@@ -37,7 +37,7 @@ Deno.test('ArrayDiff.insertEnd', () => {
 	assertEquals(ops, [['insert', 2, {name: 'C'}]]);
 });
 
-Deno.test('ArrayDiff.insertStart', () => {
+Testimony.test('ArrayDiff.insertStart', () => {
 	let array1 = [{name: 'B'}, {name: 'C'}];
 	let array2 = [{name: 'A'}, array1[0], array1[1]];
 	let ops = (new ArrayDiff(array1)).ops(array2);
@@ -45,7 +45,7 @@ Deno.test('ArrayDiff.insertStart', () => {
 	assertEquals(ops, [['insert', 0, {name: 'A'}]]);
 });
 
-Deno.test('ArrayDiff.insertMiddle', () => {
+Testimony.test('ArrayDiff.insertMiddle', () => {
 	let array1 = [{name: 'A'}, {name: 'C'}];
 	let array2 = [array1[0], {name: 'B'}, array1[1]];
 	let ops = (new ArrayDiff(array1)).ops(array2);
@@ -57,7 +57,7 @@ Deno.test('ArrayDiff.insertMiddle', () => {
 
 
 
-Deno.test('ArrayDiff.swap2', () => {
+Testimony.test('ArrayDiff.swap2', () => {
 	let array1 = [{name: 'A'}, {name: 'B'}];
 	let array2 = [array1[1], array1[0]];
 	let ops = (new ArrayDiff(array1)).ops(array2);
@@ -65,7 +65,7 @@ Deno.test('ArrayDiff.swap2', () => {
 	assertEquals(ops, [['move', 0, 1]]);
 });
 
-Deno.test('ArrayDiff.reverse3', () => {
+Testimony.test('ArrayDiff.reverse3', () => {
 	let array1 = [{name: 'A'}, {name: 'B'}, {name: 'C'}];
 	let array2 = [array1[2], array1[1], array1[0]];
 	let ops = (new ArrayDiff(array1)).ops(array2);
@@ -76,7 +76,7 @@ Deno.test('ArrayDiff.reverse3', () => {
 	]);
 });
 
-Deno.test('ArrayDiff.reverse4', () => {
+Testimony.test('ArrayDiff.reverse4', () => {
 	let array1 = [{name: 'A'}, {name: 'B'}, {name: 'C'}, {name: 'D'}];
 	let array2 = [array1[3], array1[2], array1[1], array1[0]];
 	let ops = (new ArrayDiff(array1)).ops(array2);
@@ -91,7 +91,7 @@ Deno.test('ArrayDiff.reverse4', () => {
 
 
 
-Deno.test('ArrayDiff.replaceStartEnd', () => {
+Testimony.test('ArrayDiff.replaceStartEnd', () => {
 	let array1 = [{name: 'A'}, {name: 'B'}, {name: 'C'}];
 	let array2 = [{name: 'E'}, array1[1], {name: 'F'}];
 	let ops = (new ArrayDiff(array1)).ops(array2);
@@ -105,7 +105,7 @@ Deno.test('ArrayDiff.replaceStartEnd', () => {
 });
 
 
-Deno.test('ArrayDiff._swapReplace', () => {
+Testimony.test('ArrayDiff._swapReplace', () => {
 	let array1 = [{name: 'A'}, {name: 'B'}, {name: 'C'}, {name: 'D'}];
 	let array2 = [{name: 'E'}, array1[2], array1[1], {name: 'F'}];
 	let ops = (new ArrayDiff(array1)).ops(array2);

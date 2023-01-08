@@ -33,7 +33,7 @@ function trackGarbage(callback) {
 
 
 
-Deno.test('Watcher.init', () => {
+Testimony.test('Watcher.init', () => {
 	var o = {a: [0, 1]};
 
 	Watch.add(o,['a'], (action, path, value) => {});
@@ -42,7 +42,7 @@ Deno.test('Watcher.init', () => {
 	assertEquals(o.a[1], 1);
 });
 
-Deno.test('Watcher.set', () => {
+Testimony.test('Watcher.set', () => {
 	var o = {a: 1};
 
 	var called = [];
@@ -54,7 +54,7 @@ Deno.test('Watcher.set', () => {
 
 // old:
 
-Deno.test('Watch.init', () => {
+Testimony.test('Watch.init', () => {
 	var o = {a: [0, 1]};
 	var wp = new WatchProperties(o);
 	wp.subscribe_(['a'], (action, path, value) => {});
@@ -65,7 +65,7 @@ Deno.test('Watch.init', () => {
 
 
 // Assign proxied.
-Deno.test('Watch.removeProxy', () => {
+Testimony.test('Watch.removeProxy', () => {
 	var b = {
 		items: [{name: 1}]
 	};
@@ -81,7 +81,7 @@ Deno.test('Watch.removeProxy', () => {
 	assert(!b.items.$removeProxy[0].$isProxy);
 });
 
-Deno.test('Watch.removeProxy2', () => {
+Testimony.test('Watch.removeProxy2', () => {
 	var o = {
 		a: {
 			c: undefined
@@ -97,7 +97,7 @@ Deno.test('Watch.removeProxy2', () => {
 });
 
 // Same as WatchProxy.twoLevel, but with watch() instead of watchProxy.
-Deno.test('Watch.nestedUpdate', () => {
+Testimony.test('Watch.nestedUpdate', () => {
 	var a = {
 		b1: {
 			c: 1,
@@ -127,7 +127,7 @@ Deno.test('Watch.nestedUpdate', () => {
 
 
 
-Deno.test('Watch._nestedUpdateViaFunction', () => {
+Testimony.test('Watch._nestedUpdateViaFunction', () => {
 	var b = {
 		name: 'apple',
 		update() {
@@ -152,7 +152,7 @@ Deno.test('Watch._nestedUpdateViaFunction', () => {
 
 
 // Test finding proxied items.
-Deno.test('Watch.indexOf', () => {
+Testimony.test('Watch.indexOf', () => {
 	//trackGarbage(() => {
 
 		var b = {
@@ -173,7 +173,7 @@ Deno.test('Watch.indexOf', () => {
 
 });
 
-Deno.test('Watch.pop', () => {
+Testimony.test('Watch.pop', () => {
 	trackGarbage(() => {
 
 		var o = { a: [0, 1] };
@@ -192,7 +192,7 @@ Deno.test('Watch.pop', () => {
 	});
 });
 
-Deno.test('Watch.unsubscribe', () => {
+Testimony.test('Watch.unsubscribe', () => {
 	trackGarbage(() => {
 
 		var o = { a: [0, 1] };
@@ -214,7 +214,7 @@ Deno.test('Watch.unsubscribe', () => {
 	});
 });
 
-Deno.test('Watch.unsubscribe2', () => {
+Testimony.test('Watch.unsubscribe2', () => {
 	trackGarbage(() => {
 
 		// Make sure unsubscribing a child leaves the parent.  This used to fail.
@@ -249,7 +249,7 @@ Deno.test('Watch.unsubscribe2', () => {
 });
 
 // Same as WatchProxy.htmlelement, but with watch() instead of watchProxy.
-Deno.test('Watch.htmlElement', () => {
+Testimony.test('Watch.htmlElement', () => {
 	var o = {
 		a: document
 	};
@@ -258,7 +258,7 @@ Deno.test('Watch.htmlElement', () => {
 });
 
 
-Deno.test('Watch.reSubscribeInCallback', () => {
+Testimony.test('Watch.reSubscribeInCallback', () => {
 
 	trackGarbage(() => {
 

@@ -1,13 +1,13 @@
-import {assert, assertEquals} from './Testimony.js';
+import Testimony, {assert, assertEquals} from './Testimony.js';
 import fregex from './../src/fregex.js';
 
-Deno.test('fregex.sequence', () => {
+Testimony.test('fregex.sequence', () => {
 	let isMatch = fregex('a', '=', 'b');
 	assert(isMatch(['a', '=', 'b']));
 	assert(!isMatch(['a', '=', 'd']));
 });
 
-Deno.test('fregex.ruleTypes', () => {
+Testimony.test('fregex.ruleTypes', () => {
 	let isMatch = fregex(
 		tokens => tokens[0] === 'a',	// function
 		'=',							// string
@@ -16,14 +16,14 @@ Deno.test('fregex.ruleTypes', () => {
 	assert(isMatch(['a', '=', 'b']));
 });
 
-Deno.test('fregex.or', () => {
+Testimony.test('fregex.or', () => {
 	let isMatch = fregex.or('a', 'b');
 	assert(isMatch(['a']));
 	assert(isMatch(['b']));
 	assert(!isMatch(['c']));
 });
 
-Deno.test('fregex.andOr', () => {
+Testimony.test('fregex.andOr', () => {
 	let isMatch = fregex(
 		'a',
 		fregex.or('b1', 'b2'),
@@ -34,7 +34,7 @@ Deno.test('fregex.andOr', () => {
 	assertEquals(isMatch(['a', 'b3', 'c']), false);
 });
 
-Deno.test('fregex.andOr2', () => {
+Testimony.test('fregex.andOr2', () => {
 	let isMatch = fregex(
 		fregex.or('a', 'b'),
 		'=',
@@ -46,7 +46,7 @@ Deno.test('fregex.andOr2', () => {
 	assert(!isMatch(['c', '=', 'd']));
 });
 
-Deno.test('fregex.orAnd', () => {
+Testimony.test('fregex.orAnd', () => {
 	let isMatch = fregex.or(
 		['a', '=', 'b'], // array is equivalent to fregex.and()
 		['c', '=', 'd']
@@ -56,7 +56,7 @@ Deno.test('fregex.orAnd', () => {
 	assert(!isMatch(['a', '=', 'd']));
 });
 
-Deno.test('fregex._not', () => {
+Testimony.test('fregex._not', () => {
 	let isMatch = fregex.not(
 		'a'
 	);
@@ -67,7 +67,7 @@ Deno.test('fregex._not', () => {
 	assertEquals(isMatch(['a', 'b']), false);
 });
 
-Deno.test('fregex.nor', () => {
+Testimony.test('fregex.nor', () => {
 	let isMatch = fregex(
 		'a',
 		fregex.nor('b1', 'b2'),
@@ -79,7 +79,7 @@ Deno.test('fregex.nor', () => {
 	assertEquals(isMatch(['a', 'b3', 'c']), 3);
 });
 
-Deno.test('fregex.zeroOrOne', () => {
+Testimony.test('fregex.zeroOrOne', () => {
 	let isMatch = fregex(
 		'a',
 		fregex.zeroOrOne('b1'),
@@ -91,7 +91,7 @@ Deno.test('fregex.zeroOrOne', () => {
 	assertEquals(isMatch(['a', 'c']), 2);
 });
 
-Deno.test('fregex.zeroOrOne2', () => {
+Testimony.test('fregex.zeroOrOne2', () => {
 	let isMatch = fregex(
 		'a',
 		fregex.zeroOrOne('b1', 'b2'),  // acts like an AND
@@ -104,7 +104,7 @@ Deno.test('fregex.zeroOrOne2', () => {
 	assertEquals(isMatch(['a', 'b1', 'b2', 'c']), 4);
 });
 
-Deno.test('fregex.zeroOrMore', () => {
+Testimony.test('fregex.zeroOrMore', () => {
 	let isMatch = fregex.zeroOrMore('b');
 
 	assertEquals(isMatch(['a']), 0);
@@ -112,7 +112,7 @@ Deno.test('fregex.zeroOrMore', () => {
 	assertEquals(isMatch(['a', 'b']), 0); // only find at start.
 });
 
-Deno.test('fregex.zeroOrMore2', () => {
+Testimony.test('fregex.zeroOrMore2', () => {
 	let isMatch = fregex(
 		fregex.zeroOrMore('b1'),
 		'c',
@@ -123,7 +123,7 @@ Deno.test('fregex.zeroOrMore2', () => {
 	assertEquals(isMatch(['a', 'b1', 'c']), false);
 });
 
-Deno.test('fregex.zeroOrMore3', () => {
+Testimony.test('fregex.zeroOrMore3', () => {
 	let isMatch = fregex(
 		'a',
 		fregex.zeroOrMore('b1'),
@@ -138,7 +138,7 @@ Deno.test('fregex.zeroOrMore3', () => {
 	assertEquals(isMatch(['a', 'b1', 'b1', 'c']), 4);
 });
 
-Deno.test('fregex.zeroOrMoreOr', () => {
+Testimony.test('fregex.zeroOrMoreOr', () => {
 	let isMatch = fregex(
 		'a',
 		fregex.zeroOrMore(fregex.or('b1', 'b2')),
@@ -153,7 +153,7 @@ Deno.test('fregex.zeroOrMoreOr', () => {
 });
 
 
-Deno.test('fregex.oneOrMore', () => {
+Testimony.test('fregex.oneOrMore', () => {
 	let isMatch = fregex(
 		'a',
 		fregex.oneOrMore('b1'),
@@ -165,7 +165,7 @@ Deno.test('fregex.oneOrMore', () => {
 	assertEquals(isMatch(['a', 'b1', 'b1', 'c']), 4);
 });
 
-Deno.test('fregex.oneOrMoreOr', () => {
+Testimony.test('fregex.oneOrMoreOr', () => {
 	let isMatch = fregex(
 		'a',
 		fregex.oneOrMore(fregex.or('b1', 'b2', 'b3')),
@@ -181,7 +181,7 @@ Deno.test('fregex.oneOrMoreOr', () => {
 
 
 
-Deno.test('fregex.oneOrMoreOr', () => {
+Testimony.test('fregex.oneOrMoreOr', () => {
 	let isMatch = fregex(
 		'a',
 		fregex.oneOrMore(
@@ -197,7 +197,7 @@ Deno.test('fregex.oneOrMoreOr', () => {
 	assertEquals(isMatch(['a', 'b1', 'b3', 'c']), false);
 });
 
-Deno.test('fregex.oneOrMoreNot', () => {
+Testimony.test('fregex.oneOrMoreNot', () => {
 	let isMatch = fregex.oneOrMore(
 		fregex.not(';')
 	);
@@ -207,7 +207,7 @@ Deno.test('fregex.oneOrMoreNot', () => {
 	assertEquals(isMatch(['a', 'b', 'c']), 3);
 });
 
-Deno.test('fregex.oneOrMoreNot2', () => {
+Testimony.test('fregex.oneOrMoreNot2', () => {
 	let isMatch = fregex.oneOrMore(
 		fregex.not('end', ';')
 	);
@@ -217,7 +217,7 @@ Deno.test('fregex.oneOrMoreNot2', () => {
 	assertEquals(isMatch(['a', 'b', 'c', 'end']), 4);
 });
 
-Deno.test('fregex.matchFirst', () => {
+Testimony.test('fregex.matchFirst', () => {
 	let pattern = fregex('a', '=', 'b');
 	let tokens = ['var', 'a', '=', 'b', ';'];
 	let result = fregex.matchFirst(pattern, tokens);
@@ -226,7 +226,7 @@ Deno.test('fregex.matchFirst', () => {
 	assertEquals(result.index, 1);
 });
 
-Deno.test('fregex.end', () => {
+Testimony.test('fregex.end', () => {
 	let isMatch = fregex(
 		'a',
 		'=',
@@ -240,7 +240,7 @@ Deno.test('fregex.end', () => {
 
 // Make sure fregex.or can match items that advance 0 tokens.
 // This used to be a bug.
-Deno.test('fregex.endOr', () => {
+Testimony.test('fregex.endOr', () => {
 	let isMatch = fregex(
 		'a', '=', '1',
 		fregex.or(

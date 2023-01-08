@@ -1,4 +1,4 @@
-import {assert, assertEquals, Testimony} from './Testimony.js';
+import Testimony, {assert, assertEquals} from './Testimony.js';
 Testimony.enableJsDom();
 
 //import Refract from './../dist/Refract.js';
@@ -10,7 +10,7 @@ Refract.elsCreated = [];
 
 /**
  * Comment test. */
-Deno.test('Refract.basic.empty', () => {
+Testimony.test('Refract.basic.empty', () => {
 	class A extends Refract {
 		html() { return `<x-10></x-10>` }
 	}
@@ -21,7 +21,7 @@ Deno.test('Refract.basic.empty', () => {
 	assertEquals(a.childNodes.length, 0);
 });
 
-Deno.test('Refract.basic.nonTemplate', () => {
+Testimony.test('Refract.basic.nonTemplate', () => {
 	class A extends Refract {
 		html() { return '<x-15>everyone\'s <b \t>happy</b></x-15>'}
 	}
@@ -32,7 +32,7 @@ Deno.test('Refract.basic.nonTemplate', () => {
 	assertEquals(a.childNodes.length, 2);
 });
 
-Deno.test('Refract.basic.escaped', () => {
+Testimony.test('Refract.basic.escaped', () => {
 	class A extends Refract {
 		html() { return `\r\n\t<x-16>everyone's ${`<b \t>happy</b>`}</x-16>`}
 	}
@@ -44,7 +44,7 @@ Deno.test('Refract.basic.escaped', () => {
 });
 
 
-Deno.test('Refract.basic.nonTemplateEscaped', () => {
+Testimony.test('Refract.basic.nonTemplateEscaped', () => {
 	class A extends Refract {
 		html() { return '\r\n\t<x-17>everyone\'s ${`<b \t>happy</b>`}</x-17>'}
 	}
@@ -56,7 +56,7 @@ Deno.test('Refract.basic.nonTemplateEscaped', () => {
 });
 
 
-Deno.test('Refract.basic.constructor', () => {
+Testimony.test('Refract.basic.constructor', () => {
 	let constructorCalled = 0;
 
 	class A extends Refract {
@@ -82,7 +82,7 @@ Deno.test('Refract.basic.constructor', () => {
 	// assertEquals(constructorCalled, 2);
 });
 
-Deno.test('Refract.basic.constructor2', () => {
+Testimony.test('Refract.basic.constructor2', () => {
 	let constructorCalled = 0;
 
 	class A extends Refract {
@@ -110,7 +110,7 @@ Deno.test('Refract.basic.constructor2', () => {
 
 
 
-Deno.test('Refract.basic.init', () => {
+Testimony.test('Refract.basic.init', () => {
 	let constructorCalled = 0;
 
 	class A extends Refract {
@@ -143,7 +143,7 @@ Deno.test('Refract.basic.init', () => {
 
 
 
-Deno.test('Refract.basic.initNamed', 'Test named init() parameters', () => {
+Testimony.test('Refract.basic.initNamed', 'Test named init() parameters', () => {
 	let constructorCalled = 0;
 
 	class A extends Refract {
@@ -189,7 +189,7 @@ Deno.test('Refract.basic.initNamed', 'Test named init() parameters', () => {
 });
 
 
-Deno.test('Refract.basic.slash', () => {
+Testimony.test('Refract.basic.slash', () => {
 	class A extends Refract {
 		a = '//';
 		html = `<a-30></a-30>`;
@@ -197,7 +197,7 @@ Deno.test('Refract.basic.slash', () => {
 	eval(A.compile());
 });
 
-Deno.test('Refract.basic.import', () => {
+Testimony.test('Refract.basic.import', () => {
 
 	class A extends Refract {
 		constructor() {
@@ -216,7 +216,7 @@ Deno.test('Refract.basic.import', () => {
 	assertEquals(a.constructorCalled, true);
 });
 
-Deno.test('Refract.basic.text', () => {
+Testimony.test('Refract.basic.text', () => {
 
 	class A extends Refract {
 		html = `<x-5>text</x-5>`;
@@ -227,7 +227,7 @@ Deno.test('Refract.basic.text', () => {
 	assertEquals(a.outerHTML, '<x-5>text</x-5>');
 });
 
-Deno.test('Refract.basic.entity', () => {
+Testimony.test('Refract.basic.entity', () => {
 
 	class A extends Refract {
 		html = `<x-6>a &lt; b</x-6>`;
@@ -238,7 +238,7 @@ Deno.test('Refract.basic.entity', () => {
 	assertEquals(a.outerHTML, '<x-6>a &lt; b</x-6>');
 });
 
-Deno.test('Refract.basic.entity2', () => {
+Testimony.test('Refract.basic.entity2', () => {
 
 	class A extends Refract {
 		html = `<b-70>a < b</b-70>`;
@@ -249,7 +249,7 @@ Deno.test('Refract.basic.entity2', () => {
 	assertEquals(a.outerHTML, '<b-70>a &lt; b</b-70>');
 });
 
-Deno.test('Refract.basic.deferredRender', "Don't render anything until we call the render() function.", () => {
+Testimony.test('Refract.basic.deferredRender', "Don't render anything until we call the render() function.", () => {
 
 	let test1, test2;
 
@@ -272,7 +272,7 @@ Deno.test('Refract.basic.deferredRender', "Don't render anything until we call t
 });
 
 
-Deno.test('Refract.expr.string', () => {
+Testimony.test('Refract.expr.string', () => {
 	class A extends Refract {
 		html() { return `<b-80>${'hi'}</b-80>` }
 	}
@@ -282,7 +282,7 @@ Deno.test('Refract.expr.string', () => {
 	assertEquals(a.childNodes.length, 1);
 });
 
-Deno.test('Refract.expr.template', () => {
+Testimony.test('Refract.expr.template', () => {
 	class A extends Refract {
 		html = `<x-120>${`hi`}</x-120>`;
 	}
@@ -293,7 +293,7 @@ Deno.test('Refract.expr.template', () => {
 });
 
 // Make sure parser leaves spaces.
-Deno.test('Refract.expr.basic', () => {
+Testimony.test('Refract.expr.basic', () => {
 	class A extends Refract {
 		html() { return `<x-123>${new Date('2010-02-01 00:00:00').getUTCFullYear()}</x-123>`}
 	}
@@ -303,7 +303,7 @@ Deno.test('Refract.expr.basic', () => {
 	assertEquals(a.outerHTML, '<x-123>2010</x-123>');
 });
 
-Deno.test('Refract.expr.undefinedText', () => {
+Testimony.test('Refract.expr.undefinedText', () => {
 	class A extends Refract {
 		value = undefined;
 		html() { return `<x-130>${this.value}</x-130>` }
@@ -314,7 +314,7 @@ Deno.test('Refract.expr.undefinedText', () => {
 	assertEquals(a.outerHTML, `<x-130></x-130>`);
 });
 
-Deno.test('Refract.expr.loopInExprLoop', () => {
+Testimony.test('Refract.expr.loopInExprLoop', () => {
 	class A extends Refract {
 		items = ['a', 'b'];
 		images = ['a', 'b'];
@@ -335,7 +335,7 @@ Deno.test('Refract.expr.loopInExprLoop', () => {
 
 });
 
-Deno.test('Refract.expr.undefinedAttr', () => {
+Testimony.test('Refract.expr.undefinedAttr', () => {
 	class A extends Refract {
 		value;
 		html = `<x-136><div title="${this.value}"></div></x-136>`;
@@ -346,7 +346,7 @@ Deno.test('Refract.expr.undefinedAttr', () => {
 	assertEquals(a.outerHTML, `<x-136><div title=""></div></x-136>`);
 });
 
-Deno.test('Refract.expr.undefinedAttr2', () => {
+Testimony.test('Refract.expr.undefinedAttr2', () => {
 	class A extends Refract {
 		value;                     // [below] Complex expression
 		html = `<x-137><div title="${this['val' + 'ue']}"></div></x-137>`;
@@ -357,7 +357,7 @@ Deno.test('Refract.expr.undefinedAttr2', () => {
 	assertEquals(a.outerHTML, `<x-137><div title=""></div></x-137>`);
 });
 
-Deno.test('Refract.expr.undefinedInputVal', () => {
+Testimony.test('Refract.expr.undefinedInputVal', () => {
 	class A extends Refract {
 		value;
 		html = `<x-138><input value="${this.value}"></x-138>`;
@@ -368,7 +368,7 @@ Deno.test('Refract.expr.undefinedInputVal', () => {
 	assertEquals(a.outerHTML, `<x-138><input value=""></x-138>`);
 });
 
-Deno.test('Refract.expr.var', () => {
+Testimony.test('Refract.expr.var', () => {
 	class A extends Refract {
 		value = 'Apple';
 
@@ -389,7 +389,7 @@ Deno.test('Refract.expr.var', () => {
 	assertEquals(a.childNodes.length, 1);
 });
 
-Deno.test('Refract.expr.varDeep', () => {
+Testimony.test('Refract.expr.varDeep', () => {
 	class A extends Refract {
 		fruit = {name: 'Apple', shape: 'round'};
 		html = `<x-150>${this.fruit.name}</x-150>`;
@@ -401,7 +401,7 @@ Deno.test('Refract.expr.varDeep', () => {
 	assertEquals(a.outerHTML, '<x-150>Cherry</x-150>');
 });
 
-Deno.test('Refract.expr.varDeep2', () => {
+Testimony.test('Refract.expr.varDeep2', () => {
 
 	class A extends Refract {
 		fruits = [{name: 'Apple'}, {name: 'Banana'}];
@@ -420,7 +420,7 @@ Deno.test('Refract.expr.varDeep2', () => {
 	assertEquals(a.outerHTML, '<x-160>Elderberry</x-160>');
 });
 
-Deno.test('Refract.expr.var2', () => {
+Testimony.test('Refract.expr.var2', () => {
 	class A extends Refract {
 		value = 'Apple';
 		html = `<x-170>${this.value.toUpperCase() + '!'}</x-170>`;
@@ -436,7 +436,7 @@ Deno.test('Refract.expr.var2', () => {
 	assertEquals(a.childNodes.length, 1);
 });
 
-Deno.test('Refract.expr.optionalChaining', () => {
+Testimony.test('Refract.expr.optionalChaining', () => {
 	class A extends Refract {
 		path1 = {
 			path2: {}
@@ -452,7 +452,7 @@ Deno.test('Refract.expr.optionalChaining', () => {
 	assertEquals(a.outerHTML, '<x-172>a</x-172>');
 });
 
-Deno.test('Refract.expr.scope', () => {
+Testimony.test('Refract.expr.scope', () => {
 	var fruit = 'apple';
 
 
@@ -469,7 +469,7 @@ Deno.test('Refract.expr.scope', () => {
 	assertEquals(a.childNodes.length, 1);
 });
 
-Deno.test('Refract.expr.Complex', () => {
+Testimony.test('Refract.expr.Complex', () => {
 	class A extends Refract {
 		value = 'Apple';
 		html = `<x-180>${JSON.stringify(this.value)}</x-180>`;
@@ -489,7 +489,7 @@ Deno.test('Refract.expr.Complex', () => {
 	assertEquals(a.outerHTML, `<x-180>[{"name":"Apple"},{"name":"Cherry"}]</x-180>`);
 });
 
-Deno.test('Refract.expr.strings', () => {
+Testimony.test('Refract.expr.strings', () => {
 	class A extends Refract {
 		a = {b: {c: {d: 1}}}
 		html = `<x-185>${this.a['b']["c"][`d`]}</x-185>`;
@@ -503,7 +503,7 @@ Deno.test('Refract.expr.strings', () => {
 	assertEquals(a.outerHTML, `<x-185>2</x-185>`);
 });
 
-Deno.test('Refract.expr._strings2', () => {
+Testimony.test('Refract.expr._strings2', () => {
 	class A extends Refract {
 		a = {b: {c: {d: {e12: 1}}}}
 		html = `<x-187>${this.a['b']["c"][`d`][`e${1}2`]}</x-187>`;
@@ -518,7 +518,7 @@ Deno.test('Refract.expr._strings2', () => {
 });
 
 
-Deno.test('Refract.expr.HashVar', () => {
+Testimony.test('Refract.expr.HashVar', () => {
 	class A extends Refract {
 		value = '<hi>';
 		html = `<a-190>#{this.value.toUpperCase()}</a-190>`;
@@ -529,7 +529,7 @@ Deno.test('Refract.expr.HashVar', () => {
 	assertEquals(a.outerHTML, '<a-190>&lt;HI&gt;</a-190>');
 });
 
-Deno.test('Refract.expr.HashVarAttribute', () => {
+Testimony.test('Refract.expr.HashVarAttribute', () => {
 	class A extends Refract {
 		value = 'User';
 		html = `<a-195><div title="Hello #{this.value}"></div></a-195>`;
@@ -543,7 +543,7 @@ Deno.test('Refract.expr.HashVarAttribute', () => {
 
 /**
  * Subscribe to an inherited property, then create the same property on the sub-class. */
-Deno.test('Refract.expr.Inherited', () => {
+Testimony.test('Refract.expr.Inherited', () => {
 	class A extends Refract {
 		count = 2;
 		html = `<a-200></a-200>`;
@@ -572,7 +572,7 @@ Deno.test('Refract.expr.Inherited', () => {
 
 
 
-Deno.test('Refract.expr.conditional', () => {
+Testimony.test('Refract.expr.conditional', () => {
 	// This only works if we escape the $ via Parse.escape$()
 	class A extends Refract {
 		value = 'Apple';
@@ -586,7 +586,7 @@ Deno.test('Refract.expr.conditional', () => {
 	assertEquals(a.outerHTML, `<a-210>Banana</a-210>`);
 });
 
-Deno.test('Refract.expr.doubleConditional', () => {
+Testimony.test('Refract.expr.doubleConditional', () => {
 
 	class A extends Refract {
 		value = 'Apple';
@@ -600,7 +600,7 @@ Deno.test('Refract.expr.doubleConditional', () => {
 	assertEquals(a.outerHTML, `<a-220>Banana</a-220>`);
 });
 
-Deno.test('Refract.expr.tripleConditional', () => {
+Testimony.test('Refract.expr.tripleConditional', () => {
 
 	class A extends Refract {
 		value = 'Apple';
@@ -614,7 +614,7 @@ Deno.test('Refract.expr.tripleConditional', () => {
 	assertEquals(a.outerHTML, `<a-230>Banana</a-230>`);
 });
 
-Deno.test('Refract.expr.exprDereference', () => {
+Testimony.test('Refract.expr.exprDereference', () => {
 
 	class A extends Refract {
 		values = [1, 2];
@@ -634,7 +634,7 @@ Deno.test('Refract.expr.exprDereference', () => {
 	assertEquals(a.outerHTML, `<a-240>3</a-240>`);
 });
 
-Deno.test('Refract.expr.exprTemplate', () => {
+Testimony.test('Refract.expr.exprTemplate', () => {
 
 	class A extends Refract {
 		values = [1, 2];
@@ -656,7 +656,7 @@ Deno.test('Refract.expr.exprTemplate', () => {
 	assertEquals(a.outerHTML, `<a-250>3;4</a-250>`);
 });
 
-Deno.test('Refract.expr.conditionalFunction', () => {
+Testimony.test('Refract.expr.conditionalFunction', () => {
 
 	class A extends Refract {
 		value = [1, 2];
@@ -671,7 +671,7 @@ Deno.test('Refract.expr.conditionalFunction', () => {
 	assertEquals(a.outerHTML, `<a-260>45</a-260>`);
 });
 
-Deno.test('Refract.expr.conditionalFunctionMap', () => {
+Testimony.test('Refract.expr.conditionalFunctionMap', () => {
 
 	// This tests the inFunction detection of Parse.escape$()
 	class A extends Refract {
@@ -692,7 +692,7 @@ Deno.test('Refract.expr.conditionalFunctionMap', () => {
 	assertEquals(a.outerHTML, '<a-270>4;5</a-270>');
 });
 
-Deno.test('Refract.expr.conditionalFunction2', () => {
+Testimony.test('Refract.expr.conditionalFunction2', () => {
 
 	class A extends Refract {
 		value = [1, 2];
@@ -714,7 +714,7 @@ Deno.test('Refract.expr.conditionalFunction2', () => {
 
 
 // Attributes:
-Deno.test('Refract.attributes.basic', () => {
+Testimony.test('Refract.attributes.basic', () => {
 
 	class A extends Refract {
 		title = 'Hello';
@@ -732,7 +732,7 @@ Deno.test('Refract.attributes.basic', () => {
 	a.title = [1, 2, 3];
 });
 
-Deno.test('Refract.attributes.StyleObject', () => {
+Testimony.test('Refract.attributes.StyleObject', () => {
 
 	class A extends Refract {
 		styles = '';
@@ -753,7 +753,7 @@ Deno.test('Refract.attributes.StyleObject', () => {
 	assertEquals(a.outerHTML, `<x-87><div style="width: 10px;  height: 20px"></div></x-87>`);
 });
 
-Deno.test('Refract.attributes._Set', () => {
+Testimony.test('Refract.attributes._Set', () => {
 	class A extends Refract {
 		classes = new Set();
 		html = `<x-85><div class="one ${this.classes}"></div></x-85>`;
@@ -768,7 +768,7 @@ Deno.test('Refract.attributes._Set', () => {
 }); // Fails b/c Watch doesn't intercept Set() methods, so we don't get called on add().
 
 
-Deno.test('Refract.attributes.attributeExpression', () => {
+Testimony.test('Refract.attributes.attributeExpression', () => {
 
 	class A extends Refract {
 		attr = 'contenteditable';
@@ -800,7 +800,7 @@ Deno.test('Refract.attributes.attributeExpression', () => {
 
 
 // Loop:
-Deno.test('Refract.loop.Push', () => {
+Testimony.test('Refract.loop.Push', () => {
 
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
@@ -824,7 +824,7 @@ Deno.test('Refract.loop.Push', () => {
 	assertEquals(Refract.elsCreated, []);
 });
 
-Deno.test('Refract.loop.Unshift', () => {
+Testimony.test('Refract.loop.Unshift', () => {
 
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
@@ -847,7 +847,7 @@ Deno.test('Refract.loop.Unshift', () => {
 	assertEquals(Refract.elsCreated, []);
 });
 
-Deno.test('Refract.loop.Set', () => {
+Testimony.test('Refract.loop.Set', () => {
 
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
@@ -867,7 +867,7 @@ Deno.test('Refract.loop.Set', () => {
 	assertEquals(a.childNodes.length, 2);
 });
 
-Deno.test('Refract.loop.Pop', () => {
+Testimony.test('Refract.loop.Pop', () => {
 
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
@@ -881,7 +881,7 @@ Deno.test('Refract.loop.Pop', () => {
 	assertEquals(a.childNodes.length, 1);
 });
 
-Deno.test('Refract.loop.Map', () => {
+Testimony.test('Refract.loop.Map', () => {
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
 		html = `
@@ -900,7 +900,7 @@ Deno.test('Refract.loop.Map', () => {
 	assertEquals(Refract.elsCreated, ['Cherry']);
 });
 
-Deno.test('Refract.loop.Map2', () => {
+Testimony.test('Refract.loop.Map2', () => {
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
 		html =
@@ -919,7 +919,7 @@ Deno.test('Refract.loop.Map2', () => {
 	assertEquals(Refract.elsCreated, ['<p>', 'Cherry']);
 });
 
-Deno.test('Refract.loop.RandomItems', () => {
+Testimony.test('Refract.loop.RandomItems', () => {
 
 	class A extends Refract {
 		items = ['a', 'b'];
@@ -930,7 +930,7 @@ Deno.test('Refract.loop.RandomItems', () => {
 	a.items[0] = 'c'; // No tests, we just make sure it doesn't crash.
 });
 
-Deno.test('Refract.loop._MapIndex', () => {
+Testimony.test('Refract.loop._MapIndex', () => {
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
 		html =
@@ -949,7 +949,7 @@ Deno.test('Refract.loop._MapIndex', () => {
 	a.fruits.push('Cherry');
 });
 
-Deno.test('Refract.loop.MapAttributes', () => {
+Testimony.test('Refract.loop.MapAttributes', () => {
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
 		html =
@@ -967,7 +967,7 @@ Deno.test('Refract.loop.MapAttributes', () => {
 
 });
 
-Deno.test('Refract.loop.MapTwoChilden', () => {
+Testimony.test('Refract.loop.MapTwoChilden', () => {
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
 		html = `
@@ -988,7 +988,7 @@ Deno.test('Refract.loop.MapTwoChilden', () => {
 
 });
 
-Deno.test('Refract.loop.MapBrace', () => { // Make sure attribute quotes are escaped.
+Testimony.test('Refract.loop.MapBrace', () => { // Make sure attribute quotes are escaped.
 
 	class A extends Refract {
 		items = [1, 2];
@@ -1008,7 +1008,7 @@ Deno.test('Refract.loop.MapBrace', () => { // Make sure attribute quotes are esc
 	assertEquals(Refract.elsCreated, ['3']);
 });
 
-Deno.test('Refract.loop.MapBrace2', () => { // Make sure attribute quotes are escaped.
+Testimony.test('Refract.loop.MapBrace2', () => { // Make sure attribute quotes are escaped.
 
 	class A extends Refract {
 		items = [1, 2];
@@ -1023,7 +1023,7 @@ Deno.test('Refract.loop.MapBrace2', () => { // Make sure attribute quotes are es
 	assertEquals(a.outerHTML, `<x-340>1a2a</x-340>`);
 });
 
-Deno.test('Refract.loop.ItemProps', () => {
+Testimony.test('Refract.loop.ItemProps', () => {
 	class A extends Refract {
 		fruits = [
 			{name: 'Apple'},
@@ -1064,7 +1064,7 @@ Deno.test('Refract.loop.ItemProps', () => {
 
 });
 
-Deno.test('Refract.loop.ItemProps2', () => {
+Testimony.test('Refract.loop.ItemProps2', () => {
 	class A extends Refract {
 		fruits = [
 			{name: 'Apple', order: 1},
@@ -1087,7 +1087,7 @@ Deno.test('Refract.loop.ItemProps2', () => {
 	assertEquals(Refract.elsCreated, ['Banana Split']);
 });
 
-Deno.test('Refract.loop.PrimitiveToArray', () => { // Test changing a primitive property to an array.
+Testimony.test('Refract.loop.PrimitiveToArray', () => { // Test changing a primitive property to an array.
 
 	class A extends Refract {
 		fruits = [
@@ -1109,7 +1109,7 @@ Deno.test('Refract.loop.PrimitiveToArray', () => { // Test changing a primitive 
 });
 
 // Two loops within the same parent
-Deno.test('Refract.loop.double', () => {
+Testimony.test('Refract.loop.double', () => {
 
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
@@ -1160,7 +1160,7 @@ Deno.test('Refract.loop.double', () => {
 	//document.body.append(a.debugRender());
 });
 
-Deno.test('Refract.loop.Constant', () => {
+Testimony.test('Refract.loop.Constant', () => {
 
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
@@ -1175,7 +1175,7 @@ Deno.test('Refract.loop.Constant', () => {
 	assertEquals(a.outerHTML, `<x-65><p>1</p><p>1</p></x-65>`);
 });
 
-Deno.test('Refract.loop.nested', () => {
+Testimony.test('Refract.loop.nested', () => {
 
 	class A extends Refract {
 		fruits = ['Apple', 'Banana']; // TODO Test defining these properties with "pets" first, before fruits, with varExpressionsRecursive()
@@ -1218,7 +1218,7 @@ Deno.test('Refract.loop.nested', () => {
 });
 
 // Loop over item and sub-array
-Deno.test('Refract.loop.nested2', () => {
+Testimony.test('Refract.loop.nested2', () => {
 
 	class A extends Refract {
 
@@ -1280,7 +1280,7 @@ Deno.test('Refract.loop.nested2', () => {
 	assertEquals(Refract.elsCreated, ["<p>", "Bird", " will ", "Tweet", "."]);
 });
 
-Deno.test('Refract.loop.nested3', () => {
+Testimony.test('Refract.loop.nested3', () => {
 
 	class A extends Refract {
 		verb = 'will';
@@ -1316,7 +1316,7 @@ Deno.test('Refract.loop.nested3', () => {
 });
 
 
-Deno.test('Refract.loop.Slice', () => {
+Testimony.test('Refract.loop.Slice', () => {
 
 	// fails if we have escape$, and it doesn't stop within function bodies:
 	class A extends Refract {
@@ -1339,7 +1339,7 @@ Deno.test('Refract.loop.Slice', () => {
 	assertEquals(a.outerHTML, `<x-745>de</x-745>`);
 });
 
-Deno.test('Refract.loop.Expr', () => {
+Testimony.test('Refract.loop.Expr', () => {
 
 	class A extends Refract {
 		fruits = ['Apple'];
@@ -1357,7 +1357,7 @@ Deno.test('Refract.loop.Expr', () => {
 	assertEquals(a.outerHTML, `<x-750>AppleAppleBananaBanana</x-750>`);
 });
 
-Deno.test('Refract.loop.Expr2', () => {
+Testimony.test('Refract.loop.Expr2', () => {
 
 	class A extends Refract {
 		formulas = ['a>b', 'c<d&e'];
@@ -1372,7 +1372,7 @@ Deno.test('Refract.loop.Expr2', () => {
 	assertEquals(a.outerHTML, `<x-760>a&gt;bc&lt;d&amp;e</x-760>`);
 });
 
-Deno.test('Refract.loop.Expr3', () => { // Make sure attribute quotes are escaped.
+Testimony.test('Refract.loop.Expr3', () => { // Make sure attribute quotes are escaped.
 
 	class A extends Refract {
 		entities = ['"', "'"];
@@ -1387,7 +1387,7 @@ Deno.test('Refract.loop.Expr3', () => { // Make sure attribute quotes are escape
 	assertEquals(a.outerHTML, `<x-765><div title="&quot;">"</div><div title="'">'</div></x-765>`);
 });
 
-Deno.test('Refract.loop.Expr4', () => {
+Testimony.test('Refract.loop.Expr4', () => {
 
 	class A extends Refract {
 		list = [];
@@ -1422,7 +1422,7 @@ Deno.test('Refract.loop.Expr4', () => {
 });
 
 // Same as above, but with slice() and using ${item}.  The scope goes missing!
-Deno.test('Refract.loop.Expr5', () => {
+Testimony.test('Refract.loop.Expr5', () => {
 	class A extends Refract {
 		items = [];
 
@@ -1449,7 +1449,7 @@ Deno.test('Refract.loop.Expr5', () => {
 });
 
 
-Deno.test('Refract.loop.attributeExpr', () => { // Make sure loop scope is passed to attributes
+Testimony.test('Refract.loop.attributeExpr', () => { // Make sure loop scope is passed to attributes
 
 	class A extends Refract {
 		files = [
@@ -1475,7 +1475,7 @@ Deno.test('Refract.loop.attributeExpr', () => { // Make sure loop scope is passe
 	assertEquals(a.outerHTML, `<x-768><div class="yes">one</div><div class="yes">one</div></x-768>`);
 });
 
-Deno.test('Refract.loop.If', () => {
+Testimony.test('Refract.loop.If', () => {
 
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
@@ -1507,7 +1507,7 @@ Deno.test('Refract.loop.If', () => {
 	assertEquals(a.outerHTML, `<x-770>ApplesauceAvacado</x-770>`);
 });
 
-Deno.test('Refract.loop.IfNested', () => {
+Testimony.test('Refract.loop.IfNested', () => {
 
 	class A extends Refract {
 		pets = [
@@ -1547,7 +1547,7 @@ Deno.test('Refract.loop.IfNested', () => {
 	assertEquals(Refract.elsCreated, ["<p>", "Cat", " will ", "Slumber", "."]);
 });
 
-Deno.test('Refract.loop.ifNested2', () => {
+Testimony.test('Refract.loop.ifNested2', () => {
 
 	class A extends Refract {
 		pets = [
@@ -1588,7 +1588,7 @@ Deno.test('Refract.loop.ifNested2', () => {
 });
 
 // Nested
-Deno.test('Refract.nested.basic', () => {
+Testimony.test('Refract.nested.basic', () => {
 
 	class B extends Refract {
 		name = '';
@@ -1612,7 +1612,7 @@ Deno.test('Refract.nested.basic', () => {
 	assertEquals(a.outerHTML, `<a-90><b-90 name="Apple">Apple</b-90></a-90>`);
 });
 
-Deno.test('Refract.nested.passOBj', () => {
+Testimony.test('Refract.nested.passOBj', () => {
 
 	class B extends Refract {
 		fruit2 = [];
@@ -1653,7 +1653,7 @@ Deno.test('Refract.nested.passOBj', () => {
 	assertEquals(Refract.elsCreated, []);
 });
 
-Deno.test('Refract.nested.passSelf', "Pass a parent's 'this' reference to a child.", () => {
+Testimony.test('Refract.nested.passSelf', "Pass a parent's 'this' reference to a child.", () => {
 
 	class B extends Refract {
 		parent = null;
@@ -1683,7 +1683,7 @@ Deno.test('Refract.nested.passSelf', "Pass a parent's 'this' reference to a chil
 });
 
 
-Deno.test('Refract.nested.loop', () => {
+Testimony.test('Refract.nested.loop', () => {
 
 	class B extends Refract {
 		fruit = undefined;
@@ -1715,7 +1715,7 @@ Deno.test('Refract.nested.loop', () => {
 	assertEquals(a.outerHTML, `<a-100><x-b100 fruit="Apple"><b>Apple</b></x-b100><x-b100 fruit="Cherry"><b>Cherry</b></x-b100></a-100>`);
 });
 
-Deno.test('Refract.nested.childProp', () => {
+Testimony.test('Refract.nested.childProp', () => {
 
 	class B extends Refract {
 		name = '';
@@ -1742,7 +1742,7 @@ Deno.test('Refract.nested.childProp', () => {
 	assertEquals(a.outerHTML, `<a-102><b-102 id="b" name="Apple">Banana</b-102>Banana</a-102>`);
 });
 
-Deno.test('Refract.nested.childProp2', () => {
+Testimony.test('Refract.nested.childProp2', () => {
 	class B extends Refract {
 		name = 'apple';
 
@@ -1766,7 +1766,7 @@ Deno.test('Refract.nested.childProp2', () => {
 	assert.eq(a.outerHTML, '<a-103><b-103 id="b">banana</b-103>apple</a-103>');
 });
 
-Deno.test('Refract.nested._recursive', () => {
+Testimony.test('Refract.nested._recursive', () => {
 	class A extends Refract {
 
 		html = `<a-105 title="c"><slot></slot>b</a-105>`;
@@ -1790,7 +1790,7 @@ Deno.test('Refract.nested._recursive', () => {
 
 
 
-Deno.test('Refract.nested._childPropForwardReference', () => {
+Testimony.test('Refract.nested._childPropForwardReference', () => {
 
 	class B extends Refract {
 		name = '';
@@ -1818,7 +1818,7 @@ Deno.test('Refract.nested._childPropForwardReference', () => {
 
 
 // Form
-Deno.test('Refract.form.inputExpr', () => {
+Testimony.test('Refract.form.inputExpr', () => {
 
 	class A extends Refract {
 		value = 'Apple';
@@ -1839,7 +1839,7 @@ Deno.test('Refract.form.inputExpr', () => {
 	assertEquals(a.value, 'Cherry');
 });
 
-Deno.test('Refract.form.inputExprUndefined', () => {
+Testimony.test('Refract.form.inputExprUndefined', () => {
 
 	class A extends Refract {
 		form = {};
@@ -1860,7 +1860,7 @@ Deno.test('Refract.form.inputExprUndefined', () => {
 	assertEquals(a.form.value, 'Cherry');
 });
 
-Deno.test('Refract.form.inputEvent', () => {
+Testimony.test('Refract.form.inputEvent', () => {
 
 	class A extends Refract {
 		value = 'Apple';
@@ -1879,7 +1879,7 @@ Deno.test('Refract.form.inputEvent', () => {
 	assertEquals(a.value, 'Cherry');
 });
 
-Deno.test('Refract.form.inputValueOnInputExpr', () => {
+Testimony.test('Refract.form.inputValueOnInputExpr', () => {
 
 	class A extends Refract {
 		value = 'Apple';
@@ -1898,7 +1898,7 @@ Deno.test('Refract.form.inputValueOnInputExpr', () => {
 	assertEquals(a.value, 'Cherry');
 });
 
-Deno.test('Refract.form.inputExprDereference', () => {
+Testimony.test('Refract.form.inputExprDereference', () => {
 
 	class A extends Refract {
 		values = ['zero', 'one'];
@@ -1926,7 +1926,7 @@ Deno.test('Refract.form.inputExprDereference', () => {
 });
 
 
-Deno.test('Refract.form._inputExprComplex', () => {
+Testimony.test('Refract.form._inputExprComplex', () => {
 
 	// Below, when name is resolved inside the loop, I need to watch it just like a regular variable.
 	// Right now it's all just resolved as a single expression, and after it returns its html string,
@@ -1957,7 +1957,7 @@ Deno.test('Refract.form._inputExprComplex', () => {
 });
 
 
-Deno.test('Refract.form._inputExprComplex2', () => {
+Testimony.test('Refract.form._inputExprComplex2', () => {
 
 	class A extends Refract {
 		values = {name: 'apple', type: 'fruit'};
@@ -1979,7 +1979,7 @@ Deno.test('Refract.form._inputExprComplex2', () => {
 	//assertEquals(a.values.name, 'cherry');
 });
 
-Deno.test('Refract.form._inputExprComplex3', () => {
+Testimony.test('Refract.form._inputExprComplex3', () => {
 
 	class A extends Refract {
 		values = {name: 'apple', type: 'fruit'};
@@ -2005,7 +2005,7 @@ Deno.test('Refract.form._inputExprComplex3', () => {
 
 
 
-Deno.test('Refract.form.select', () => {
+Testimony.test('Refract.form.select', () => {
 
 	class A extends Refract {
 		value = 'two';
@@ -2036,7 +2036,7 @@ Deno.test('Refract.form.select', () => {
 
 });
 
-Deno.test('Refract.form.SelectMultiple', () => {
+Testimony.test('Refract.form.SelectMultiple', () => {
 
 	class A extends Refract {
 		value = ['two'];
@@ -2067,7 +2067,7 @@ Deno.test('Refract.form.SelectMultiple', () => {
 	assertEquals(a.select.children[1].selected, true);
 });
 
-Deno.test('Refract.form.contenteditable', () => {
+Testimony.test('Refract.form.contenteditable', () => {
 
 	class A extends Refract {
 		value = 'Apple';
@@ -2088,7 +2088,7 @@ Deno.test('Refract.form.contenteditable', () => {
 	assertEquals(a.value, 'Cherry');
 });
 
-Deno.test('Refract.form.contenteditableExpr', () => {
+Testimony.test('Refract.form.contenteditableExpr', () => {
 
 	class A extends Refract {
 		value = 'Apple';
@@ -2112,7 +2112,7 @@ Deno.test('Refract.form.contenteditableExpr', () => {
 
 
 // Events
-Deno.test('Refract.events.basic', () => {
+Testimony.test('Refract.events.basic', () => {
 	var clicked = {};
 	let count = 0;
 	class E extends Refract {
@@ -2136,7 +2136,7 @@ Deno.test('Refract.events.basic', () => {
 });
 
 
-Deno.test('Refract.events.Loop', () => {
+Testimony.test('Refract.events.Loop', () => {
 	var clicked = {};
 	class E extends Refract {
 		fruits = ['Apple', 'Banana']
@@ -2164,7 +2164,7 @@ Deno.test('Refract.events.Loop', () => {
 });
 
 // Same as above, but as an expression instead of a parsed loop.
-Deno.test('Refract.events._Loop2', () => {
+Testimony.test('Refract.events._Loop2', () => {
 	var clicked = {};
 	class E extends Refract {
 		fruits = ['Apple', 'Banana']
@@ -2191,7 +2191,7 @@ Deno.test('Refract.events._Loop2', () => {
 	assertEquals(clicked.fruit, 'Banana');
 });
 
-Deno.test('Refract.shadow.basic', () => {
+Testimony.test('Refract.shadow.basic', () => {
 	class S extends Refract {
 		html = `<s-1 shadow><div>hi</div></s-1>`;
 	}
@@ -2203,7 +2203,7 @@ Deno.test('Refract.shadow.basic', () => {
 	assertEquals(s.shadowRoot.innerHTML, '<div>hi</div>');
 });
 
-Deno.test('Refract.shadow.text', () => {
+Testimony.test('Refract.shadow.text', () => {
 	class S extends Refract {
 		html = `<s-2 shadow><div>hi</div> </s-2>`;
 	}
@@ -2214,7 +2214,7 @@ Deno.test('Refract.shadow.text', () => {
 	assertEquals(s.shadowRoot.innerHTML, '<div>hi</div> ');
 });
 
-Deno.test('Refract.slot.basic', () => {
+Testimony.test('Refract.slot.basic', () => {
 	class A extends Refract {
 		constructor() {
 			super();
@@ -2229,7 +2229,7 @@ Deno.test('Refract.slot.basic', () => {
 	assertEquals(a.outerHTML, '<a-400><p><slot>test</slot></p></a-400>');
 });
 
-Deno.test('Refract.slot.Eval', () => {
+Testimony.test('Refract.slot.Eval', () => {
 	class A extends Refract {
 		constructor() {
 			super();
@@ -2245,7 +2245,7 @@ Deno.test('Refract.slot.Eval', () => {
 	assertEquals(a.outerHTML, '<a-402><p><slot>3</slot></p></a-402>');
 });
 
-Deno.test('Refract.slot.Loop', () => {
+Testimony.test('Refract.slot.Loop', () => {
 	class A extends Refract {
 
 		items = ['A', 'B', 'C'];
@@ -2263,7 +2263,7 @@ Deno.test('Refract.slot.Loop', () => {
 	assertEquals(a.outerHTML, '<a-404><slot>A</slot><slot>B</slot><slot>C</slot></a-404>');
 });
 
-Deno.test('Refract.slot.multiple', () => {
+Testimony.test('Refract.slot.multiple', () => {
 	class A extends Refract {
 		html =
 		`<a-415><p><slot></slot></p><slot></slot></a-415>`;
@@ -2275,7 +2275,7 @@ Deno.test('Refract.slot.multiple', () => {
 		`<a-415><p><slot>test</slot></p><slot>test</slot></a-415>`);
 });
 
-Deno.test('Refract.slot.nested', () => {
+Testimony.test('Refract.slot.nested', () => {
 	class B extends Refract {
 		html = `<b-420><slot></slot></b-420>`;
 	}
@@ -2303,7 +2303,7 @@ Deno.test('Refract.slot.nested', () => {
  *
  * The second C that's constructed is never added to the DOM.
  */
-Deno.test('Refract.slot._nested2', () => {
+Testimony.test('Refract.slot._nested2', () => {
 	let cCount = 0;
 
 
@@ -2333,7 +2333,7 @@ Deno.test('Refract.slot._nested2', () => {
 
 });
 
-Deno.test('Refract.slot._named', () => {
+Testimony.test('Refract.slot._named', () => {
 	class A extends Refract {
 		html = `<a-425>begin<slot name="slot1"></slot>end</a-425>`;
 	}
@@ -2343,7 +2343,7 @@ Deno.test('Refract.slot._named', () => {
 	assertEquals(a.outerHTML, '<a-425>begin<slot name="slot1">content</slot>end</a-425>');
 });
 
-Deno.test('Refract._debugRender', () => {
+Testimony.test('Refract._debugRender', () => {
 
 	class A extends Refract {
 		fruits = [];
@@ -2367,7 +2367,7 @@ Deno.test('Refract._debugRender', () => {
 });
 
 
-Deno.test('Refract.scopedStyle', () => {
+Testimony.test('Refract.scopedStyle', () => {
 
 	class A extends Refract {
 		html = `<a-440><style>:host { background: red }</style></a-440>`;
@@ -2379,7 +2379,7 @@ Deno.test('Refract.scopedStyle', () => {
 });
 
 
-Deno.test('Refract.misc.formInputDeep', () => {
+Testimony.test('Refract.misc.formInputDeep', () => {
 
 	class A extends Refract {
 		deep = { value: 'Apple'};
@@ -2402,7 +2402,7 @@ Deno.test('Refract.misc.formInputDeep', () => {
 	window.a = a;
 });
 
-Deno.test('Refract.misc.TwoVars', () => {
+Testimony.test('Refract.misc.TwoVars', () => {
 
 	class A extends Refract {
 		a = 1;
@@ -2422,7 +2422,7 @@ Deno.test('Refract.misc.TwoVars', () => {
 });
 
 
-Deno.test('Refract.misc.htmlFirst', () => {
+Testimony.test('Refract.misc.htmlFirst', () => {
 	class A extends Refract {
 		html = `<a-521>hi</a-521>`; // html property occurs before constructor.
 		constructor() {
@@ -2438,7 +2438,7 @@ Deno.test('Refract.misc.htmlFirst', () => {
 
 
 
-Deno.test('Refract.benchmark.10kOptions', () => {
+Testimony.test('Refract.benchmark.10kOptions', () => {
 	const num = 100_000;
 
 	class A extends Refract {

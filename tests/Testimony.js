@@ -596,7 +596,7 @@ function makeDoc(html) {
 }
 
 
-// Emulate the Deno.test() function
+// Emulate the Testimony.test() function
 if (!globalThis.Deno)
 	globalThis.Deno = {test: Testimony.test};
 export default Testimony;

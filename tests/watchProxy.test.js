@@ -25,7 +25,7 @@ function trackGarbage(callback) {
 	WatchUtil.paths = new WeakMap();
 }
 
-Deno.test('watchProxy.simple', () => {
+Testimony.test('watchProxy.simple', () => {
 	let o = {
 		a: [0, 1]
 	};
@@ -40,7 +40,7 @@ Deno.test('watchProxy.simple', () => {
 });
 
 // Two watchers of the same array, make sure changing it through one path notifies the other.
-Deno.test('watchProxy.twoArrays', () => {
+Testimony.test('watchProxy.twoArrays', () => {
 	var b = [1, 2, 3];
 	var ops = [];
 
@@ -59,7 +59,7 @@ Deno.test('watchProxy.twoArrays', () => {
 });
 
 // Watches with roots on both an object and it's sub-property.
-Deno.test('watchProxy.twoLevel', () => {
+Testimony.test('watchProxy.twoLevel', () => {
 
 	var a = {
 		b1: {parent: undefined},
@@ -88,7 +88,7 @@ Deno.test('watchProxy.twoLevel', () => {
 	assert(called.has('b1.parent.b2'));
 });
 
-Deno.test('watchProxy.arrayShift', () => {
+Testimony.test('watchProxy.arrayShift', () => {
 
 	var o = { a: [0, 1] };
 	var ops = [];
@@ -107,7 +107,7 @@ Deno.test('watchProxy.arrayShift', () => {
 	assertEquals(ops.length, 1);
 });
 
-Deno.test('watchProxy.arrayShift2', () => {
+Testimony.test('watchProxy.arrayShift2', () => {
 	var o = {
 		items:[
 			{name: 'A'},
@@ -130,7 +130,7 @@ Deno.test('watchProxy.arrayShift2', () => {
 });
 
 // Same as above, but make sure references to sub-array are updated.
-Deno.test('watchProxy.arrayShiftRecurse', () => {
+Testimony.test('watchProxy.arrayShiftRecurse', () => {
 	var o = {
 		items:[
 			{
@@ -162,7 +162,7 @@ Deno.test('watchProxy.arrayShiftRecurse', () => {
 });
 
 // Test an object that refers to another object twice.
-Deno.test('watchProxy.doubleRef', () => {
+Testimony.test('watchProxy.doubleRef', () => {
 	let item = {name: 1};
 	var o = {
 		item: item,
@@ -211,7 +211,7 @@ Deno.test('watchProxy.doubleRef', () => {
 
 
 // Make sure proxies don't extend into html elements and nodes.
-Deno.test('watchProxy.htmlElement', () => {
+Testimony.test('watchProxy.htmlElement', () => {
 	var o = {
 		a: document
 	};
@@ -223,7 +223,7 @@ Deno.test('watchProxy.htmlElement', () => {
 /**
  * Make sure that hanler.get return's the underlying array's iterator.
  * This uses the `if (field === Symbol.iterator)` code in watchproxy.js */
-Deno.test('watchProxy.forOf', () => {
+Testimony.test('watchProxy.forOf', () => {
 	var o = {a: [{b: 1}]};
 	var called = 0;
 	var wp = watchProxy(o, () => {
@@ -239,7 +239,7 @@ Deno.test('watchProxy.forOf', () => {
 
 /**
  * Make sure removing an item from the beginning sends a remove operation. */
-Deno.test('watchProxy.shift', () => {
+Testimony.test('watchProxy.shift', () => {
 	let o = {
 		a: [1, 2]
 	};
@@ -254,7 +254,7 @@ Deno.test('watchProxy.shift', () => {
 });
 
 
-Deno.test('watchProxy.spliceReplace', () => {
+Testimony.test('watchProxy.spliceReplace', () => {
 	let o = {
 		a: [0, 1, 2, 3, 4]
 	};
@@ -271,7 +271,7 @@ Deno.test('watchProxy.spliceReplace', () => {
 	]);
 });
 
-Deno.test('watchProxy.spliceAdd', () => {
+Testimony.test('watchProxy.spliceAdd', () => {
 	let o = {
 		a: [0, 1, 2, 3, 4]
 	};
@@ -289,7 +289,7 @@ Deno.test('watchProxy.spliceAdd', () => {
 	]);
 });
 
-Deno.test('watchProxy.spliceRemove', () => {
+Testimony.test('watchProxy.spliceRemove', () => {
 	let o = {
 		a: [0, 1, 2, 3, 4]
 	};
