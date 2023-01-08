@@ -5,9 +5,6 @@ import htmljs from "./lex-htmljs.js";
 import lexHtmlJs from "./lex-htmljs.js";
 import {ParsedFunction} from "./ParsedFunction.js";
 
-let varExpressionCache = {};
-
-
 
 var Parse = {
 	/**
@@ -109,14 +106,6 @@ var Parse = {
 	},
 
 	/**
-	 * Find all tokens that are part of the function body, not counting open or close braces.
-	 * @param tokens {Token[]}
-	 * @param start {int} */
-	findFunctionBody(tokens, start=0) {
-
-	},
-
-	/**
 	 * Loop through the tokens and find the start of a function.
 	 * @param tokens {Token[]}
 	 * @param start {int}
@@ -156,8 +145,6 @@ var Parse = {
 
 			if (!depth && isArrow && (token == ';' || token == ')'))
 				return i;
-
-			// TODO: Use findGroupEnd?
 
 			if (token == '(' || token == '{')
 				depth++;
@@ -209,6 +196,7 @@ var Parse = {
 		// a => { return a+1 }
 		// (a) => { return {a:1} }
 		// function(a) { return a+1 }
+		// method(a) { return a+1 }
 
 		// Find the beginning of the function.
 		let functionStart = this.findFunctionStart(tokens, start);
@@ -341,22 +329,6 @@ var Parse = {
 
 		let funcTokens = tokens.slice(mapExpr.length);
 		let functionIndices = Parse.findFunction(funcTokens);
-
-		// New path that's not working yet.
-		// let functionStart = Parse.findFunctionStart(tokens, mapExpr.length);
-		// let mapEnd = Parse.findGroupEnd(tokens, mapExpr.length); // closing ) of the map()
-		//
-		// // Has extra tokens at the end.  Therefore this isn't a simple map expr.
-		// // e.g. this.array.map(x=>x+1).reduce(...)
-		// if (mapEnd + 1 < tokens.length) {
-		// 	funcTokens = funcTokens.slice(...functionIndices);
-		// 	debugger;
-		// 	return [null, null];
-		// }
-
-
-
-
 		if (!functionIndices || functionIndices[0] !== 0)
 			return [null, null];
 		funcTokens = funcTokens.slice(...functionIndices);
@@ -455,6 +427,11 @@ var Parse = {
 		return result;
 	}
 };
+
+
+
+let varExpressionCache = {};
+
 
 // Whitespace
 Parse.ws = fregex.zeroOrMore(fregex.or(
