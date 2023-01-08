@@ -62,7 +62,7 @@ export default class VExpression {
 	// These are specific to the copy of each VExpression made for each Refract.
 
 	/** @type {Refract} */
-	xel = null;
+	refl = null;
 
 	/** @type {HTMLElement} */
 	parent = null;
@@ -195,11 +195,11 @@ export default class VExpression {
 
 	/**
 	 * Typically called when a new element is instantiated, to clone a new instance of the virtual tree for that element.
-	 * @param xel {Refract?}
+	 * @param refl {Refract?}
 	 * @param vParent {VElement?}
 	 * @param parent {HTMLElement?}
 	 * @return {VExpression} */
-	clone(xel=null, vParent=null, parent=null) {
+	clone(refl=null, vParent=null, parent=null) {
 		let result = new VExpression();
 		result.watchPaths = this.watchPaths;
 		result.attrName = this.attrName;
@@ -212,7 +212,7 @@ export default class VExpression {
 
 
 		// Properties specific to each instance.
-		result.xel = xel || this.xel;
+		result.refl = refl || this.refl;
 		result.parent = parent || this.parent;
 		result.vParent = vParent || this.vParent;
 
@@ -230,7 +230,7 @@ export default class VExpression {
 	/**
 	 * @return {string|string[]} */
 	evaluate() {
-		return this.exec.apply(this.xel, Object.values(this.scope));
+		return this.exec.apply(this.refl, Object.values(this.scope));
 	}
 
 	/**
@@ -256,7 +256,7 @@ export default class VExpression {
 		let result = [];
 		if (this.type !== 'loop') { // simple or complex
 			//#IFDEV
-			if (!this.xel)
+			if (!this.refl)
 				throw new Error();
 			//#ENDIF
 
@@ -264,7 +264,7 @@ export default class VExpression {
 				.flat().map(h=>h===undefined?'':h); // undefined becomes empty string
 
 			if (this.isHash) // #{...} template
-				result = [htmls.map(html => new VText(html, this.xel))]; // We don't join all the text nodes b/c it creates index issues.
+				result = [htmls.map(html => new VText(html, this.refl))]; // We don't join all the text nodes b/c it creates index issues.
 			else {
 				let scopeVarNames = Object.keys(this.scope);
 				for (let html of htmls) {
@@ -274,7 +274,7 @@ export default class VExpression {
 					else {
 						html += ''; // can be a number.
 						if (html.length) {
-							let vels = VElement.fromHtml(html, scopeVarNames, this, this.xel.constructor).flat();
+							let vels = VElement.fromHtml(html, scopeVarNames, this, this.refl.constructor).flat();
 							result.push(vels);
 						}
 					}
@@ -293,7 +293,7 @@ export default class VExpression {
 				let group = [];
 				let params = [array[i], i, array];
 				for (let template of this.loopItemEls) {
-					let vel = template.clone(this.xel, this);
+					let vel = template.clone(this.refl, this);
 					vel.scope = {...this.scope}
 
 					// Assign values to the parameters of the function given to .map() that's used to loop.
@@ -376,9 +376,9 @@ export default class VExpression {
 						this.vChildren.splice(index, 0, []);
 
 					if (this.type === 'simple')
-						this.vChildren[index] = [new VText(array[index], this.xel)] // TODO: Need to evaluate this expression instead of just using the value from the array.
+						this.vChildren[index] = [new VText(array[index], this.refl)] // TODO: Need to evaluate this expression instead of just using the value from the array.
 					else  // loop
-						this.vChildren[index] = this.loopItemEls.map(vel => vel.clone(this.xel, this));
+						this.vChildren[index] = this.loopItemEls.map(vel => vel.clone(this.refl, this));
 
 					// 3. Add/update those new elements in the real DOM.
 					let i = 0;
@@ -557,7 +557,7 @@ export default class VExpression {
 	watch(callback) {
 
 		for (let path of this.watchPaths) {
-			let root = this.xel;
+			let root = this.refl;
 
 			// slice() to remove the "this" element from the watch path.
 			if (path[0] === 'this')
@@ -596,7 +596,7 @@ export default class VExpression {
 		let result = new VExpression();
 		result.vParent = vParent;
 		if (vParent) {
-			result.xel = vParent.xel;
+			result.refl = vParent.refl;
 			result.scope = {...vParent.scope};
 		}
 
@@ -622,7 +622,7 @@ export default class VExpression {
 
 		// Get the createFunction() from the class if it's already been instantiated.  Else use Refract's temporary createfunction().
 		// This lets us use other variabls defiend in the same scope as the class that extends Refract.
-		//let Class = ((vParent && vParent.xel && vParent.xel.constructor) || window.RefractCurrentClass);
+		//let Class = ((vParent && vParent.refl && vParent.refl.constructor) || window.RefractCurrentClass);
 
 		if (loopBody) {
 			result.type = 'loop';

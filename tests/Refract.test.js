@@ -1635,7 +1635,7 @@ Testimony.test('Refract.nested.passOBj', () => {
 
 	assertEquals(a.outerHTML, `<a-95><x-b95 fruits="Apple Banana">AppleBanana</x-b95></a-95>`);
 
-	// Make sure the child xel watches the parent's array.
+	// Make sure the child refl watches the parent's array.
 	Refract.elsCreated = [];
 	a.fruits.push('Cherry');
 	assertEquals(a.outerHTML, `<a-95><x-b95 fruits="Apple Banana Cherry">AppleBananaCherry</x-b95></a-95>`);

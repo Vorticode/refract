@@ -22,7 +22,7 @@ export default class VElement {
 
 
 	/** @type {Refract} */
-	xel = null;
+	refl = null;
 
 	/** @type {HTMLElement|HTMLInputElement} */
 	el = null;
@@ -84,7 +84,7 @@ export default class VElement {
 			// Because then the slot will be added to the slot, recursively forever.
 			// So we only allow setting content that doesn't have slot tags.
 			if (!el.querySelector('slot'))
-				this.xel.slotHtml = el.innerHTML; // At this point none of the children will be upgraded to web components?
+				this.refl.slotHtml = el.innerHTML; // At this point none of the children will be upgraded to web components?
 			el.innerHTML = '';
 		}
 		// 1B. Create Element
@@ -150,7 +150,7 @@ export default class VElement {
 					let p2 = parent.shadowRoot || parent;
 
 					// Insert into slot if it has one.  TODO: How to handle named slots here?
-					if (p2 !== this.xel && p2.tagName && p2.tagName.includes('-') && newEl.tagName !== 'SLOT')
+					if (p2 !== this.refl && p2.tagName && p2.tagName.includes('-') && newEl.tagName !== 'SLOT')
 						p2 = p2.querySelector('slot') || p2;
 					p2.insertBefore(newEl, p2.childNodes[this.startIndex]);
 				}
@@ -176,7 +176,7 @@ export default class VElement {
 		// 3. Slot content
 		let count = 0;
 		if (tagName === 'slot') {
-			let slotChildren = VElement.fromHtml(this.xel.slotHtml, Object.keys(this.scope), this, this.xel.constructor);
+			let slotChildren = VElement.fromHtml(this.refl.slotHtml, Object.keys(this.scope), this, this.refl.constructor);
 			for (let vChild of slotChildren) {
 				vChild.scope = {...this.scope}
 				vChild.startIndex = count;
@@ -191,7 +191,7 @@ export default class VElement {
 				throw new Error('textarea and contenteditable cannot have template expressions as children.  Use value=${this.variable} instead.');
 
 			vChild.scope = {...this.scope} // copy
-			vChild.xel = this.xel;
+			vChild.refl = this.refl;
 			vChild.startIndex = count;
 			count += vChild.apply(this.el);
 		}
@@ -206,24 +206,24 @@ export default class VElement {
 					expr.scope = this.scope; // Share scope with attributes.
 					expr.watch(() => {
 						if (name === 'value')
-							setInputValue(this.xel, this.el, value, this.scope);
+							setInputValue(this.refl, this.el, value, this.scope);
 
 						else {
-							let value2 = VElement.evalVAttributeAsString(this.xel, value, this.scope);
+							let value2 = VElement.evalVAttributeAsString(this.refl, value, this.scope);
 							this.el.setAttribute(name, value2);
 						}
 					});
 				}
 
 			// TODO: This happens again for inputs in step 5 below:
-			let value2 = VElement.evalVAttributeAsString(this.xel, value, this.scope);
+			let value2 = VElement.evalVAttributeAsString(this.refl, value, this.scope);
 			this.el.setAttribute(name, value2);
 
 
 			// Id
 			if (name === 'id' || name === 'data-id') {
 				let path = this.el.getAttribute(name).split('.');
-				delve(this.xel, path, this.el);
+				delve(this.refl, path, this.el);
 			}
 
 			// Events
@@ -231,13 +231,13 @@ export default class VElement {
 
 				// Get the createFunction() from the class if it's already been instantiated.  Else use Refract's temporary createfunction().
 				// This lets us use other variabls defiend in the same scope as the class that extends Refract.
-				let createFunction = ((this.xel && this.xel.constructor) || window.RefractCurrentClass).createFunction;
+				let createFunction = ((this.refl && this.refl.constructor) || window.RefractCurrentClass).createFunction;
 
 				let code = this.el.getAttribute(name);
 				this.el.removeAttribute(name); // Prevent original attribute being executed, without `this` and `el` in scope.
 				this.el[name] = event => { // e.g. el.onclick = ...
 					let args = ['event', 'el', ...Object.keys(this.scope)];
-					let func = createFunction(...args, code).bind(this.xel); // Create in same scope as parent class.
+					let func = createFunction(...args, code).bind(this.refl); // Create in same scope as parent class.
 					func(event, this.el, ...Object.values(this.scope));
 				}
 			}
@@ -262,8 +262,8 @@ export default class VElement {
 
 			// Don't grab value from input if we can't reverse the expression.
 			if (isSimpleExpr) {
-				let createFunction = ((this.xel && this.xel.constructor) || window.RefractCurrentClass).createFunction;
-				let assignFunc = createFunction(...Object.keys(this.scope), 'val', valueExprs[0].code + '=val;').bind(this.xel);
+				let createFunction = ((this.refl && this.refl.constructor) || window.RefractCurrentClass).createFunction;
+				let assignFunc = createFunction(...Object.keys(this.scope), 'val', valueExprs[0].code + '=val;').bind(this.refl);
 
 				// Update the value when the input changes:
 				Utils.watchInput(this.el, (val, e) => {
@@ -281,8 +281,8 @@ export default class VElement {
 		if ('data-value-expr' in this.attributes) {
 
 			let expr = this.attributes['data-value-expr'][0];
-			let createFunction = ((this.xel && this.xel.constructor) || window.RefractCurrentClass).createFunction;
-			let assignFunc = createFunction(...Object.keys(this.scope), 'val', expr + '=val;').bind(this.xel);
+			let createFunction = ((this.refl && this.refl.constructor) || window.RefractCurrentClass).createFunction;
+			let assignFunc = createFunction(...Object.keys(this.scope), 'val', expr + '=val;').bind(this.refl);
 
 			Utils.watchInput(this.el, (val, e) => {
 				Refract.currentEvent = e;
@@ -299,7 +299,7 @@ export default class VElement {
 		// https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#input_types
 		if (hasValue) // This should happen after the children are added, e.g. for select <options>
 			// TODO: Do we only need to do this for select boxes b/c we're waiting for their children?  Other input types are handled above in step 2.
-			setInputValue(this.xel, this.el, this.attributes.value, this.scope);
+			setInputValue(this.refl, this.el, this.attributes.value, this.scope);
 
 
 		if (tagName === 'svg')
@@ -310,28 +310,28 @@ export default class VElement {
 
 
 	/**
-	 * @param xel {Refract}
+	 * @param refl {Refract}
 	 * @param vParent {null|VElement|VExpression}
 	 * @return {VElement} */
-	clone(xel, vParent=null) {
+	clone(refl, vParent=null) {
 		let result = new VElement(this.tagName);
-		result.xel = xel || this.xel;
+		result.refl = refl || this.refl;
 		result.vParent = vParent;
 
 		for (let attrName in this.attributes) {
 			result.attributes[attrName] = [];
 			for (let piece of this.attributes[attrName]) {
 				if (piece instanceof VExpression)
-					result.attributes[attrName].push(piece.clone(result.xel, this))
+					result.attributes[attrName].push(piece.clone(result.refl, this))
 				else
 					result.attributes[attrName].push(piece);
 			}
 		}
 		for (let expr of this.attributeExpressions) // Expresions that create one or more attributes.
-			result.attributeExpressions.push(expr.clone(result.xel, this));
+			result.attributeExpressions.push(expr.clone(result.refl, this));
 
 		for (let child of this.vChildren)
-			result.vChildren.push(child.clone(result.xel, result)); // string for text node.
+			result.vChildren.push(child.clone(result.refl, result)); // string for text node.
 
 		return result;
 	}
@@ -350,14 +350,14 @@ export default class VElement {
 
 		// A solitary VExpression.
 		if (val && val.length === 1 && val[0] instanceof VExpression)
-			return val[0].exec.apply(this.xel, Object.values(this.scope));
+			return val[0].exec.apply(this.refl, Object.values(this.scope));
 
 		// Attribute with no value.
 		if (Array.isArray(val) && !val.length)
 			return true;
 
 		// Else evaluate as JSON, or as a string.
-		let result = VElement.evalVAttributeAsString(this.xel, (val || []), this.scope);
+		let result = VElement.evalVAttributeAsString(this.refl, (val || []), this.scope);
 		try {
 			result = JSON.parse(result);
 		} catch (e) {
@@ -470,7 +470,7 @@ export default class VElement {
 
 			// Text node
 			if (token.type === 'text')
-				result.push(new VText(token.text, vParent?.xel));
+				result.push(new VText(token.text, vParent?.refl));
 
 			// Expression child
 			else if (token.type === 'expr')
@@ -480,7 +480,7 @@ export default class VElement {
 			else if (token.type === 'openTag') {
 				let vel = new VElement();
 				vel.vParent = vParent;
-				vel.xel = vParent?.xel;
+				vel.refl = vParent?.refl;
 				if (vParent)
 					vel.scope = {...vParent.scope};
 				let attrName='';
