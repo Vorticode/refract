@@ -20,7 +20,7 @@ Refract is a fast, lightweight, "reactive" JavaScript library for creating user 
             this.items.splice(idx, 1);
         }
 
-        html = `
+        html() { return `
             <shopping-list>
                 <button onclick="this.addItem()">Add Item</button>
                 ${this.items.map(item => // Loop
@@ -31,7 +31,8 @@ Refract is a fast, lightweight, "reactive" JavaScript library for creating user 
                     </div>`
                 )}
                 <pre>${JSON.stringify(this.items, null, 4)}</pre>
-            </shopping-list>`;
+            </shopping-list>`
+		}
     }
     eval(ShoppingList.compile()); // Creates a Web Component from the class.
 </script>
@@ -51,7 +52,7 @@ Refract is still **in development** and has several known bugs.  Exercise cautio
 
 - Automatically updates DOM elements when properties change.
 - Fine grained change detection.  Adding a single item to a TODO list of 10,000 items won't create 10,000 virtual elements behind the scenes and compare them with the DOM to see what has changed.
-- Lightweight.  **30KB** minified, **9KB** gzipped.
+- Lightweight.  **46KB** minified, **9KB** gzipped.
 - No custom build steps and no dependencies.  Not even Node.js.  Just include Refract.js or Refract.min.js.
 - Doesn't take over your whole project.  Place it within standard DOM nodes only where you need it.
 - Uses standard, native html and JavaScript.  No need to learn another template or markup language.
@@ -68,7 +69,7 @@ In this minimal example, we make a new class called Hello and set its html.  We 
     
     class Hello extends Refract {
         name = 'Refract';
-        html = `<r-hello>Hello #{this.name}!</r-hello>`;
+	    html() { return `<r-hello>Hello #{this.name}!</r-hello>`}
     }
     eval(Hello.compile());
 </script>
@@ -89,12 +90,13 @@ Any element in the html with an `id` or `data-id` attribute is automatically bou
 
 ```javascript
 class RaceTeam extends Refract {
-    html = `
-        <race-team>
+	html() { return `
+		<race-team>
             <input id="driver" value="Vermin Supreme">
             <div data-id="car">Cutlas Supreme</div>
             <div data-id="instructor.name">Lightning McQueen</div>
-        </race-team>`;
+        </race-team>`
+	}
 }
 eval(RaceTeam.compile());
 
@@ -116,15 +118,18 @@ As with regular JavaScript, template strings can be inserted via `${...}`.  The 
 
 ```javascript
 class Resume extends Refract {
-    this.name = 'John Smith';
-    this.resumeHtml = '<b>Jobs:</b> Tesla.<br><b>Education:</b>: Belmont';
+	init() {
+		this.name = 'John Smith';
+		this.resumeHtml = '<b>Jobs:</b> Tesla.<br><b>Education:</b>: Belmont';
+	}
 
-    html = `
+	html() { return `
         <r-resume>
             <h1>Resume for #{this.name}</h1>
             <div>${this.resumeHtml}>/div>
             
-        </r-resume>`;
+        </r-resume>`
+	}
 }
 eval(NameTag.compile());
 ```
@@ -141,13 +146,16 @@ The values of `<input type="number">` and `<input type="range">` inputs will be 
 
 ```javascript
 class CoolForm extends Refract {
-    this.inputVal = 'Input val';
-    this.selectVal = 'One';
-    this.textareaVal = 'Textarea Content';
-    this.customVal = 4;
+	
+	init() {
+		this.inputVal = 'Input val';
+		this.selectVal = 'One';
+		this.textareaVal = 'Textarea Content';
+		this.customVal = 4;
+	}
 
-    html = `
-        <cool-form>
+	html() { return `
+		<cool-form>
             <input value="${this.inputVal}"/>
             <select value="${this.selectVal}">
                 <option>One</option>
@@ -155,7 +163,8 @@ class CoolForm extends Refract {
             </select>
             <textarea value="${this.textareaVal}"></textarea>
             <custom-refract-element value="${this.customVal}"></custom-refract-element>
-        </cool-form>`;
+        </cool-form>`
+    }
 }
 eval(NameTag.compile());
 ```
@@ -187,10 +196,11 @@ class FastCar extends LiteElement {
         console.log(`${event.type} happened on ${el.tagName}.`);
     }
 
-    html = `
+	html() { return `
         <fast-car>
             <button onclick="this.honk(event, el)">Honk</button>
-        </fast-car>`;
+        </fast-car>`
+	}
 }
 eval(FastCar.compile());
 
@@ -207,11 +217,12 @@ The classes that define Refract Elements have constructors, and values can be pa
 ```html
 <script>
     class ColorText extends Refract {
-        constructor(color) {
-            super();
+        init(color) {
             this.color = color;
         }
-        html = `<color-text style="color: #{this.value}"></color-text>`;
+	    html() { 
+			return `<color-text style="color: #{this.value}"></color-text>`
+		}
     }
     eval(ColorText.compile());
 </script>
@@ -224,16 +235,17 @@ Complex data can also be passed through constructor arguments.  Any constructor 
 ```html
 <script>
     class TodoList extends Refract {
-        constructor(items) {
-            super();
+        init(items) {
             this.items = items;
         }
-        html = `
+
+	    html() { return `
             <todo-list>
                 ${this.items.map(item => 
                     `#{this.items[0])}<br>`
                 )}
-            </todo-list>`;
+            </todo-list>`
+		}
     }
     eval(TodoList.compile());
 </script>
@@ -245,25 +257,28 @@ Refract elements can also be embedded within the html of other Refract elements:
 
 ```javascript
 class CarWheel extends Refract {
-    constructor(number, parent) {
+    init(number, parent) {
         super(false);
         this.number = number;
         this.parent = parent;
         this.render();
     }
-    html = `<car-wheel>Wheel ${this.number} of ${this.parent.name}</car-wheel>`;
+	html() { 
+		return `<car-wheel>Wheel ${this.number} of ${this.parent.name}</car-wheel>`
+	}
 }
 eval(CarWheel.compile());
 
 class CarBody extends Refract  {
     name = 'Camero';
-    html = `
+	html() { return `
         <car-body>
             <car-wheel number="1" parent="${this}"></car-wheel>
             <car-wheel number="2" parent="${this}"></car-wheel>
             <car-wheel number="3" parent="${this}"></car-wheel>
             <car-wheel number="4" parent="${this}"></car-wheel>
-        </car-body>`;
+        </car-body>`
+	}
 }
 eval(CarBody.compile());
 ```
@@ -272,21 +287,24 @@ And as seen above, attributes can be used to pass arguments to the nested elemen
 
 ```javascript
 class CarWheel extends Refract {
-    constructor(number) {
-        super();
+    init(number) {
         this.number = number;
-    }    
-    html = `<car-wheel>Wheel #{this.number}</car-wheel>`;
+    }
+	html() { 
+		return `<car-wheel>Wheel #{this.number}</car-wheel>`
+	}
 }
 
 class CarBody extends Refract  {
-    this.wheels = [1, 2, 3, 4];
-    html = `
+    wheels = [1, 2, 3, 4];
+
+	html() { return `
         <car-wheel>
             ${this.wheels.map(wheel => 
                 `<car-wheel number="${wheel}"></car-wheel>`
             )}
-        </car-wheel>`;
+        </car-wheel>`
+	}
 }
 ```
 
@@ -296,13 +314,14 @@ Alternatively, one Refract component can be embedded within another using this s
 
 ```javascript
 class CarBody extends Refract  {
-    this.wheels = [1, 2, 3, 4];
-    html = `
+    wheels = [1, 2, 3, 4];
+	html() { return `
         <car-wheel>
             ${this.wheels.map(wheel => 
                 new CarWheel(wheel)
             )}
-        </car-wheel>`;
+        </car-wheel>`
+	}
 }
 ```
 
@@ -318,23 +337,26 @@ Maybe you want to setup your object a little before it's rendered.  In this case
 class TodoList extends Refract {
 
     items = [];
+	
+	// False to not create child nodes until we call this.render().
+	autoRender = false;
     
-    constructor(items) {
-        super(false); // False to not create child nodes until we call this.render().
+    init(items) {
         console.log(this.listParent); // undefined, not created yet.
         this.items = items;
         this.render(); // Don't create child nodes until here.
         console.log(this.listParent); // Now it's created.
     }
 
-    this.html = `
+	html() { return `
         <todo-list>
         	<ul id="listParent">
         	    ${this.items.map(item =>
                     `<li>${item}</li>`                                
                 )}
         	</ul>
-        </todo-list>`;
+        </todo-list>`
+    }
 }
 ```
 
@@ -349,14 +371,15 @@ Elements with `style` elements will be rewritten so that any style selectors beg
 
 ```javascript
 class FancyText extends Refract {
-    html = `
+	html() { return `
         <fancy-text>
             <style>
                 :host { border: 10px dashed red } /* style for <fancy-text> */
                 :host p { text-shadow: 0 0 5px orange } 
             </style>
             <p>I have a red border and shadow!</p>
-        </fancy-text>`;
+        </fancy-text>`
+	}
 }
 eval(FancyText.compile());
 ```
@@ -367,14 +390,15 @@ Any element with the `shadow` attribute will have its child nodes attached withi
 
 ```javascript
 class FancyText extends Refract {
-    html = `
+	html() { return `
         <fancy-text shadow>
             <style>
                 :host { border: 10px dashed red } /* style for <fancy-text> */
                 p { text-shadow: 0 0 5px orange } /* No need for :host prefix */
             </style>
             <p>I have a red border and shadow!</p>
-        </fancy-text>`;
+        </fancy-text>`
+	}
 }
 eval(FancyText.compile());
 ```
@@ -413,19 +437,19 @@ Template expressions can:
 However they cannot alter the entire structure of html tags or attributes.  All of the following will fail:
 
 ```javascript
-html = `<${this.tagName}></${this.tagName}>`;
-html = `<div data-${this.dataName}="1"></div>`;
-html = `<div>${this.closeTag}`;
+html() { return `<${this.tagName}></${this.tagName}>`}
+html() { return `<div data-${this.dataName}="1"></div>`}
+html() { return `<div>${this.closeTag}`}
 ```
 
 However these will all work:
 
 ```javascript
-html = `${this.completeBlockOfHtml}`;
-html = `<div class="one ${this.two} three"></div>`;
-html = `<div ${this.isEdit ? 'contenteditable' : ''}></div>`;
-html = `<div ${this.attributes.join(' ')}></div>`;
-html = `<div>one ${this.two} three</div>`;
+html() { return `${this.completeBlockOfHtml}`}
+html() { return `<div class="one ${this.two} three"></div>`}
+html() { return `<div ${this.isEdit ? 'contenteditable' : ''}></div>`}
+html() { return `<div ${this.attributes.join(' ')}></div>`}
+html() { return `<div>one ${this.two} three</div>`}
 ```
 
 ### document.createElement()
@@ -434,7 +458,7 @@ Refract element can't be instantiated via document.createElement():
 
 ```javascript
 class RefractElement extends Refract {
-    html = `<refract-element>Hi!</refract-element>`;
+	html() { return `<refract-element>Hi!</refract-element>`}
 }
 eval(RefractElement.compile());
 
@@ -468,12 +492,13 @@ class RefractElement extends Refract {
     getCount() {
         return this.count+1;   
     }
-    
-    html = `
+
+	html() { return `
         <refract-element>
             Count1: ${this.count+1}    <!-- will update -->
             Count2: ${this.getCount()} <!-- won't update -->
-        </refract-element>`;
+        </refract-element>`
+	}
 }
 eval(RefractElement.compile());
 
@@ -491,12 +516,13 @@ class RefractElement extends Refract {
     getVar(variable) {
         return variable+1;   
     }
-    
-    html = `
+
+	html() { return `
         <refract-element>
             Count1: ${this.count+1}
             Count2: ${this.getVar(this.count)}
-        </refract-element>`;
+        </refract-element>`
+	}    
 }
 eval(RefractElement.compile());
 

@@ -1,4 +1,4 @@
-import Utils, {removeProxies, isObj, RefractError} from './utils.js';
+import Utils, {removeProxies, isObj} from './utils.js';
 
 /**
  * @property object.$isProxy
@@ -84,7 +84,7 @@ import Utils, {removeProxies, isObj, RefractError} from './utils.js';
 				result = result.$removeProxy || result;
 				//#IFDEV
 				if (result.$isProxy)
-					throw new RefractError("Double wrapped proxy found.");
+					throw new Error("Double wrapped proxy found.");
 				//#ENDIF
 
 				// Make sure the path from the root to the object's field is tracked:

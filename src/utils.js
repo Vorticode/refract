@@ -1,13 +1,5 @@
 
-//#IFDEV
 import Watch from "./Watch.js";
-
-class RefractError extends Error {
-	constructor(msg) {
-		super(msg);
-	}
-}
-//#ENDIF
 
 
 /** @deprecated */
@@ -169,7 +161,7 @@ var removeProxies = (obj, visited) => {
 
 		//#IFDEV
 		if (obj.$isProxy) // If still a proxy.  There should never be more than 1 level deep of proxies.
-			throw new RefractError("Double wrapped proxy found.");
+			throw new Error("Double wrapped proxy found.");
 		//#ENDIF
 	}
 
@@ -202,8 +194,5 @@ var removeProxies = (obj, visited) => {
 };
 
 export { csv, isObj };
-//#IFDEV
-export { RefractError }
-//#ENDIF
 
 export { removeProxy, removeProxies };
