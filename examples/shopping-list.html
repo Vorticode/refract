@@ -1,53 +1,41 @@
-<style>
-	body { background: black; color: white }
-</style>
-<script type = "module">
+<script type="module">
 	import Refract from '../src/Refract.js';
-	import {WatchUtil} from '../src/watchProxy.js';
 
 	class ShoppingList extends Refract {
-		items = [{name: 'asdf', qty: 0}];
+		items = [];
 
+		// Constructor
+		init(items=[]) {
+			this.items = items;
+		}
+
+		// Inserts only one div row, without recreating whole list:
 		addItem() {
 			this.items.push({name: '', qty: 0});
-			this.updateDebug();
 		}
 
+		// Inserts only one div row, without recreating whole list:
 		removeItem(item) {
-			this.items.splice(this.items.indexOf(item), 1);
-			this.updateDebug();
+			let idx = this.items.indexOf(item);
+			this.items.splice(idx, 1);
 		}
 
-		updateDebug() {
-			console.log(WatchUtil.roots);
-			//console.log(WatchUtil.paths);
+		html() { return `
+            <shopping-list>
+                <button onclick="this.addItem()">Add Item</button>
+                ${this.items.map(item => // Loop
+					`<div style="display: flex; flex-direction: row">
+                        <input value="${item.name}" placeholder="Name">
+                        <input type="number" value="${item.qty}">
+                        <div onclick="this.removeItem(item)">x</div>
+                    </div>`
+				)}
+                <pre>${JSON.stringify(this.items, null, 4)}</pre>
+            </shopping-list>`
 		}
-
-		html = `
-	        <shopping-list style="display: flex">
-	            <div>
-		            <button onclick="this.addItem()">Add Item</button>
-		            ${this.items.map(item =>
-						`<div style="display: flex">
-		                    <input value="${item.name}">
-		                    <input type="number" value="${item.qty}" style="width: 80px">
-		                    <button onclick="this.removeItem(item)">X</button>
-		                </div>`
-					)}
-		            <div>${this.items.length} Items</div>
-		            <div>${(this.items).length} Items</div>
-
-		        </div>
-
-	            <div style="white-space: pre">${JSON.stringify(this.items, null, 4)}</div>
-	            <div id="debug"></div>
-	        </shopping-list>`;
 	}
+
+	// Setup the class and register it as a Web Component.
 	eval(ShoppingList.compile());
-
-	var inv = new ShoppingList();
-	document.body.append(inv);
-
-	// We could alternatively create the element directly within html by adding <shopping-list></shopping-list> directly.
-
 </script>
+<shopping-list items="${[{name: 'Avacados', qty: 2}]}"></shopping-list>

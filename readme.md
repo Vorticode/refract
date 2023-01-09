@@ -1,45 +1,52 @@
 # Refract
 
-Refract is a fast, lightweight, "reactive" JavaScript library for creating user interface components to use in regular html pages:
+Refract is a fast, lightweight, "reactive" JavaScript library for creating user interface components to use in regular html pages.
 
 ```html
 <script type="module">
-    import Refract from 'Refract.js'
-    
-    class ShoppingList extends Refract {
-        items = [];
+	import Refract from '../src/Refract.js';
 
-        // Inserts only one div row, without recreating whole list:
-        addItem() {
-            this.items.push({name: '', qty: 0});
-        }
+	class ShoppingList extends Refract {
+		items = [];
 
-        // Inserts only one div row, without recreating whole list:
-        removeItem(item) {
-            let idx = this.items.indexOf(item);
-            this.items.splice(idx, 1);
-        }
+		// Constructor
+		init(items=[]) {
+			this.items = items;
+		}
 
-        html() { return `
+		// Inserts only one div row, without recreating whole list:
+		addItem() {
+			this.items.push({name: '', qty: 0});
+		}
+
+		// Inserts only one div row, without recreating whole list:
+		removeItem(item) {
+			let idx = this.items.indexOf(item);
+			this.items.splice(idx, 1);
+		}
+
+		html() { return `
             <shopping-list>
                 <button onclick="this.addItem()">Add Item</button>
                 ${this.items.map(item => // Loop
-                   `<div style="display: flex; flex-direction: row">
+					`<div style="display: flex; flex-direction: row">
                         <input value="${item.name}" placeholder="Name">
                         <input type="number" value="${item.qty}">
                         <div onclick="this.removeItem(item)">x</div>
                     </div>`
-                )}
-                <pre>${JSON.stringify(this.items, null, 4)}</pre>
+				)}
+                <pre>items = ${JSON.stringify(this.items, null, 4)}</pre>
             </shopping-list>`
 		}
-    }
-    eval(ShoppingList.compile()); // Creates a Web Component from the class.
+	}
+
+	// Setup the class and register it as a Web Component.
+	eval(ShoppingList.compile());
 </script>
-<shopping-list></shopping-list>
+<shopping-list items="${[{name: 'Avacados', qty: 2}]}"></shopping-list>
 ```
 
-Run [this example](https://jsitor.com/1OPi_ooJCc) on jsitor.com.
+You can paste the code above into any html document to try it out, or [run it](https://jsfiddle.net/nev1gjzo/1/) on JSFiddle.net.
 
 Refract is still **in development** and has several known bugs.  Exercise caution if using in a production environment.
 
