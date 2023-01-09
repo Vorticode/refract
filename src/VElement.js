@@ -169,9 +169,8 @@ export default class VElement {
 
 
 		// 2. Shadow DOM
-		for (let name in this.attributes)
-			if (name === 'shadow' && !this.el.shadowRoot)
-				this.el.attachShadow({mode: this.el.getAttribute('shadow') || 'open'});
+		if (!this.el.shadowRoot && 'shadow' in this.attributes)
+			this.el.attachShadow({mode: this.el.getAttribute('shadow') || 'open'});
 
 		// 3. Slot content
 		let count = 0;

@@ -3747,9 +3747,8 @@ class VElement {
 
 
 		// 2. Shadow DOM
-		for (let name in this.attributes)
-			if (name === 'shadow' && !this.el.shadowRoot)
-				this.el.attachShadow({mode: this.el.getAttribute('shadow') || 'open'});
+		if (!this.el.shadowRoot && 'shadow' in this.attributes)
+			this.el.attachShadow({mode: this.el.getAttribute('shadow') || 'open'});
 
 		// 3. Slot content
 		let count = 0;
@@ -4813,6 +4812,7 @@ class Refract extends HTMLElement {
 		if (args === false)
 			this.__autoRender = false;
 
+		// Used in old path from before we used init()
 		this.constructorArgs2 = arguments;
 	}
 
@@ -4856,7 +4856,6 @@ class Refract extends HTMLElement {
 			for (let vexpr of this.__toRender)
 				vexpr.apply();
 			this.__toRender = new Set();
-
 		}
 	}
 

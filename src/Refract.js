@@ -96,6 +96,7 @@ export default class Refract extends HTMLElement {
 		if (args === false)
 			this.__autoRender = false;
 
+		// Used in old path from before we used init()
 		this.constructorArgs2 = arguments;
 	}
 
@@ -139,7 +140,6 @@ export default class Refract extends HTMLElement {
 			for (let vexpr of this.__toRender)
 				vexpr.apply();
 			this.__toRender = new Set();
-
 		}
 	}
 

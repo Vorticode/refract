@@ -59,7 +59,7 @@ Refract is still **in development** and has several known bugs.  Exercise cautio
 
 - Automatically updates DOM elements when properties change.
 - Fine grained change detection.  Adding a single item to a TODO list of 10,000 items won't create 10,000 virtual elements behind the scenes and compare them with the DOM to see what has changed.
-- Lightweight.  **46KB** minified, **9KB** gzipped.
+- Lightweight.  **46KB** minified, **15KB** gzipped.
 - No custom build steps and no dependencies.  Not even Node.js.  Just include Refract.js or Refract.min.js.
 - Doesn't take over your whole project.  Place it within standard DOM nodes only where you need it.
 - Uses standard, native html and JavaScript.  No need to learn another template or markup language.
