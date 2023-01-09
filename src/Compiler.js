@@ -216,7 +216,7 @@ export class Compiler {
 			
 				this.__autoRender = 'autoRender' in this ? this.autoRender : true;
 				
-				if (!Object.getOwnPropertyDescriptor(this, 'autoRender')?.configurable === false)
+				if (Object.getOwnPropertyDescriptor(this, 'autoRender')?.configurable !== false)
 					Object.defineProperty(this, 'autoRender', {
 						get() {
 							return this.__autoRender
@@ -229,7 +229,7 @@ export class Compiler {
 					});
 			
 				if (this.__autoRender)
-					this.render(this.constructor.name);
+					this.render();
 				
 				if (this.init) {
 					let args = this.parentElement

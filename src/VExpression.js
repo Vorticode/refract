@@ -112,15 +112,23 @@ export default class VExpression {
 
 	/**
 	 * Evaluate this expression and either add children to parent or set attributes on parent.
-	 * @param parent {HTMLElement}
+	 * @param parent {HTMLElement} If set, this is always eqeual to this.parent?
 	 * @param el {HTMLElement} Unused.  Only here to match
 	 * @return {int} Number of elements created. d*/
 	apply(parent=null, el=null) {
 		this.parent = parent || this.parent;
 
+		// if (window.debug)
+		// 	debugger;
+
+		// See if this ever happens?
+		if (parent && parent !== this.parent)
+			debugger;
+
 		// If we've had the initial render but autoRender is currently disabled
 		if (!this.refl.__autoRender && this.refl.virtualElement) {
-			this.refl.__toRender.push([this, parent, el]);
+			this.refl.__toRender.add(this);
+			return;
 		}
 
 		//#IFDEV
@@ -332,11 +340,6 @@ export default class VExpression {
 			return;
 
 		//window.requestAnimationFrame(() => {
-
-		if (window.debug) { // This happens when a path on an element is watched, but the path doesn't exist?
-			console.log(action, path, value)
-			debugger;
-		}
 
 		// Path 1:  If modifying a property on a single array item.
 		// TODO: watchPaths besides 0?

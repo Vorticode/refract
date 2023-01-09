@@ -42,6 +42,8 @@ var ascendIf = regex => code => {
  * */
 
 {
+
+
 	let arrayRead = ['indexOf', 'lastIndexOf', 'includes'];
 	let arrayWrite = ['push', 'pop', 'splice', 'shift', 'sort', 'reverse', 'unshift'];
 	// TODO What about array copy functions, like slice() and flat() ?  Currently they just remove the proxy.
@@ -997,7 +999,7 @@ var utils = {
 	 * @param callback {function(val:*, event)}	 */
 	watchInput(el, callback) {
 		let tagName = el.tagName;
-		let isContentEditable =el.hasAttribute('contenteditable') && el.getAttribute('contenteditable') !== 'false';
+		let isContentEditable = el.hasAttribute('contenteditable') && el.getAttribute('contenteditable') !== 'false';
 		let isTextArea = tagName==='TEXTAREA';
 
 
@@ -2049,7 +2051,7 @@ class ParsedFunction {
 						depth++;
 					else if (token.text === ')')
 						depth --;
-					if (depth === 0 && token.text === '{' || token.text === '=>')
+					if (depth === 0 && (token.text === '{' || token.text === '=>'))
 						return false;
 				};
 			}
@@ -2994,11 +2996,24 @@ class VExpression {
 
 	/**
 	 * Evaluate this expression and either add children to parent or set attributes on parent.
-	 * @param parent {HTMLElement}
-	 * @param el {HTMLElement} Unused.
+	 * @param parent {HTMLElement} If set, this is always eqeual to this.parent?
+	 * @param el {HTMLElement} Unused.  Only here to match
 	 * @return {int} Number of elements created. d*/
 	apply(parent=null, el=null) {
 		this.parent = parent || this.parent;
+
+		// if (window.debug)
+		// 	debugger;
+
+		// See if this ever happens?
+		if (parent && parent !== this.parent)
+			debugger;
+
+		// If we've had the initial render but autoRender is currently disabled
+		if (!this.refl.__autoRender && this.refl.virtualElement) {
+			this.refl.__toRender.add(this);
+			return;
+		}
 
 		//#IFDEV
 		if (this.attrName)
@@ -3209,11 +3224,6 @@ class VExpression {
 			return;
 
 		//window.requestAnimationFrame(() => {
-
-		if (window.debug) { // This happens when a path on an element is watched, but the path doesn't exist?
-			console.log(action, path, value);
-			debugger;
-		}
 
 		// Path 1:  If modifying a property on a single array item.
 		// TODO: watchPaths besides 0?
@@ -4435,6 +4445,7 @@ class Compiler {
 
 	//#ENDIF
 
+
 	/**
 	 * Create a version of the class
 	 * @param self
@@ -4445,10 +4456,28 @@ class Compiler {
 		result.originalClass = self;
 
 		// This code runs after the call to super() and after all the other properties are initialized.
+
+		// Turn autoRender into a property if it's not a property already.
+		// It might be a property if we inherit from another Refract class.
 		let preInitCode = `
 			__preInit = (() => {
-				if (this.autoRender)
-					this.render(this.constructor.name);
+			
+				this.__autoRender = 'autoRender' in this ? this.autoRender : true;
+				
+				if (Object.getOwnPropertyDescriptor(this, 'autoRender')?.configurable !== false)
+					Object.defineProperty(this, 'autoRender', {
+						get() {
+							return this.__autoRender
+						},
+						set(val) {
+							this.__autoRender = val;
+							if (val)
+								this.render();
+						}
+					});
+			
+				if (this.__autoRender)
+					this.render();
 				
 				if (this.init) {
 					let args = this.parentElement
@@ -4760,7 +4789,9 @@ class Refract extends HTMLElement {
 	slotHtml = '';
 
 	/** If true, call render() before the constructor, and every time after a property is changed */
-	autoRender = true;
+	__autoRender = true;
+
+	__toRender= new Set();
 
 	/**
 	 * A copy of the static VElement from the Class, with specific VExpressions that match the watched properties of this instance.
@@ -4780,12 +4811,7 @@ class Refract extends HTMLElement {
 
 		// old path from before we used init()
 		if (args === false)
-			this.autoRender = false;
-
-		else if (typeof autoRender === 'object') // Deprecated path, we can just disable autoRender instead.
-			// Allow setting properties on the object before any html is created:
-			for (let name in autoRender)
-				this[name] = autoRender[name];
+			this.__autoRender = false;
 
 		this.constructorArgs2 = arguments;
 	}
@@ -4794,29 +4820,43 @@ class Refract extends HTMLElement {
 	 * Bring this element's DOM nodes up to date.
 	 * 1.  If calling render() for the first time on any instance, parse the html to the virtual DOM.
 	 * 2.  If calling render() for the first time on this instance, Render the virtual DOM to the real DOM.
-	 * 3.  Apply any updates to the real DOM. TODO
-	 * @param name {?string} Name of the class calling render.  What is this for? */
-	render(name=null) {
+	 * 3.  Apply any updates to the real DOM. ? */
+	render() {
 
-		// Parse the html tokens to Virtual DOM
-		if (!this.constructor.virtualElement) {
-			if (this.html) // new path
-				this.constructor.htmlTokens = Parse.htmlFunctionReturn(this.html.toString());
+		this.__autoRender = true;
 
-			this.constructor.virtualElement = VElement.fromTokens(this.constructor.htmlTokens, [], null, this.constructor, 1)[0];
-			this.constructor.htmlTokens = null; // We don't need them any more.
-		}
 
 		// If not already created by a super-class.  Is ` this.constructor.name===name` still needed?
-		if (!this.virtualElement && (!name || this.constructor.name===name)) {
+		//if (!this.virtualElement && (!name || this.constructor.name===name)) {
+
+		// Initial render
+		if (!this.virtualElement) {
+
+			// Parse the html tokens to Virtual DOM
+			if (!this.constructor.virtualElement) {
+				if (this.html) // new path
+					this.constructor.htmlTokens = Parse.htmlFunctionReturn(this.html.toString());
+
+				this.constructor.virtualElement = VElement.fromTokens(this.constructor.htmlTokens, [], null, this.constructor, 1)[0];
+				this.constructor.htmlTokens = null; // We don't need them any more.
+			}
+
 			Refract.constructing[this.tagName] = true;
 
 			this.virtualElement = this.constructor.virtualElement.clone(this);
 			this.virtualElement.apply(null, this);
 
 			delete Refract.constructing[this.tagName];
+		}
 
-			this.initialRender = true;
+		// Render items from the queue.
+		if (this.__toRender.size) {
+
+			// TODO: Remove children of parents in this set.
+			for (let vexpr of this.__toRender)
+				vexpr.apply();
+			this.__toRender = new Set();
+
 		}
 	}
 

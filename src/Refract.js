@@ -74,7 +74,7 @@ export default class Refract extends HTMLElement {
 	/** If true, call render() before the constructor, and every time after a property is changed */
 	__autoRender = true;
 
-	__toRender= [];
+	__toRender= new Set();
 
 	/**
 	 * A copy of the static VElement from the Class, with specific VExpressions that match the watched properties of this instance.
@@ -95,27 +95,25 @@ export default class Refract extends HTMLElement {
 		// old path from before we used init()
 		if (args === false)
 			this.__autoRender = false;
-		// else if (typeof args === 'object') // Deprecated path, we can just disable autoRender instead.
-		// 	// Allow setting properties on the object before any html is created:
-		// 	for (let name in args)
-		// 		this[name] = args[name];
 
-		this.constructorArgs2 = arguments;;
+		this.constructorArgs2 = arguments;
 	}
 
 	/**
 	 * Bring this element's DOM nodes up to date.
 	 * 1.  If calling render() for the first time on any instance, parse the html to the virtual DOM.
 	 * 2.  If calling render() for the first time on this instance, Render the virtual DOM to the real DOM.
-	 * 3.  Apply any updates to the real DOM. TODO
-	 * @param name {?string} Name of the class calling render.  What is this for? */
-	render(name=null) {
+	 * 3.  Apply any updates to the real DOM. ? */
+	render() {
 
 		this.__autoRender = true;
 
 
 		// If not already created by a super-class.  Is ` this.constructor.name===name` still needed?
-		if (!this.virtualElement && (!name || this.constructor.name===name)) {
+		//if (!this.virtualElement && (!name || this.constructor.name===name)) {
+
+		// Initial render
+		if (!this.virtualElement) {
 
 			// Parse the html tokens to Virtual DOM
 			if (!this.constructor.virtualElement) {
@@ -134,12 +132,13 @@ export default class Refract extends HTMLElement {
 			delete Refract.constructing[this.tagName];
 		}
 
-		if (this.__toRender.length) {
+		// Render items from the queue.
+		if (this.__toRender.size) {
 
-			for (let vexpr of this.__toRender) {
-
-			}
-			this.__toRender = [];
+			// TODO: Remove children of parents in this set.
+			for (let vexpr of this.__toRender)
+				vexpr.apply();
+			this.__toRender = new Set();
 
 		}
 	}

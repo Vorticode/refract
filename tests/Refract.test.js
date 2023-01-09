@@ -270,6 +270,35 @@ Testimony.test('Refract.basic.deferredRender', "Don't render anything until we c
 });
 
 
+
+Testimony.test('Refract.basic.deferredRender2', "Disable rendering.", () => {
+
+	class A extends Refract {
+		x = 1;
+		y = 2;
+
+		update(x, y) {
+			this.autoRender = false;
+			this.x = x;
+			this.y = y;
+			this.autoRender = true;
+		}
+
+		html() { return `<b-72>${this.x + this.y}</b-72>`};
+	}
+	eval(A.compile());
+
+	let a = new A();
+
+
+	Refract.elsCreated = [];
+	a.update(3, 4);
+
+	assert.eq(Refract.elsCreated, ['7']);
+	assert.eq(a.outerHTML, `<b-72>7</b-72>`);
+});
+
+
 Testimony.test('Refract.expr.string', () => {
 	class A extends Refract {
 		html() { return `<b-80>${'hi'}</b-80>` }
@@ -850,11 +879,9 @@ Testimony.test('Refract.loop.Set', () => {
 	eval(A.compile());
 	let a = new A();
 
-	//window.debug = true;
 	a.fruits[0] = 'Cherry';
 	assertEquals(a.outerHTML, '<x-23>CherryBanana</x-23>');
 	assertEquals(a.childNodes.length, 2);
-
 
 	a.fruits[1] = 'DragonFruit';
 	assertEquals(a.outerHTML, '<x-23>CherryDragonFruit</x-23>');
@@ -1125,12 +1152,9 @@ Testimony.test('Refract.loop.double', () => {
 
 	// 2. Push item to first list.
 	Refract.elsCreated = [];
-	//window.debug = true;
 	a.fruits.push('Cherry');
 	assertEquals(a.outerHTML, '<x-60>AppleBananaCherryCatDog</x-60>');
 	assertEquals(Refract.elsCreated, ['Cherry']);
-	//document.body.append(a.debugRender());
-	//return;
 
 	// 2. Shift item to second list.
 	Refract.elsCreated = [];
@@ -1138,24 +1162,17 @@ Testimony.test('Refract.loop.double', () => {
 	assertEquals(a.outerHTML, '<x-60>AppleBananaCherryBirdCatDog</x-60>');
 	assertEquals(Refract.elsCreated, ['Bird']);
 
-	//document.body.append(a.debugRender());
-
 	// 3. Splice item from first list.
 	Refract.elsCreated = [];
 	a.fruits.splice(1, 1);
 	assertEquals(a.outerHTML, '<x-60>AppleCherryBirdCatDog</x-60>');
 	assertEquals(Refract.elsCreated, []);
 
-	//document.body.append(a.debugRender());
-
 	// 3. Splice item from second list.
 	Refract.elsCreated = [];
 	a.pets.splice(1, 1);
 	assertEquals(a.outerHTML, '<x-60>AppleCherryBirdDog</x-60>');
 	assertEquals(Refract.elsCreated, []);
-
-
-	//document.body.append(a.debugRender());
 });
 
 Testimony.test('Refract.loop.Constant', () => {
