@@ -4,28 +4,28 @@ Refract is a fast, lightweight, "reactive" JavaScript library for creating user 
 
 ```html
 <script type="module">
-	import Refract from '../src/Refract.js';
+    import Refract from '../src/Refract.js';
 
-	class ShoppingList extends Refract {
-		items = [];
+    class ShoppingList extends Refract {
+        items = [];
 
-		// Constructor
-		init(items=[]) {
-			this.items = items;
-		}
+        // Constructor
+        init(items=[]) {
+            this.items = items;
+        }
 
-		// Inserts only one div row, without recreating whole list:
-		addItem() {
-			this.items.push({name: '', qty: 0});
-		}
+        // Inserts only one div row, without recreating whole list:
+        addItem() {
+            this.items.push({name: '', qty: 0});
+        }
 
-		// Removes only one div row, without recreating whole list:
-		removeItem(item) {
-			let idx = this.items.indexOf(item);
-			this.items.splice(idx, 1);
-		}
+        // Removes only one div row, without recreating whole list:
+        removeItem(item) {
+            let idx = this.items.indexOf(item);
+            this.items.splice(idx, 1);
+        }
 
-		html() { return `
+        html() { return `
             <shopping-list>
                 <button onclick="this.addItem()">Add Item</button>
                 ${this.items.map(item => // Loop
@@ -52,8 +52,8 @@ Refract is still **in development** and has several known bugs.  Exercise cautio
 
 ## CDN / Download
 
-- [Refract.js](https://cdn.jsdelivr.net/gh/Vorticode/refract/dist/Refract.js) - 101KB
-- [Refract.min.js](https://cdn.jsdelivr.net/gh/Vorticode/refract/dist/Refract.min.js) - 30KB (9KB gzipped)
+- [Refract.js](https://cdn.jsdelivr.net/gh/Vorticode/refract/dist/Refract.js) - 156KB
+- [Refract.min.js](https://cdn.jsdelivr.net/gh/Vorticode/refract/dist/Refract.min.js) - 46KB (15KB gzipped)
 
 ## Feature Summary:
 
