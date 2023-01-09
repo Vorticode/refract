@@ -28,20 +28,20 @@ Refract is a fast, lightweight, "reactive" JavaScript library for creating user 
         html() { return `
             <shopping-list>
                 <button onclick="this.addItem()">Add Item</button>
-                ${this.items.map(item => // Loop
-					`<div style="display: flex; flex-direction: row">
+                ${this.items.map(item => // Loop 
+                    `<div style="display: flex; flex-direction: row">
                         <input value="${item.name}" placeholder="Name">
                         <input type="number" value="${item.qty}">
                         <div onclick="this.removeItem(item)">x</div>
-                    </div>`
-				)}
+                     </div>`
+                )}
                 <pre>items = ${JSON.stringify(this.items, null, 4)}</pre>
             </shopping-list>`
-		}
-	}
+        }
+    }
 
-	// Setup the class and register it as a Web Component.
-	eval(ShoppingList.compile());
+    // Setup the class and register it as a Web Component.
+    eval(ShoppingList.compile());
 </script>
 <shopping-list items="${[{name: 'Avacados', qty: 2}]}"></shopping-list>
 ```
