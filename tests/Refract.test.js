@@ -63,9 +63,8 @@ Testimony.test('Refract.basic.constructor', () => {
 		test = 3;
 
 
-		constructor(a, from, b=window) {
-			super();
-			constructorCalled++;
+		init(a, from, b=window) {
+						constructorCalled++;
 		}
 
 		html() { return `<a-20>hi</a-20>`}
@@ -86,15 +85,14 @@ Testimony.test('Refract.basic.constructor2', () => {
 	let constructorCalled = 0;
 
 	class A extends Refract {
-		constructor(int, json, expr=x=>x+1, func=function(){ return (1+1)}, d={}) {
-			super({});
+		init(int, json, expr=x=>x+1, func=function(){ return (1+1)}, d={}) {
 			assert.eq(int, 1);
 			assert.eq(json, [2]);
 			assert.eq(expr, 3);
 			constructorCalled++;
 		}
 
-		html = `<a-22>hi</a-22>`;
+		html() { return `<a-22>hi</a-22>`};
 	}
 	eval(A.compile());
 
@@ -192,7 +190,7 @@ Testimony.test('Refract.basic.initNamed', 'Test named init() parameters', () => 
 Testimony.test('Refract.basic.slash', () => {
 	class A extends Refract {
 		a = '//';
-		html = `<a-30></a-30>`;
+		html() { return `<a-30></a-30>`};
 	}
 	eval(A.compile());
 });
@@ -200,15 +198,14 @@ Testimony.test('Refract.basic.slash', () => {
 Testimony.test('Refract.basic.import', () => {
 
 	class A extends Refract {
-		constructor() {
-			super();
-
+		init() {
+			
 			// Uses module's import
 			assertEquals(1, 1);
 			this.constructorCalled = true;
 		}
 
-		html = `<x-4>hi</x-4>`;
+		html() { return `<x-4>hi</x-4>`};
 	}
 	eval(A.compile());
 	let a = new A();
@@ -219,7 +216,7 @@ Testimony.test('Refract.basic.import', () => {
 Testimony.test('Refract.basic.text', () => {
 
 	class A extends Refract {
-		html = `<x-5>text</x-5>`;
+		html() { return `<x-5>text</x-5>`};
 	}
 	eval(A.compile());
 
@@ -230,7 +227,7 @@ Testimony.test('Refract.basic.text', () => {
 Testimony.test('Refract.basic.entity', () => {
 
 	class A extends Refract {
-		html = `<x-6>a &lt; b</x-6>`;
+		html() { return `<x-6>a &lt; b</x-6>`};
 	}
 	eval(A.compile());
 
@@ -241,7 +238,7 @@ Testimony.test('Refract.basic.entity', () => {
 Testimony.test('Refract.basic.entity2', () => {
 
 	class A extends Refract {
-		html = `<b-70>a < b</b-70>`;
+		html() { return `<b-70>a < b</b-70>`};
 	}
 	eval(A.compile());
 
@@ -254,14 +251,15 @@ Testimony.test('Refract.basic.deferredRender', "Don't render anything until we c
 	let test1, test2;
 
 	class A extends Refract {
-		constructor() {
-			super(false);
+		autoRender = false;
+
+		init() {
 			test1 = this.d;
 			this.render();
 			test2 = this.d;
 		}
 
-		html = `<b-71><div id="d"></div></b-71>`;
+		html() { return `<b-71><div id="d"></div></b-71>`};
 	}
 	eval(A.compile());
 
@@ -284,7 +282,7 @@ Testimony.test('Refract.expr.string', () => {
 
 Testimony.test('Refract.expr.template', () => {
 	class A extends Refract {
-		html = `<x-120>${`hi`}</x-120>`;
+		html() { return `<x-120>${`hi`}</x-120>`}
 	}
 	eval(A.compile());
 	let a = new A();
@@ -319,16 +317,16 @@ Testimony.test('Refract.expr.loopInExprLoop', () => {
 		items = ['a', 'b'];
 		images = ['a', 'b'];
 
-		html = `
+		html() { return `
 			<x-133>
 				${this.items.slice().map((variable, i) =>		
-					`<div>
+					`}<div>
 						${this.images.map(image => 
 							`<div data-value="/#{image}"><div title="#{image}"></div>`
 						)}		
 					</div>`
 				)}
-			</x-133>`;
+			</x-133>`}
 	}
 	eval(A.compile());
 	let a = new A();
@@ -338,7 +336,7 @@ Testimony.test('Refract.expr.loopInExprLoop', () => {
 Testimony.test('Refract.expr.undefinedAttr', () => {
 	class A extends Refract {
 		value;
-		html = `<x-136><div title="${this.value}"></div></x-136>`;
+		html() { return `<x-136><div title="${this.value}"></div></x-136>`};
 	}
 	eval(A.compile());
 	let a = new A();
@@ -349,7 +347,7 @@ Testimony.test('Refract.expr.undefinedAttr', () => {
 Testimony.test('Refract.expr.undefinedAttr2', () => {
 	class A extends Refract {
 		value;                     // [below] Complex expression
-		html = `<x-137><div title="${this['val' + 'ue']}"></div></x-137>`;
+		html() { return `<x-137><div title="${this['val' + 'ue']}"></div></x-137>`};
 	}
 	eval(A.compile());
 	let a = new A();
@@ -360,7 +358,7 @@ Testimony.test('Refract.expr.undefinedAttr2', () => {
 Testimony.test('Refract.expr.undefinedInputVal', () => {
 	class A extends Refract {
 		value;
-		html = `<x-138><input value="${this.value}"></x-138>`;
+		html() { return `<x-138><input value="${this.value}"></x-138>`};
 	}
 	eval(A.compile());
 	let a = new A();
@@ -372,9 +370,8 @@ Testimony.test('Refract.expr.var', () => {
 	class A extends Refract {
 		value = 'Apple';
 
-		constructor(a, b=()=>{}, c) {
-			super();
-		}
+		init(a, b=()=>{}, c) {
+					}
 
 		html() { return `<x-140>${this.value}</x-140>` }
 	}
@@ -392,7 +389,7 @@ Testimony.test('Refract.expr.var', () => {
 Testimony.test('Refract.expr.varDeep', () => {
 	class A extends Refract {
 		fruit = {name: 'Apple', shape: 'round'};
-		html = `<x-150>${this.fruit.name}</x-150>`;
+		html() { return `<x-150>${this.fruit.name}</x-150>`};
 	}
 	eval(A.compile());
 	let a = new A();
@@ -405,7 +402,7 @@ Testimony.test('Refract.expr.varDeep2', () => {
 
 	class A extends Refract {
 		fruits = [{name: 'Apple'}, {name: 'Banana'}];
-		html = `<x-160>${this.fruits[0].name}</x-160>`;
+		html() { return `<x-160>${this.fruits[0].name}</x-160>`};
 	}
 	eval(A.compile());
 	let a = new A();
@@ -423,7 +420,7 @@ Testimony.test('Refract.expr.varDeep2', () => {
 Testimony.test('Refract.expr.var2', () => {
 	class A extends Refract {
 		value = 'Apple';
-		html = `<x-170>${this.value.toUpperCase() + '!'}</x-170>`;
+		html() { return `<x-170>${this.value.toUpperCase() + '!'}</x-170>`};
 	}
 	eval(A.compile());
 	let a = new A();
@@ -441,7 +438,7 @@ Testimony.test('Refract.expr.optionalChaining', () => {
 		path1 = {
 			path2: {}
 		}
-		html = `<x-172>${this.path1?.path2?.path3}</x-172>`;
+		html() { return `<x-172>${this.path1?.path2?.path3}</x-172>`};
 	}
 	eval(A.compile());
 	let a = new A();
@@ -457,7 +454,7 @@ Testimony.test('Refract.expr.scope', () => {
 
 
 	class A extends Refract {
-		html = `<x-175>${fruit}</x-175>`;
+		html() { return `<x-175>${fruit}</x-175>`};
 	}
 	eval(A.compile());
 	let a = new A();
@@ -472,7 +469,7 @@ Testimony.test('Refract.expr.scope', () => {
 Testimony.test('Refract.expr.Complex', () => {
 	class A extends Refract {
 		value = 'Apple';
-		html = `<x-180>${JSON.stringify(this.value)}</x-180>`;
+		html() { return `<x-180>${JSON.stringify(this.value)}</x-180>`};
 	}
 	eval(A.compile());
 
@@ -492,7 +489,7 @@ Testimony.test('Refract.expr.Complex', () => {
 Testimony.test('Refract.expr.strings', () => {
 	class A extends Refract {
 		a = {b: {c: {d: 1}}}
-		html = `<x-185>${this.a['b']["c"][`d`]}</x-185>`;
+		html() { return `<x-185>${this.a['b']["c"][`d`]}</x-185>`}
 	}
 	eval(A.compile());
 
@@ -506,7 +503,7 @@ Testimony.test('Refract.expr.strings', () => {
 Testimony.test('Refract.expr._strings2', () => {
 	class A extends Refract {
 		a = {b: {c: {d: {e12: 1}}}}
-		html = `<x-187>${this.a['b']["c"][`d`][`e${1}2`]}</x-187>`;
+		html() { return `<x-187>${this.a['b']["c"][`d`][`e${1}2`]}</x-187>`}
 	}
 	eval(A.compile());
 
@@ -521,7 +518,7 @@ Testimony.test('Refract.expr._strings2', () => {
 Testimony.test('Refract.expr.HashVar', () => {
 	class A extends Refract {
 		value = '<hi>';
-		html = `<a-190>#{this.value.toUpperCase()}</a-190>`;
+		html() { return `<a-190>#{this.value.toUpperCase()}</a-190>`}
 	}
 	eval(A.compile());
 	let a = new A();
@@ -532,7 +529,7 @@ Testimony.test('Refract.expr.HashVar', () => {
 Testimony.test('Refract.expr.HashVarAttribute', () => {
 	class A extends Refract {
 		value = 'User';
-		html = `<a-195><div title="Hello #{this.value}"></div></a-195>`;
+		html() { return `<a-195><div title="Hello #{this.value}"></div></a-195>`}
 	}
 	eval(A.compile());
 	let a = new A();
@@ -546,19 +543,17 @@ Testimony.test('Refract.expr.HashVarAttribute', () => {
 Testimony.test('Refract.expr.Inherited', () => {
 	class A extends Refract {
 		count = 2;
-		html = `<a-200></a-200>`;
+		html() { return `<a-200></a-200>`};
 	}
 	eval(A.compile());
 
 
 	class B extends A {
-		constructor() {
-			super();
-			// noinspection JSPotentiallyInvalidUsageOfThis
+		init() {
 			this.count = 3;
 		}
 
-		html = `<b-200>${this.count}</b-200>`;
+		html() { return `<b-200>${this.count}</b-200>`};
 	}
 
 	eval(B.compile());
@@ -576,7 +571,7 @@ Testimony.test('Refract.expr.conditional', () => {
 	// This only works if we escape the $ via Parse.escape$()
 	class A extends Refract {
 		value = 'Apple';
-		html = `<a-210>${true && `${this.value}`}</a-210>`;
+		html() { return `<a-210>${true && `${this.value}`}</a-210>`}
 	}
 	eval(A.compile());
 
@@ -590,7 +585,7 @@ Testimony.test('Refract.expr.doubleConditional', () => {
 
 	class A extends Refract {
 		value = 'Apple';
-		html = `<a-220>${true && `${true && `${this.value}`}`}</a-220>`;
+		html() { return `<a-220>${true && `${true && `${this.value}`}`}</a-220>`}
 	}
 	eval(A.compile());
 
@@ -604,7 +599,7 @@ Testimony.test('Refract.expr.tripleConditional', () => {
 
 	class A extends Refract {
 		value = 'Apple';
-		html = `<a-230>${true && `${true && `${true && `${this.value}`}`}`}</a-230>`;
+		html() { return `<a-230>${true && `${true && `${true && `${this.value}`}`}`}</a-230>`}
 	}
 	eval(A.compile());
 
@@ -619,7 +614,7 @@ Testimony.test('Refract.expr.exprDereference', () => {
 	class A extends Refract {
 		values = [1, 2];
 		index = 0;
-		html = `<a-240>${this.values[this.index]}</a-240>`;
+		html() { return `<a-240>${this.values[this.index]}</a-240>`}
 	}
 	eval(A.compile());
 
@@ -639,7 +634,7 @@ Testimony.test('Refract.expr.exprTemplate', () => {
 	class A extends Refract {
 		values = [1, 2];
 		delimiter = '-';
-		html = `<a-250>${this.values.join(`${this.delimiter}`)}</a-250>`;
+		html() { return `<a-250>${this.values.join(`${this.delimiter}`)}</a-250>`}
 	}
 	eval(A.compile());
 
@@ -660,7 +655,7 @@ Testimony.test('Refract.expr.conditionalFunction', () => {
 
 	class A extends Refract {
 		value = [1, 2];
-		html = `<a-260>${true && `${this.value.map(x=>x+1)}`}</a-260>`;
+		html() { return `<a-260>${true && `${this.value.map(x=>x+1)}`}</a-260>`}
 	}
 	eval(A.compile());
 
@@ -677,7 +672,7 @@ Testimony.test('Refract.expr.conditionalFunctionMap', () => {
 	class A extends Refract {
 		value = [1, 2];
 		delimiter = '-';
-		html = `<a-270>${this.value.map(x=>x+1).join(`${this.delimiter}`)}</a-270>`;
+		html() { return `<a-270>${this.value.map(x=>x+1).join(`${this.delimiter}`)}</a-270>`}
 	}
 	eval(A.compile());
 
@@ -697,7 +692,7 @@ Testimony.test('Refract.expr.conditionalFunction2', () => {
 	class A extends Refract {
 		value = [1, 2];
 		delimiter = '-';
-		html = `<a-280>${true && `${this.value.map(x=>x+1).join(`${this.delimiter}`)}`}</a-280>`;
+		html() { return `<a-280>${true && `${this.value.map(x=>x+1).join(`${this.delimiter}`)}`}</a-280>`}
 	}
 	eval(A.compile());
 
@@ -736,7 +731,7 @@ Testimony.test('Refract.attributes.StyleObject', () => {
 
 	class A extends Refract {
 		styles = '';
-		html = `<x-87><div style="width: 10px; ${this.styles} height: 20px"></div></x-87>`;
+		html() { return `<x-87><div style="width: 10px; ${this.styles} height: 20px"></div></x-87>`}
 	}
 	eval(A.compile());
 
@@ -756,7 +751,7 @@ Testimony.test('Refract.attributes.StyleObject', () => {
 Testimony.test('Refract.attributes._Set', () => {
 	class A extends Refract {
 		classes = new Set();
-		html = `<x-85><div class="one ${this.classes}"></div></x-85>`;
+		html() { return `<x-85><div class="one ${this.classes}"></div></x-85>`}
 	}
 	eval(A.compile());
 	let a = new A();
@@ -772,8 +767,7 @@ Testimony.test('Refract.attributes.attributeExpression', () => {
 
 	class A extends Refract {
 		attr = 'contenteditable';
-		html =
-			`<x-88 ${this.attr}></x-88>`;
+		html() { return `<x-88 ${this.attr}></x-88>`}
 	}
 	eval(A.compile());
 
@@ -804,7 +798,7 @@ Testimony.test('Refract.loop.Push', () => {
 
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
-		html = `<x-20>${this.fruits}</x-20>`;
+		html() { return `<x-20>${this.fruits}</x-20>`}
 	}
 	eval(A.compile());
 	let a = new A();
@@ -828,7 +822,7 @@ Testimony.test('Refract.loop.Unshift', () => {
 
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
-		html = `<x-22>${this.fruits}</x-22>`;
+		html() { return `<x-22>${this.fruits}</x-22>`}
 	}
 	eval(A.compile());
 	let a = new A();
@@ -851,7 +845,7 @@ Testimony.test('Refract.loop.Set', () => {
 
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
-		html = `<x-23>${this.fruits}</x-23>`;
+		html() { return `<x-23>${this.fruits}</x-23>`}
 	}
 	eval(A.compile());
 	let a = new A();
@@ -871,7 +865,7 @@ Testimony.test('Refract.loop.Pop', () => {
 
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
-		html = `<x-25>${this.fruits}</x-25>`;
+		html() { return `<x-25>${this.fruits}</x-25>`}
 	}
 	eval(A.compile());
 	let a = new A();
@@ -884,10 +878,11 @@ Testimony.test('Refract.loop.Pop', () => {
 Testimony.test('Refract.loop.Map', () => {
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
-		html = `
+		html() { return `
 			<x-26>${this.fruits.map(fruit => /* Block comment test */
 				fruit
-			)}</x-26>`;
+			)}</x-26>`
+		}
 	}
 	eval(A.compile());
 	let a = new A();
@@ -903,10 +898,11 @@ Testimony.test('Refract.loop.Map', () => {
 Testimony.test('Refract.loop.Map2', () => {
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
-		html =
+		html() { return
 			`<x-28>${this . fruits . map ( ( fruit ) => // Inline comment test
 				`<p>${fruit}</p>`
-			)}</x-28>`;
+			)}</x-28>`
+		}
 	}
 	eval(A.compile());
 	let a = new A();
@@ -923,7 +919,7 @@ Testimony.test('Refract.loop.RandomItems', () => {
 
 	class A extends Refract {
 		items = ['a', 'b'];
-		html = `<x-285>${this.items.map(item => item.repeat(Math.floor(Math.random()*5)))}</x-285>`;
+		html() { return `<x-285>${this.items.map(item => item.repeat(Math.floor(Math.random()*5)))}</x-285>`};
 	}
 	eval(A.compile());
 	let a = new A();
@@ -933,12 +929,12 @@ Testimony.test('Refract.loop.RandomItems', () => {
 Testimony.test('Refract.loop._MapIndex', () => {
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
-		html =
+		html() { return
 			`<x-300>
 				${this.fruits.map((fruit, i, array) => 
 					`<p>${i}/${array.length} '=' + fruit}</p>`
 				)}
-			</x-300>`;
+			</x-300>`}
 	}
 
 	//TODO: This fails b/c we can't subscribe to array.length
@@ -952,10 +948,11 @@ Testimony.test('Refract.loop._MapIndex', () => {
 Testimony.test('Refract.loop.MapAttributes', () => {
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
-		html =
-			`<x-310>${this.fruits.map(fruit =>
+		html() { return `
+			<x-310>${this.fruits.map(fruit =>
 				`<p title="${fruit}"></p>`
-			)}</x-310>`;
+			)}</x-310>`
+		}
 	}
 	eval(A.compile());
 	let a = new A();
@@ -970,10 +967,11 @@ Testimony.test('Refract.loop.MapAttributes', () => {
 Testimony.test('Refract.loop.MapTwoChilden', () => {
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
-		html = `
+		html() { return `
 			<x-320>${this.fruits.map(fruit =>
 				`Hi <b>${fruit}</b>`
-			)}</x-320>`;
+			)}</x-320>`
+		}
 	}
 	eval(A.compile());
 
@@ -992,10 +990,10 @@ Testimony.test('Refract.loop.MapBrace', () => { // Make sure attribute quotes ar
 
 	class A extends Refract {
 		items = [1, 2];
-		html =
-			`<x-330>${this.items.map(item => {
+		html() { return `
+			<x-330>${this.items.map(item => {
 				return item;
-			})}</x-330>`;
+			})}</x-330>`}
 	}
 	eval(A.compile());
 
@@ -1012,10 +1010,10 @@ Testimony.test('Refract.loop.MapBrace2', () => { // Make sure attribute quotes a
 
 	class A extends Refract {
 		items = [1, 2];
-		html =
-			`<x-340>${this.items.map(item => {
+		html() { return `
+			<x-340>${this.items.map(item => {
 				return item + `a`;
-			})}</x-340>`;
+			})}</x-340>`}
 	}
 	eval(A.compile());
 
@@ -1029,10 +1027,10 @@ Testimony.test('Refract.loop.ItemProps', () => {
 			{name: 'Apple'},
 			{name: 'Banana'},
 		];
-		html =
-			`<x-350>${this.fruits.map(fruit =>
+		html() { return `
+			<x-350>${this.fruits.map(fruit =>
 				`<p>${fruit.name}</p>`
-			)}</x-350>`;
+			)}</x-350>`}
 	}
 	eval(A.compile());
 	let a = new A();
@@ -1070,10 +1068,10 @@ Testimony.test('Refract.loop.ItemProps2', () => {
 			{name: 'Apple', order: 1},
 			{name: 'Banana', order: 2}
 		];
-		html =
-			`<x-40>${this.fruits.map(fruit => 
+		html() { return `
+			<x-40>${this.fruits.map(fruit => 
 				`<p>${fruit.order} ${fruit.name}</p>`
-			)}</x-40>`;
+			)}</x-40>`}
 	}
 	eval(A.compile());
 	let a = new A();
@@ -1094,7 +1092,7 @@ Testimony.test('Refract.loop.PrimitiveToArray', () => { // Test changing a primi
 			'Apple',
 			'Banana'
 		];
-		html = `<x-45>${this.fruits.map(fruit => `<p>${fruit}</p>`)}</x-45>`;
+		html() { return `<x-45>${this.fruits.map(fruit => `<p>${fruit}</p>`)}</x-45>`}
 	}
 	eval(A.compile());
 	let a = new A();
@@ -1114,7 +1112,7 @@ Testimony.test('Refract.loop.double', () => {
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
 		pets = ['Cat', 'Dog'];
-		html = `<x-60>${this.fruits}${this.pets}</x-60>`;
+		html() { return `<x-60>${this.fruits}${this.pets}</x-60>`};
 	}
 	eval(A.compile());
 	let a = new A();
@@ -1425,21 +1423,21 @@ Testimony.test('Refract.loop.Expr4', () => {
 Testimony.test('Refract.loop.Expr5', () => {
 	class A extends Refract {
 		items = [];
-
-		constructor() {
-			super(false);
+		autoRender = false;
+		init() {
 			this.items = [1];
 			this.render();
 
 			this.items[0] = 2; // Causes loop item to be re-evaluated
 		}
 
-		html = `
+		html() { return `
 			<a-767>${this.items.slice().map(item =>
-					false
-						?  console.log(this.type)
-						:  `${item}`
-				)}</a-767>`;
+				false
+					?  console.log(this.type)
+					:  `${item}`
+			)}</a-767>`
+		}
 	}
 	eval(A.compile());
 
@@ -1592,18 +1590,17 @@ Testimony.test('Refract.nested.basic', () => {
 
 	class B extends Refract {
 		name = '';
-		constructor(name) {
-			super();
-			//debugger;
+		init(name) {
+						//debugger;
 			this.name = name;
 		}
-		html = `<b-90>${this.name}</b-90>`;
+		html() { return `<b-90>${this.name}</b-90>`};
 	}
 	eval(B.compile());
 
 
 	class A extends Refract {
-		html = `<a-90><b-90 name="Apple"></b-90></a-90>`;
+		html() { return `<a-90><b-90 name="Apple"></b-90></a-90>`};
 	}
 	eval(A.compile());
 
@@ -1616,18 +1613,17 @@ Testimony.test('Refract.nested.passOBj', () => {
 
 	class B extends Refract {
 		fruit2 = [];
-		constructor(fruits) {
-			super();
-			this.fruits2 = fruits;
+		init(fruits) {
+						this.fruits2 = fruits;
 		}
-		html = `<x-b95>${this.fruits2}</x-b95>`;
+		html() { return `<x-b95>${this.fruits2}</x-b95>`};
 	}
 	eval(B.compile());
 
 
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
-		html = `<a-95><x-b95 fruits="${this.fruits}"></x-b95></a-95>`;
+		html() { return `<a-95><x-b95 fruits="${this.fruits}"></x-b95></a-95>`};
 	}
 	eval(A.compile());
 
@@ -1657,20 +1653,19 @@ Testimony.test('Refract.nested.passSelf', "Pass a parent's 'this' reference to a
 
 	class B extends Refract {
 		parent = null;
-
-		constructor(parent) {
-			super(false);
+		autoRender = false;
+		init(parent) {
 			this.parent = parent;
 			this.render();
 		}
-		html = `<b-96>${this.parent.fruits}</b-96>`;
+		html() { return `<b-96>${this.parent.fruits}</b-96>`};
 	}
 	eval(B.compile());
 
 
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
-		html = `<a-96><b-96 parent="${this}"></b-96></a-96>`;
+		html() { return `<a-96><b-96 parent="${this}"></b-96></a-96>`};
 	}
 	eval(A.compile());
 
@@ -1687,21 +1682,20 @@ Testimony.test('Refract.nested.loop', () => {
 
 	class B extends Refract {
 		fruit = undefined;
-		constructor(fruit) {
-			super();
+		init(fruit) {
 			this.fruit = fruit;
 		}
-		html = `<x-b100><b>${this.fruit}</b></x-b100>`;
+		html() { return `<x-b100><b>${this.fruit}</b></x-b100>`};
 	}
 	eval(B.compile());
 
 
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
-		html = `
+		html() { return `
 			<a-100>${this.fruits.map(fruit => 
 				`<x-b100 fruit="${fruit}"></x-b100>`
-			)}</a-100>`;
+			)}</a-100>`}
 	}
 	eval(A.compile());
 
@@ -1720,17 +1714,16 @@ Testimony.test('Refract.nested.childProp', () => {
 	class B extends Refract {
 		name = '';
 
-		constructor(name) {
-			super();
+		init(name) {
 			this.name = name;
 		}
-		html = `<b-102>${this.name}</b-102>`;
+		html() { return `<b-102>${this.name}</b-102>`};
 	}
 	eval(B.compile());
 
 
 	class A extends Refract {
-		html = `<a-102><b-102 id="b" name="Apple"></b-102>${this.b.name}</a-102>`;
+		html() { return `<a-102><b-102 id="b" name="Apple"></b-102>${this.b.name}</a-102>`};
 	}
 	eval(A.compile());
 
@@ -1750,12 +1743,12 @@ Testimony.test('Refract.nested.childProp2', () => {
 			this.name = 'banana';
 		}
 
-		html = `<b-103>${this.name}</b-103>`;
+		html() { return `<b-103>${this.name}</b-103>`};
 	}
 	eval(B.compile());
 
 	class A extends Refract {
-		html = `<a-103><b-103 id="b"></b-103>${this.b.name}</a-103>`;
+		html() { return `<a-103><b-103 id="b"></b-103>${this.b.name}</a-103>`};
 	}
 	eval(A.compile());
 
@@ -1769,7 +1762,7 @@ Testimony.test('Refract.nested.childProp2', () => {
 Testimony.test('Refract.nested._recursive', () => {
 	class A extends Refract {
 
-		html = `<a-105 title="c"><slot></slot>b</a-105>`;
+		html() { return `<a-105 title="c"><slot></slot>b</a-105>`};
 	}
 	eval(A.compile());
 
@@ -1795,17 +1788,16 @@ Testimony.test('Refract.nested._childPropForwardReference', () => {
 	class B extends Refract {
 		name = '';
 
-		constructor(name) {
-			super();
-			this.name = name;
+		init(name) {
+						this.name = name;
 		}
-		html = `<b-107>${this.name}</b-107>`;
+		html() { return `<b-107>${this.name}</b-107>`};
 	}
 	eval(B.compile());
 
 
 	class A extends Refract { // Fails b/c this.b is not defined until the <b-107 element is added.
-		html = `<a-107>${this.b.name}<b-107 id="b" name="${this.name}"></b-107></a-107>`;
+		html() { return `<a-107>${this.b.name}<b-107 id="b" name="${this.name}"></b-107></a-107>`};
 	}
 	eval(A.compile());
 
@@ -1822,7 +1814,7 @@ Testimony.test('Refract.form.inputExpr', () => {
 
 	class A extends Refract {
 		value = 'Apple';
-		html = `<a-120><input id="input" value="${this.value}"></a-120>`;
+		html() { return `<a-120><input id="input" value="${this.value}"></a-120>`};
 	}
 	eval(A.compile());
 
@@ -1843,7 +1835,7 @@ Testimony.test('Refract.form.inputExprUndefined', () => {
 
 	class A extends Refract {
 		form = {};
-		html = `<a-122><input id="input" value="${this.form.value}"></a-122>`;
+		html() { return `<a-122><input id="input" value="${this.form.value}"></a-122>`};
 	}
 	eval(A.compile());
 
@@ -1864,7 +1856,7 @@ Testimony.test('Refract.form.inputEvent', () => {
 
 	class A extends Refract {
 		value = 'Apple';
-		html = `<a-125><input id="input" oninput="this.value=el.value.replace(/ Pie$/i, '')" value="${this.value + ' Pie'}"></a-125>`;
+		html() { return `<a-125><input id="input" oninput="this.value=el.value.replace(/ Pie$/i, '')" value="${this.value + ' Pie'}"></a-125>`};
 	}
 	eval(A.compile());
 
@@ -1883,7 +1875,7 @@ Testimony.test('Refract.form.inputValueOnInputExpr', () => {
 
 	class A extends Refract {
 		value = 'Apple';
-		html = `<a-130><input id="input" value="${this.value + ' Pie'}" oninput="${'this.value=el.value.replace(/ Pie$/i, "")'}"></a-130>`;
+		html() { return `<a-130><input id="input" value="${this.value + ' Pie'}" oninput="${'this.value=el.value.replace(/ Pie$/i, "")'}"></a-130>`};
 	}
 	eval(A.compile());
 
@@ -1903,7 +1895,7 @@ Testimony.test('Refract.form.inputExprDereference', () => {
 	class A extends Refract {
 		values = ['zero', 'one'];
 		index = 0;
-		html = `<a-235><input id="input" value="${this.values[this.index]}"></a-235>`;
+		html() { return `<a-235><input id="input" value="${this.values[this.index]}"></a-235>`};
 	}
 	eval(A.compile());
 
@@ -1936,12 +1928,12 @@ Testimony.test('Refract.form._inputExprComplex', () => {
 	// Then below, we can bind each VElement's value to that path.
 	class A extends Refract {
 		values = {name: 'apple'};
-		html = `
+		html() { return `
 			<a-237>
 				${Object.keys(this.values).map(name => 
 					`<input value="${this.values.name}" data-value-expr="this.values.name">`
 				)}
-			</a-237>`;
+			</a-237>`}
 	}
 	eval(A.compile());
 
@@ -1961,12 +1953,12 @@ Testimony.test('Refract.form._inputExprComplex2', () => {
 
 	class A extends Refract {
 		values = {name: 'apple', type: 'fruit'};
-		html = `
+		html() { return `
 			<a-238>
 				${Object.keys(this.values).map(name =>
 					`<input value="${this.values[name]}" data-value-expr="this.values['${name}']">`
 				)}
-			</a-238>`;
+			</a-238>`}
 	}
 	eval(A.compile());
 
@@ -1985,12 +1977,12 @@ Testimony.test('Refract.form._inputExprComplex3', () => {
 		values = {name: 'apple', type: 'fruit'};
 		indices = ['name', 'type'];
 		index = name;
-		html = `
+		html() { return `
 			<a-239>
 				${Object.keys(this.values).map(name =>
 					`<input value="${this.values[name]}" data-value-expr="this.values[this.indices[this.index]]">`
 				)}
-			</a-239>`;
+			</a-239>`}
 	}
 	eval(A.compile());
 
@@ -2009,13 +2001,13 @@ Testimony.test('Refract.form.select', () => {
 
 	class A extends Refract {
 		value = 'two';
-		html = `
+		html() { return `
 			<a-140>
 				<select id="select" value="${this.value}">
 					<option value="one">1</option>
 					<option value="two">2</option>
 				</select>
-			</a-140>`;
+			</a-140>`}
 	}
 	eval(A.compile());
 
@@ -2040,13 +2032,13 @@ Testimony.test('Refract.form.SelectMultiple', () => {
 
 	class A extends Refract {
 		value = ['two'];
-		html = `
+		html() { return `
 			<a-150>
 				<select id="select" value="${this.value}" multiple>
 					<option value="one">1</option>
 					<option value="two">2</option>
 				</select>
-			</a-150>`;
+			</a-150>`};
 	}
 	eval(A.compile());
 
@@ -2071,7 +2063,7 @@ Testimony.test('Refract.form.contenteditable', () => {
 
 	class A extends Refract {
 		value = 'Apple';
-		html = `<a-160><div contenteditable id="input" value="${this.value}"></a-160>`;
+		html() { return `<a-160><div contenteditable id="input" value="${this.value}"></a-160>`};
 	}
 	eval(A.compile());
 
@@ -2092,7 +2084,7 @@ Testimony.test('Refract.form.contenteditableExpr', () => {
 
 	class A extends Refract {
 		value = 'Apple';
-		html = `<a-170><div contenteditable id="input">${this.value}</a-170>`;
+		html() { return `<a-170><div contenteditable id="input">${this.value}</a-170>`};
 	}
 	eval(A.compile());
 
@@ -2121,10 +2113,10 @@ Testimony.test('Refract.events.basic', () => {
 			clicked.el = el;
 		}
 
-		html = `
+		html() { return `
 			<e-1>
 				<div id="btn" onclick="count++; this.onClick(event, el)">hi</div>
-			</e-1>`;
+			</e-1>`};
 	}
 	E = eval(E.compile());
 	let e = new E();
@@ -2147,12 +2139,13 @@ Testimony.test('Refract.events.Loop', () => {
 			clicked.fruit = fruit;
 		}
 
-		html = `
+		html() { return `
 			<e-5>
 				${this.fruits.map(fruit => 
-					`<div onclick="this.onClick(event, el, fruit)">hi</div>`
+					`}<div onclick="this.onClick(event, el, fruit)">hi</div>`
 				)}
-			</e-5>`;
+			</e-5>`
+		}
 	}
 	E = eval(E.compile());
 	let e = new E();
@@ -2175,12 +2168,12 @@ Testimony.test('Refract.events._Loop2', () => {
 			clicked.fruit = fruit;
 		}
 
-		html = `
+		html() { return `
 			<e-10>
 				${this.fruits.slice().map(fruit =>
 					`<div onclick="this.onClick(event, el, fruit)">hi</div>`
 				)}
-			</e-10>`;
+			</e-10>`}
 	}
 	E = eval(E.compile());
 	let e = new E();
@@ -2193,7 +2186,7 @@ Testimony.test('Refract.events._Loop2', () => {
 
 Testimony.test('Refract.shadow.basic', () => {
 	class S extends Refract {
-		html = `<s-1 shadow><div>hi</div></s-1>`;
+		html() { return `<s-1 shadow><div>hi</div></s-1>`};
 	}
 	S = eval(S.compile());
 
@@ -2205,7 +2198,7 @@ Testimony.test('Refract.shadow.basic', () => {
 
 Testimony.test('Refract.shadow.text', () => {
 	class S extends Refract {
-		html = `<s-2 shadow><div>hi</div> </s-2>`;
+		html() { return `<s-2 shadow><div>hi</div> </s-2>`};
 	}
 	S = eval(S.compile());
 
@@ -2216,9 +2209,8 @@ Testimony.test('Refract.shadow.text', () => {
 
 Testimony.test('Refract.slot.basic', () => {
 	class A extends Refract {
-		constructor() {
-			super();
-		}
+		init() {
+					}
 
 		html =  `<a-400><p><slot></slot></p></a-400>`;
 	}
@@ -2231,9 +2223,8 @@ Testimony.test('Refract.slot.basic', () => {
 
 Testimony.test('Refract.slot.Eval', () => {
 	class A extends Refract {
-		constructor() {
-			super();
-			this.item = 3;
+		init() {
+						this.item = 3;
 		}
 
 		html =  `<a-402><p><slot></slot></p></a-402>`;
@@ -2250,11 +2241,10 @@ Testimony.test('Refract.slot.Loop', () => {
 
 		items = ['A', 'B', 'C'];
 
-		constructor() {
-			super();
-		}
+		init() {
+					}
 
-		html = `<a-404>${this.items.map(x => `<slot></slot>`)}</a-404>`;
+		html() { return `<a-404>${this.items.map(x => `<slot></slot>`)}</a-404>`}
 	}
 
 	eval(A.compile());
@@ -2277,12 +2267,12 @@ Testimony.test('Refract.slot.multiple', () => {
 
 Testimony.test('Refract.slot.nested', () => {
 	class B extends Refract {
-		html = `<b-420><slot></slot></b-420>`;
+		html() { return `<b-420><slot></slot></b-420>`};
 	}
 	eval(B.compile());
 
 	class A extends Refract { // A has B nested, passes html to BS's slot.
-		html = `<a-420 shadow><b-420><div>apple</div></b-420></a-420>`;
+		html() { return `<a-420 shadow><b-420><div>apple</div></b-420></a-420>`};
 	}
 	eval(A.compile());
 
@@ -2308,19 +2298,18 @@ Testimony.test('Refract.slot._nested2', () => {
 
 
 	class C extends Refract {
-		constructor() { // TODO: This constructor is called twice because it's instantiated inside A.
-			super();
-			cCount++;
+		init() { // TODO: This constructor is called twice because it's instantiated inside A.
+						cCount++;
 			this.innerHTML = cCount;
 			//console.log('c');
 		}
 
-		html = `<c-421>hello</c-421>`;
+		html() { return `<c-421>hello</c-421>`};
 	}
 	eval(C.compile());
 
 	class B extends Refract {
-		html = `<b-421><slot></slot></b-421>`;
+		html() { return `<b-421><slot></slot></b-421>`};
 	}
 	eval(B.compile());
 
@@ -2335,7 +2324,7 @@ Testimony.test('Refract.slot._nested2', () => {
 
 Testimony.test('Refract.slot._named', () => {
 	class A extends Refract {
-		html = `<a-425>begin<slot name="slot1"></slot>end</a-425>`;
+		html() { return `<a-425>begin<slot name="slot1"></slot>end</a-425>`};
 	}
 	eval(A.compile());
 
@@ -2347,7 +2336,7 @@ Testimony.test('Refract._debugRender', () => {
 
 	class A extends Refract {
 		fruits = [];
-		html = `
+		html() { return `
 			<a-430>
 				hi
 				<b name="${this.a}" title="b">test</b>
@@ -2357,7 +2346,7 @@ Testimony.test('Refract._debugRender', () => {
 				${this.fruits.map(fruit =>
 					fruit.order // TODO: This should be parsed and render as a sub-expression.
 				)}
-			</a-430>`;
+			</a-430>`}
 	}
 	eval(A.compile());
 
@@ -2370,7 +2359,7 @@ Testimony.test('Refract._debugRender', () => {
 Testimony.test('Refract.scopedStyle', () => {
 
 	class A extends Refract {
-		html = `<a-440><style>:host { background: red }</style></a-440>`;
+		html() { return `<a-440><style>:host { background: red }</style></a-440>`};
 	}
 	eval(A.compile());
 
@@ -2383,7 +2372,7 @@ Testimony.test('Refract.misc.formInputDeep', () => {
 
 	class A extends Refract {
 		deep = { value: 'Apple'};
-		html = `<a-520><input id="input" value="${this.deep.value}"></a-520>`;
+		html() { return `<a-520><input id="input" value="${this.deep.value}"></a-520>`};
 	}
 	eval(A.compile());
 
@@ -2407,7 +2396,7 @@ Testimony.test('Refract.misc.TwoVars', () => {
 	class A extends Refract {
 		a = 1;
 		b = 2;
-		html = `<a-530>${this.a + this.b}</a-530>`;
+		html() { return `<a-530>${this.a + this.b}</a-530>`};
 	}
 	eval(A.compile());
 
@@ -2424,10 +2413,9 @@ Testimony.test('Refract.misc.TwoVars', () => {
 
 Testimony.test('Refract.misc.htmlFirst', () => {
 	class A extends Refract {
-		html = `<a-521>hi</a-521>`; // html property occurs before constructor.
-		constructor() {
-			super();
-		}
+		html() { return `<a-521>hi</a-521>`}; // html property occurs before constructor.
+		init() {
+					}
 	}
 	eval(A.compile());
 
@@ -2443,7 +2431,7 @@ Testimony.test('Refract.benchmark.10kOptions', () => {
 
 	class A extends Refract {
 		items = Array(num).fill(1);
-		html = `<a-600><select id="select">${this.items.map(item => `<option>#{item}</option>`)}</select></a-600>`;
+		html() { return `<a-600><select id="select">${this.items.map(item => `<option>#{item}</option>`)}</select></a-600>`}
 	}
 	eval(A.compile());
 

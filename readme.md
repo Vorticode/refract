@@ -264,8 +264,11 @@ Refract elements can also be embedded within the html of other Refract elements:
 
 ```javascript
 class CarWheel extends Refract {
+    
+    // Don't create DOM nodes until we call render()
+    autoRender = false; 
+    
     init(number, parent) {
-        super(false);
         this.number = number;
         this.parent = parent;
         this.render();
@@ -338,7 +341,7 @@ class CarBody extends Refract  {
 
 ### Deferred Rendering
 
-Maybe you want to setup your object a little before it's rendered.  In this case, pass `false` to the super constructor then call `this.render()` whenever it's ready:
+Maybe you want to setup your object a little before it's rendered.  In this case, pass `false` to the `autoRender` property then call `this.render()` whenever it's ready:
 
 ```javascript
 class TodoList extends Refract {

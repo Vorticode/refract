@@ -197,6 +197,7 @@ export class Compiler {
 
 	//#ENDIF
 
+
 	/**
 	 * Create a version of the class
 	 * @param self
@@ -207,9 +208,27 @@ export class Compiler {
 		result.originalClass = self;
 
 		// This code runs after the call to super() and after all the other properties are initialized.
+
+		// Turn autoRender into a property if it's not a property already.
+		// It might be a property if we inherit from another Refract class.
 		let preInitCode = `
 			__preInit = (() => {
-				if (this.autoRender)
+			
+				this.__autoRender = 'autoRender' in this ? this.autoRender : true;
+				
+				if (!Object.getOwnPropertyDescriptor(this, 'autoRender')?.configurable === false)
+					Object.defineProperty(this, 'autoRender', {
+						get() {
+							return this.__autoRender
+						},
+						set(val) {
+							this.__autoRender = val;
+							if (val)
+								this.render();
+						}
+					});
+			
+				if (this.__autoRender)
 					this.render(this.constructor.name);
 				
 				if (this.init) {

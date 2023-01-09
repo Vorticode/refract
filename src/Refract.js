@@ -95,26 +95,12 @@ export default class Refract extends HTMLElement {
 		// old path from before we used init()
 		if (args === false)
 			this.__autoRender = false;
-		else if (typeof args === 'object') // Deprecated path, we can just disable autoRender instead.
-			// Allow setting properties on the object before any html is created:
-			for (let name in args)
-				this[name] = args[name];
+		// else if (typeof args === 'object') // Deprecated path, we can just disable autoRender instead.
+		// 	// Allow setting properties on the object before any html is created:
+		// 	for (let name in args)
+		// 		this[name] = args[name];
 
-
-
-
-		Object.defineProperty(this, 'autoRender', {
-			get() {
-				return this.__autoRender
-			},
-			set(val) {
-				this.__autoRender = val;
-				if (val)
-					this.render();
-			}
-		});
-
-		this.constructorArgs2 = arguments;
+		this.constructorArgs2 = arguments;;
 	}
 
 	/**

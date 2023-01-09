@@ -41,7 +41,7 @@ export class ParsedFunction {
 						depth++
 					else if (token.text === ')')
 						depth --;
-					if (depth === 0 && token.text === '{' || token.text === '=>')
+					if (depth === 0 && (token.text === '{' || token.text === '=>'))
 						return false;
 				};
 			}

@@ -87,7 +87,7 @@ export default {
 	 * @param callback {function(val:*, event)}	 */
 	watchInput(el, callback) {
 		let tagName = el.tagName;
-		let isContentEditable =el.hasAttribute('contenteditable') && el.getAttribute('contenteditable') !== 'false';
+		let isContentEditable = el.hasAttribute('contenteditable') && el.getAttribute('contenteditable') !== 'false';
 		let isTextArea = tagName==='TEXTAREA';
 
 
