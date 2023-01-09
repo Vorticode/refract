@@ -72,7 +72,9 @@ export default class Refract extends HTMLElement {
 	slotHtml = '';
 
 	/** If true, call render() before the constructor, and every time after a property is changed */
-	autoRender = true;
+	__autoRender = true;
+
+	__toRender= [];
 
 	/**
 	 * A copy of the static VElement from the Class, with specific VExpressions that match the watched properties of this instance.
@@ -92,12 +94,25 @@ export default class Refract extends HTMLElement {
 
 		// old path from before we used init()
 		if (args === false)
-			this.autoRender = false;
-
-		else if (typeof autoRender === 'object') // Deprecated path, we can just disable autoRender instead.
+			this.__autoRender = false;
+		else if (typeof args === 'object') // Deprecated path, we can just disable autoRender instead.
 			// Allow setting properties on the object before any html is created:
-			for (let name in autoRender)
-				this[name] = autoRender[name];
+			for (let name in args)
+				this[name] = args[name];
+
+
+
+
+		Object.defineProperty(this, 'autoRender', {
+			get() {
+				return this.__autoRender
+			},
+			set(val) {
+				this.__autoRender = val;
+				if (val)
+					this.render();
+			}
+		});
 
 		this.constructorArgs2 = arguments;
 	}
@@ -110,25 +125,36 @@ export default class Refract extends HTMLElement {
 	 * @param name {?string} Name of the class calling render.  What is this for? */
 	render(name=null) {
 
-		// Parse the html tokens to Virtual DOM
-		if (!this.constructor.virtualElement) {
-			if (this.html) // new path
-				this.constructor.htmlTokens = Parse.htmlFunctionReturn(this.html.toString());
+		this.__autoRender = true;
 
-			this.constructor.virtualElement = VElement.fromTokens(this.constructor.htmlTokens, [], null, this.constructor, 1)[0];
-			this.constructor.htmlTokens = null; // We don't need them any more.
-		}
 
 		// If not already created by a super-class.  Is ` this.constructor.name===name` still needed?
 		if (!this.virtualElement && (!name || this.constructor.name===name)) {
+
+			// Parse the html tokens to Virtual DOM
+			if (!this.constructor.virtualElement) {
+				if (this.html) // new path
+					this.constructor.htmlTokens = Parse.htmlFunctionReturn(this.html.toString());
+
+				this.constructor.virtualElement = VElement.fromTokens(this.constructor.htmlTokens, [], null, this.constructor, 1)[0];
+				this.constructor.htmlTokens = null; // We don't need them any more.
+			}
+
 			Refract.constructing[this.tagName] = true;
 
 			this.virtualElement = this.constructor.virtualElement.clone(this);
 			this.virtualElement.apply(null, this);
 
 			delete Refract.constructing[this.tagName];
+		}
 
-			this.initialRender = true;
+		if (this.__toRender.length) {
+
+			for (let vexpr of this.__toRender) {
+
+			}
+			this.__toRender = [];
+
 		}
 	}
 

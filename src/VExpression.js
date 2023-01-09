@@ -113,10 +113,15 @@ export default class VExpression {
 	/**
 	 * Evaluate this expression and either add children to parent or set attributes on parent.
 	 * @param parent {HTMLElement}
-	 * @param el {HTMLElement} Unused.
+	 * @param el {HTMLElement} Unused.  Only here to match
 	 * @return {int} Number of elements created. d*/
 	apply(parent=null, el=null) {
 		this.parent = parent || this.parent;
+
+		// If we've had the initial render but autoRender is currently disabled
+		if (!this.refl.__autoRender && this.refl.virtualElement) {
+			this.refl.__toRender.push([this, parent, el]);
+		}
 
 		//#IFDEV
 		if (this.attrName)

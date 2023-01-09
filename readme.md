@@ -19,7 +19,7 @@ Refract is a fast, lightweight, "reactive" JavaScript library for creating user 
 			this.items.push({name: '', qty: 0});
 		}
 
-		// Inserts only one div row, without recreating whole list:
+		// Removes only one div row, without recreating whole list:
 		removeItem(item) {
 			let idx = this.items.indexOf(item);
 			this.items.splice(idx, 1);
@@ -46,7 +46,7 @@ Refract is a fast, lightweight, "reactive" JavaScript library for creating user 
 <shopping-list items="${[{name: 'Avacados', qty: 2}]}"></shopping-list>
 ```
 
-You can paste the code above into any html document to try it out, or [run it](https://jsfiddle.net/nev1gjzo/1/) on JSFiddle.net.
+You can paste the code above into any html document to try it out, or [run it](https://jsfiddle.net/gqvy81s5/) on JSFiddle.net.
 
 Refract is still **in development** and has several known bugs.  Exercise caution if using in a production environment.
 
