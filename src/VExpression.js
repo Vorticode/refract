@@ -125,12 +125,6 @@ export default class VExpression {
 		if (parent && parent !== this.parent)
 			debugger;
 
-		// If we've had the initial render but autoRender is currently disabled
-		if (!this.refl.__autoRender && this.refl.virtualElement) {
-			this.refl.__toRender.add(this);
-			return;
-		}
-
 		//#IFDEV
 		if (this.attrName)
 			throw new Error("Cannot apply an VExpression that's for an attribute.  Use evalVAttribute() or .exec.apply() instead.");
@@ -327,9 +321,9 @@ export default class VExpression {
 
 	/**
 	 * Called when a watched value changes.
-	 * @param action {string}
+	 * @param action {string} Can be 'remove', 'insert', or 'set'.
 	 * @param path {string[]}
-	 * @param value {string}
+	 * @param value {string} not used.
 	 * @param oldVal {string} not used.
 	 * @param root {object|array} The unproxied root object that the path originates form. */
 	receiveNotification_(action, path, value, oldVal, root) {
@@ -338,6 +332,9 @@ export default class VExpression {
 		// This check makes sure that this VExpression wasn't already removed by another operation triggered by the same watch.
 		if (!this.vParent)
 			return;
+
+
+
 
 		//window.requestAnimationFrame(() => {
 
@@ -348,6 +345,15 @@ export default class VExpression {
 
 		if (this.type==='loop' && Utils.arrayStartsWith(path.slice(0, -2), this.watchPaths[0].slice(1))) {
 			// Do nothing, because the watch should trigger on the child VExpression instead of this one.
+			return;
+		}
+
+
+
+
+		// If we've had the initial render but autoRender is currently disabled
+		if (!this.refl.__autoRender && this.refl.virtualElement) {
+			this.refl.__toRender.set(this, arguments);
 			return;
 		}
 
@@ -372,9 +378,9 @@ export default class VExpression {
 					this.vChildren.splice(index, 1);
 				}
 
-				else {// insert or set
+				else { // insert or set
 
-					// 1. Remove old ones then insert new ones.
+					// 1. Remove old ones from the DOM
 					if (action === 'set' && this.vChildren[index])
 						for (let vChild of this.vChildren[index])
 							vChild.remove();
@@ -383,8 +389,8 @@ export default class VExpression {
 					if (action === 'insert')
 						this.vChildren.splice(index, 0, []);
 
-					if (this.type === 'simple')
-						this.vChildren[index] = [new VText(array[index], this.refl)] // TODO: Need to evaluate this expression instead of just using the value from the array.
+					if (this.type === 'simple') // [below] TODO: Need to evaluate this expression instead of just using the value from the array?
+						this.vChildren[index] = [new VText(array[index], this.refl)]
 					else  // loop
 						this.vChildren[index] = this.loopItemEls.map(vel => vel.clone(this.refl, this));
 
@@ -394,6 +400,7 @@ export default class VExpression {
 					for (let newItem of this.vChildren[index]) {
 						newItem.startIndex = startIndex + i;
 						newItem.scope = {...this.scope};
+						newItem.parent = this.parent;
 
 						let params = [array[index], index, array];
 						for (let j in this.loopParamNames)

@@ -246,7 +246,7 @@ Testimony.test('Refract.basic.entity2', () => {
 	assertEquals(a.outerHTML, '<b-70>a &lt; b</b-70>');
 });
 
-Testimony.test('Refract.basic.deferredRender', "Don't render anything until we call the render() function.", () => {
+Testimony.test('Refract.render.delay', "Don't render anything until we call the render() function.", () => {
 
 	let test1, test2;
 
@@ -271,7 +271,7 @@ Testimony.test('Refract.basic.deferredRender', "Don't render anything until we c
 
 
 
-Testimony.test('Refract.basic.deferredRender2', "Disable rendering.", () => {
+Testimony.test('Refract.render.batch', "Disable rendering.", () => {
 
 	class A extends Refract {
 		x = 1;
@@ -289,15 +289,56 @@ Testimony.test('Refract.basic.deferredRender2', "Disable rendering.", () => {
 	eval(A.compile());
 
 	let a = new A();
-
-
 	Refract.elsCreated = [];
 	a.update(3, 4);
 
-	assert.eq(Refract.elsCreated, ['7']);
 	assert.eq(a.outerHTML, `<b-72>7</b-72>`);
+	assert.eq(Refract.elsCreated, ['7']);
 });
 
+
+
+Testimony.test('Refract.render.batch2', "Merge rendering ops", () => {
+
+	class A extends Refract {
+		items = [1, 2, 3];
+
+		html() { return `<b-73>${this.items.map(item => `<div>${item}</div>`)}</b-73>`};
+	}
+	eval(A.compile());
+
+	let a = new A();
+	Refract.elsCreated = [];
+	a.autoRender = false;
+	a.items[1] = '2b';
+	assert.eq(Refract.elsCreated, []);
+	a.items = [4, 5];
+	a.autoRender = true;
+
+	assert.eq(a.outerHTML, '<b-73><div>4</div><div>5</div></b-73>');
+	assert.eq(Refract.elsCreated, ['<div>', '4', '<div>', '5']);
+});
+
+
+Testimony.test('Refract.render.batch3', "Merge rendering ops", () => {
+
+	class A extends Refract {
+		items = [{name: 'Apple', qty: 1}, {name: 'Banana', qty: 2}];
+
+		html() { return `<b-74>${this.items.map(item => `<div>${item.name} ${item.qty}</div>`)}</b-74>`};
+	}
+	eval(A.compile());
+
+	let a = new A();
+	Refract.elsCreated = [];
+	a.autoRender = false;
+	a.items[1] = {name: 'Cherry', qty: 3};
+	a.items[1].name = 'Cantalope';
+	a.autoRender = true;
+
+	assert.eq(a.outerHTML, '<b-74><div>Apple 1</div><div>Cantalope 3</div></b-74>');
+	assert.eq(Refract.elsCreated, ['<div>', 'Cantalope', ' ', '3'])
+});
 
 Testimony.test('Refract.expr.string', () => {
 	class A extends Refract {

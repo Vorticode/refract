@@ -69,6 +69,7 @@ export default class VElement {
 	 * @param parent {HTMLElement}
 	 * @param el {HTMLElement} */
 	apply(parent=null, el=null) {
+		parent = parent || this.parent;
 		let tagName = this.tagName;
 
 		if (tagName === 'svg')
@@ -371,12 +372,16 @@ export default class VElement {
 	}
 
 	remove() {
+
 		// 1. Remove children, so that their watches are unsubscribed.
 		for (let vChild of this.vChildren)
 			vChild.remove();
 
 		// 2. Remove the associated element.  We call parentNode.removeChild in case remove() is overridden.
 		this.el.parentNode.removeChild(this.el);
+
+		// 3. Mark it as removed so we don't accidently use it again.
+		this.vParent = null;
 	}
 
 	//#IFDEV

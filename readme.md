@@ -4,7 +4,7 @@ Refract is a fast, lightweight, "reactive" JavaScript library for creating user 
 
 ```html
 <script type="module">
-    import Refract from '../src/Refract.js';
+    import Refract from 'https://vorticode.github.io/refract/dist/Refract.min.js';
 
     class ShoppingList extends Refract {
         items = [];

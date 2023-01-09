@@ -3009,12 +3009,6 @@ class VExpression {
 		if (parent && parent !== this.parent)
 			debugger;
 
-		// If we've had the initial render but autoRender is currently disabled
-		if (!this.refl.__autoRender && this.refl.virtualElement) {
-			this.refl.__toRender.add(this);
-			return;
-		}
-
 		//#IFDEV
 		if (this.attrName)
 			throw new Error("Cannot apply an VExpression that's for an attribute.  Use evalVAttribute() or .exec.apply() instead.");
@@ -3211,9 +3205,9 @@ class VExpression {
 
 	/**
 	 * Called when a watched value changes.
-	 * @param action {string}
+	 * @param action {string} Can be 'remove', 'insert', or 'set'.
 	 * @param path {string[]}
-	 * @param value {string}
+	 * @param value {string} not used.
 	 * @param oldVal {string} not used.
 	 * @param root {object|array} The unproxied root object that the path originates form. */
 	receiveNotification_(action, path, value, oldVal, root) {
@@ -3222,6 +3216,9 @@ class VExpression {
 		// This check makes sure that this VExpression wasn't already removed by another operation triggered by the same watch.
 		if (!this.vParent)
 			return;
+
+
+
 
 		//window.requestAnimationFrame(() => {
 
@@ -3232,6 +3229,15 @@ class VExpression {
 
 		if (this.type==='loop' && utils.arrayStartsWith(path.slice(0, -2), this.watchPaths[0].slice(1))) {
 			// Do nothing, because the watch should trigger on the child VExpression instead of this one.
+			return;
+		}
+
+
+
+
+		// If we've had the initial render but autoRender is currently disabled
+		if (!this.refl.__autoRender && this.refl.virtualElement) {
+			this.refl.__toRender.set(this, arguments);
 			return;
 		}
 
@@ -3256,9 +3262,9 @@ class VExpression {
 					this.vChildren.splice(index, 1);
 				}
 
-				else {// insert or set
+				else { // insert or set
 
-					// 1. Remove old ones then insert new ones.
+					// 1. Remove old ones from the DOM
 					if (action === 'set' && this.vChildren[index])
 						for (let vChild of this.vChildren[index])
 							vChild.remove();
@@ -3267,8 +3273,8 @@ class VExpression {
 					if (action === 'insert')
 						this.vChildren.splice(index, 0, []);
 
-					if (this.type === 'simple')
-						this.vChildren[index] = [new VText(array[index], this.refl)]; // TODO: Need to evaluate this expression instead of just using the value from the array.
+					if (this.type === 'simple') // [below] TODO: Need to evaluate this expression instead of just using the value from the array?
+						this.vChildren[index] = [new VText(array[index], this.refl)];
 					else  // loop
 						this.vChildren[index] = this.loopItemEls.map(vel => vel.clone(this.refl, this));
 
@@ -3278,6 +3284,7 @@ class VExpression {
 					for (let newItem of this.vChildren[index]) {
 						newItem.startIndex = startIndex + i;
 						newItem.scope = {...this.scope};
+						newItem.parent = this.parent;
 
 						let params = [array[index], index, array];
 						for (let j in this.loopParamNames)
@@ -3647,6 +3654,7 @@ class VElement {
 	 * @param parent {HTMLElement}
 	 * @param el {HTMLElement} */
 	apply(parent=null, el=null) {
+		parent = parent || this.parent;
 		let tagName = this.tagName;
 
 		if (tagName === 'svg')
@@ -3949,12 +3957,16 @@ class VElement {
 	}
 
 	remove() {
+
 		// 1. Remove children, so that their watches are unsubscribed.
 		for (let vChild of this.vChildren)
 			vChild.remove();
 
 		// 2. Remove the associated element.  We call parentNode.removeChild in case remove() is overridden.
 		this.el.parentNode.removeChild(this.el);
+
+		// 3. Mark it as removed so we don't accidently use it again.
+		this.vParent = null;
 	}
 
 	//#IFDEV
@@ -4790,7 +4802,10 @@ class Refract extends HTMLElement {
 	/** If true, call render() before the constructor, and every time after a property is changed */
 	__autoRender = true;
 
-	__toRender= new Set();
+	/**
+	 * Value can be 'apply' or 'remove'
+	 * @type {Map<VElement|VExpression|VText, string>} */
+	__toRender= new Map();
 
 	/**
 	 * A copy of the static VElement from the Class, with specific VExpressions that match the watched properties of this instance.
@@ -4852,10 +4867,22 @@ class Refract extends HTMLElement {
 		// Render items from the queue.
 		if (this.__toRender.size) {
 
-			// TODO: Remove children of parents in this set.
-			for (let vexpr of this.__toRender)
-				vexpr.apply();
-			this.__toRender = new Set();
+			// Remove children of parents in this set.
+			for (let [vexpr, args] of this.__toRender.entries()) {
+
+				// If a parent vexpr is being re-applied, no need to re-apply this one too.
+				let vparent = vexpr;
+				while (vparent = vparent.vParent)
+					if (this.__toRender.has(vparent)) {
+						this.__toRender.delete(vexpr);
+						break;
+					}
+			}
+
+			for (let [vexpr, args] of this.__toRender.entries())
+				vexpr.receiveNotification_(...args);
+
+			this.__toRender = new Map();
 		}
 	}
 

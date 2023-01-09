@@ -74,7 +74,10 @@ export default class Refract extends HTMLElement {
 	/** If true, call render() before the constructor, and every time after a property is changed */
 	__autoRender = true;
 
-	__toRender= new Set();
+	/**
+	 * Value can be 'apply' or 'remove'
+	 * @type {Map<VElement|VExpression|VText, string>} */
+	__toRender= new Map();
 
 	/**
 	 * A copy of the static VElement from the Class, with specific VExpressions that match the watched properties of this instance.
@@ -136,10 +139,22 @@ export default class Refract extends HTMLElement {
 		// Render items from the queue.
 		if (this.__toRender.size) {
 
-			// TODO: Remove children of parents in this set.
-			for (let vexpr of this.__toRender)
-				vexpr.apply();
-			this.__toRender = new Set();
+			// Remove children of parents in this set.
+			for (let [vexpr, args] of this.__toRender.entries()) {
+
+				// If a parent vexpr is being re-applied, no need to re-apply this one too.
+				let vparent = vexpr;
+				while (vparent = vparent.vParent)
+					if (this.__toRender.has(vparent)) {
+						this.__toRender.delete(vexpr)
+						break;
+					}
+			}
+
+			for (let [vexpr, args] of this.__toRender.entries())
+				vexpr.receiveNotification_(...args);
+
+			this.__toRender = new Map();
 		}
 	}
 
