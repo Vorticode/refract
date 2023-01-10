@@ -283,12 +283,34 @@ Values can be passed to those constructors when they're invoked via `new`, just 
             this.color = color;
         }
 	    html() { 
-			return `<color-text style="color: #{this.value}">What color am I?</color-text>`
+			return `<color-text style="color: #{this.value}">What color?</color-text>`
 		}
     }
     eval(ColorText.compile());
 </script>
 
+<color-text color="red"></color-text>
+```
+
+If using a JavaScript mangler, the constructor argument names might be mangled.  To prevent that, you can either disable variable name mangling or used name parameters via [JavaScript destructuring assignment](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment) for the constructor.  Named parameters will still receive their values from attributes:
+
+```html
+<script>
+    class ColorText extends Refract {
+        init({color}={}) { // Named parameter
+            this.color = color;
+        }
+	    html() { 
+			return `<color-text style="color: #{this.value}"></color-text>`
+		}
+    }
+    eval(ColorText.compile());
+    
+    // Instantiate via JavaScript
+    let color = new Color({color: 'red'});
+</script>
+
+<!-- Instantiate via html -->
 <color-text color="red"></color-text>
 ```
 

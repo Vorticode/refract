@@ -286,10 +286,9 @@ export default class VExpression {
 
 		} else { // loop
 			let array = this.evaluate();
-			//#IFDEV
 			if (!array)
 				throw new Error(`${this.watchPaths[0].join('.')} is not iterable in ${this.code}`);
-			//#ENDIF
+
 
 			let i = 0;
 			for (let item of array) {

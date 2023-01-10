@@ -154,14 +154,12 @@ export default function lex(grammar, code, mode=null, options={}, line=1, col=1,
 
 
 		if (token === undefined) {
-			//#IFDEV
 			if (options.failOnUknown) {
 				let before = code.slice(Math.max(index - 15, 0), index);
 				let after = current.slice(0, 25).replace(/\r/g, '\\r').replace(/\n/g, '\\n')
 				let msg = before + '⚠️' + after;
 				throw new Error(`Unknown token within "${mode}" at ${line}:${col}\r\n"${msg}"`);
 			}
-			//#ENDIF
 			unknown += code.slice(0, 1);
 			code = code.slice(1);
 			continue;

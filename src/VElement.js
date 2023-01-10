@@ -188,7 +188,7 @@ export default class VElement {
 		let isText = this.el.tagName === 'TEXTAREA' || this.attributes['contenteditable'] && (this.attributes['contenteditable']+'') !== 'false';
 		for (let vChild of this.vChildren) {
 			if (isText && (vChild instanceof VExpression))
-				throw new Error('textarea and contenteditable cannot have template expressions as children.  Use value=${this.variable} instead.');
+				throw new Error("textarea and contenteditable can't have templates as children. Use value=${this.variable} instead.");
 
 			vChild.scope = {...this.scope} // copy
 			vChild.refl = this.refl;

@@ -1930,14 +1930,12 @@ function lex(grammar, code, mode=null, options={}, line=1, col=1, index=0) {
 
 
 		if (token === undefined) {
-			//#IFDEV
 			if (options.failOnUknown) {
 				let before = code.slice(Math.max(index - 15, 0), index);
 				let after = current.slice(0, 25).replace(/\r/g, '\\r').replace(/\n/g, '\\n');
 				let msg = before + '⚠️' + after;
 				throw new Error(`Unknown token within "${mode}" at ${line}:${col}\r\n"${msg}"`);
 			}
-			//#ENDIF
 			unknown += code.slice(0, 1);
 			code = code.slice(1);
 			continue;
@@ -2443,10 +2441,8 @@ var Parse = {
 			fregex.zeroOrOne(';')
 		], tokens);
 
-		//#IFDEV
 		if (!htmlMatch && !self.prototype.html)
 			throw new Error(`Class ${self.name} is missing an html function with a template value.`);
-		//#ENDIF
 
 		let template = htmlMatch.filter(t=>t.tokens || t.type==='string')[0]; // only the template token has sub-tokens.
 
@@ -3089,10 +3085,9 @@ class VExpression {
 
 		} else { // loop
 			let array = this.evaluate();
-			//#IFDEV
 			if (!array)
 				throw new Error(`${this.watchPaths[0].join('.')} is not iterable in ${this.code}`);
-			//#ENDIF
+
 
 			let i = 0;
 			for (let item of array) {
@@ -3688,7 +3683,7 @@ class VElement {
 		let isText = this.el.tagName === 'TEXTAREA' || this.attributes['contenteditable'] && (this.attributes['contenteditable']+'') !== 'false';
 		for (let vChild of this.vChildren) {
 			if (isText && (vChild instanceof VExpression))
-				throw new Error('textarea and contenteditable cannot have template expressions as children.  Use value=${this.variable} instead.');
+				throw new Error("textarea and contenteditable can't have templates as children. Use value=${this.variable} instead.");
 
 			vChild.scope = {...this.scope}; // copy
 			vChild.refl = this.refl;
@@ -4470,10 +4465,8 @@ class Compiler {
 					sup = tokens.slice(sup.index, supEnd);
 					sup.index = s;
 
-					//#IFDEV
 					if (!sup)
 						throw new Error(`Class ${self.name} constructor() { ... } is missing call to super().`);
-					//#ENDIF
 
 
 					let injectIndex = sup.index + sup.length;
@@ -4530,10 +4523,8 @@ class Compiler {
 					fregex.zeroOrOne(';')
 				], tokens, htmlIdx);
 
-				//#IFDEV
 				if (!htmlMatch && !self.prototype.html)
 					throw new Error(`Class ${self.name} is missing an html property with a template value.`);
-				//#ENDIF
 
 				// Remove the html property, so that when classes are constructed it's not evaluated as a regular template string.
 				let htmlAssign = tokens.splice(htmlMatch.index, htmlMatch.length);

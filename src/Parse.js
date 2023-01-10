@@ -165,10 +165,8 @@ var Parse = {
 			fregex.zeroOrOne(';')
 		], tokens);
 
-		//#IFDEV
 		if (!htmlMatch && !self.prototype.html)
 			throw new Error(`Class ${self.name} is missing an html function with a template value.`);
-		//#ENDIF
 
 		let template = htmlMatch.filter(t=>t.tokens || t.type==='string')[0]; // only the template token has sub-tokens.
 

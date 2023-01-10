@@ -295,10 +295,8 @@ export class Compiler {
 					sup = tokens.slice(sup.index, supEnd);
 					sup.index = s;
 
-					//#IFDEV
 					if (!sup)
 						throw new Error(`Class ${self.name} constructor() { ... } is missing call to super().`);
-					//#ENDIF
 
 
 					let injectIndex = sup.index + sup.length;
@@ -355,10 +353,8 @@ export class Compiler {
 					fregex.zeroOrOne(';')
 				], tokens, htmlIdx);
 
-				//#IFDEV
 				if (!htmlMatch && !self.prototype.html)
 					throw new Error(`Class ${self.name} is missing an html property with a template value.`);
-				//#ENDIF
 
 				// Remove the html property, so that when classes are constructed it's not evaluated as a regular template string.
 				let htmlAssign = tokens.splice(htmlMatch.index, htmlMatch.length);
