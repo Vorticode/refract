@@ -58,31 +58,33 @@ Refract is still **in development** and has several known bugs.  Exercise cautio
 ## Feature Summary:
 
 - Automatically updates DOM elements when properties change.
-- Fine grained change detection.  Adding a single item to a TODO list of 10,000 items won't create 10,000 virtual elements behind the scenes and compare them with the DOM to see what has changed.
+- Fine-grained change detection.  Adding a single item to a TODO list of 10,000 items won't create 10,000 virtual elements behind the scenes and compare them with the DOM to see what has changed.
 - Lightweight.  **46KB** minified, **15KB** gzipped.
-- No custom build steps and no dependencies.  Not even Node.js.  Just include Refract.js or Refract.min.js.
-- Doesn't take over your whole project.  Place it within standard DOM nodes only where you need it.
+- No custom build steps and no dependencies.  Not even Node.js.  Just `import` Refract.js or Refract.min.js.
+- Doesn't take over your whole project.  Place Refract web components among standard DOM nodes only where you need them.
 - Uses standard, native html and JavaScript.  No need to learn another template or markup language.
-- Supports events, shadow DOM, slots, and more.
+- Supports events, shadow DOM, slots, scoped styles, and more.
 - The whole library is MIT licensed.  Free for commercial use.  No attribution needed.
 
 ## Minimal Example
 
-In this minimal example, we make a new class called Hello and set its html.  We give it an `r-` prefix because browsers require that any web component tag name must include at least one dash surrounded by letters.
+In this minimal example, we make a new class called Hello and provide an `html()` function to set its html.  Refract never calls this function directly (and neither should you, but it provides code that Refract parses into a tree of objects so it can only update nodes whose values are changed, instead of all nodes.
+
+Make sure the element name has a dash (`-`) in the middle because all browsers require custom web component names to have a dash in the middle..
 
 ```html
 <script>
-    import './Refract.js';
+    import Refract from 'https://vorticode.github.io/refract/dist/Refract.min.js';
     
-    class Hello extends Refract {
+    class HelloRefract extends Refract {
         name = 'Refract';
-	    html() { return `<r-hello>Hello #{this.name}!</r-hello>`}
+	    html() { return `<hello-refract>Hello #{this.name}!</hello-refract>`}
     }
-    eval(Hello.compile());
+    eval(HelloRefract.compile());
 </script>
 
 <!-- Prints an element with textContent = "Hello Refract!" -->
-<r-hello></r-hello>
+<hello-refract></hello-refract>
 ```
 
 Subsequent examples omit the  `import` statement for brevity.
@@ -113,17 +115,17 @@ console.log(team.car.textContent); // "Cutlas Supreme"
 console.log(team.instructor.name.textContent); // "Lightning McQueen"
 car.driver.value = 'Chuck Norris'; // Replaces text in input box.
 car.driver = 3; // Error, property is read-only.
-
-
 ```
 
 Ids that match html attribute names such as `title` or `disabled` may give unpredictable behavior.
 
 ### Template Interpolation
 
-As with regular JavaScript, template strings can be inserted via `${...}`.  The alternate `#{...}` templates will escape html entities before they're printed:
+As with regular JavaScript, template strings can be inserted via `${...}`.  The alternate `#{...}` templates will escape html entities before they're printed.  If your IDE doesn't understand `#{...}` syntax, you can also use the `h()` function to escape HTML:
 
 ```javascript
+import Refract, {h} from 'https://vorticode.github.io/refract/dist/Refract.min.js';
+
 class Resume extends Refract {
 	init() {
 		this.name = 'John Smith';
@@ -132,9 +134,8 @@ class Resume extends Refract {
 
 	html() { return `
         <r-resume>
-            <h1>Resume for #{this.name}</h1>
-            <div>${this.resumeHtml}>/div>
-            
+            <h1>Resume for #{this.firstName} ${h(this.lastName)}</h1>
+            <div>${this.resumeHtml}>/div>            
         </r-resume>`
 	}
 }
@@ -143,7 +144,7 @@ eval(NameTag.compile());
 
 Literal `$` and `#` characters can be escaped with a backslash as `\$` or `\#`.
 
-As always, assigning different values to `this.name` or `this.resumeHtml` will update any changed html automatically.
+As with the other examples, assigning different values to `this.name` or `this.resumeHtml` will update the rendered html automatically.
 
 ### Form Elements
 
@@ -178,15 +179,65 @@ eval(NameTag.compile());
 
 In the example above, `<custom-refract-elemenet>` is a custom form element built using Refract, that exposes a `.value` getter and setter to modify its value.
 
+It's not necessary to escape html by using `#{...}` syntax when using two-way binding for the value of input, select, textarea, and contenteditable elements.  `${...}` will suffice.
+
 Using a complex expression (an expression that doesn't link directly back to a class property) will only allow one-way binding.  In this case, typing in the input box will not update the class property:
 
 ```javascript
 htlm = ` ... <input value="${this.inputVal+''}"/> ... `
 ```
 
+Two-way binding can also be used on custom web components that expose a `.value` property.
+
 ### Loops
 
-TODO:  Document this feature.
+As seen in some of the examples above, loops can be written with the standard [Array.map()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/map) function.  Refract looks for this pattern in the html and parses it into a structure so it will know to only update loop items that have been changed:
+
+```javascript
+<script>
+    class TodoList extends Refract {
+        init(items) {
+            this.items = items;
+        }
+
+	    html() { return `
+            <todo-list>
+                ${this.items.map(item => 
+                    `#{this.items[0])}<br>`
+                )}
+            </todo-list>`
+		}
+    }
+    eval(TodoList.compile());
+</script>
+
+<todo-list items='["one", "two", "three"]'></todo-list>
+```
+
+In order for Refract to understand a loop and only update specific items that are changed, the loops must be written in the specific format of calling map on a variable that's an array, and passing it a lambda function inline.  
+
+```javascript
+// Parsed as loops, changing an item updates only re-renders the affected html
+html() { return `
+    <todo-list>
+        ${this.items.map(item => `<p>#{item}</p>`)}
+        ${this.items.map((item, i) => `<p>#{i} #{item}</p>`)}
+        ${this.items.map(item => item = ' | ')}
+        ${this.items[3]['subItems'].map(item => `<p>#{item}</p>`)}
+        ${this.items.map(function(item) { return `<p>#{item}</p>`})}
+    </todo-list>`
+}
+
+// Not parsed as loops, changes are slower b/c all html created 
+// by the loop is re-rendered.  This is still ok, but slower.
+html() { return `
+    <todo-list>
+        ${this.items.slice().map(item => `<p>#{item}</p>`)}
+        ${this.getItems().map(item => `<p>#{item}</p>`)}
+        ${this.items.map(function(item) { return `<p>#{item}</p>`})}
+    </todo-list>`
+}
+```
 
 ### Events
 
@@ -195,17 +246,19 @@ Events can be used via the conventional `on` attributes.  The event code is give
 1. `this` The parent Refract class instance.
 2. `event` The event object.
 3. `el` The HTML Element where the attribute is present.
-4. Any new variables in scope from a containing loop.
+4. Any variables in scope from containing loops.
 
 ```javascript
 class FastCar extends LiteElement {
-    honk(event, el) {
-        console.log(`${event.type} happened on ${el.tagName}.`);
+    honk(event, el, volume) {
+        console.log(
+            `A #{volume} ${event.type} happened on <${el.tagName.toLowerCase()}>.`
+        );
     }
 
 	html() { return `
         <fast-car>
-            <button onclick="this.honk(event, el)">Honk</button>
+            <button onclick="this.honk(event, el, 'loud')">Honk</button>
         </fast-car>`
 	}
 }
@@ -215,11 +268,13 @@ var car = new FastCar();
 document.body.append(car);
 ```
 
-In the example above, clicking the button will print `click happened on BUTTON.`
+In the example above, clicking the button will print `A loud click happened on <button>.`
 
 ### Constructors and Nesting
 
-The classes that define Refract Elements have constructors, and values can be passed to those constructors when they're invoked via `new`, just as with any other JavaScript class.  However, constructors values can also be passed when creating a Refract element from HTML:
+Refract classes should have an optional `init()` function instead of a constructor.  Internally, `init()` is called after the super constructor and after all class properties have been evaluated.
+
+Values can be passed to those constructors when they're invoked via `new`, just as with any other JavaScript class.  However, constructors values can also be passed via attributes when creating a Refract element from HTML:
 
 ```html
 <script>
@@ -228,13 +283,13 @@ The classes that define Refract Elements have constructors, and values can be pa
             this.color = color;
         }
 	    html() { 
-			return `<color-text style="color: #{this.value}"></color-text>`
+			return `<color-text style="color: #{this.value}">What color am I?</color-text>`
 		}
     }
     eval(ColorText.compile());
 </script>
 
-<color-text color="red">I'm Red!</color-text>
+<color-text color="red"></color-text>
 ```
 
 Complex data can also be passed through constructor arguments.  Any constructor argument that is valid JSON will be parsed as such:
@@ -260,7 +315,7 @@ Complex data can also be passed through constructor arguments.  Any constructor 
 <todo-list items='["one", "two", "three"]'></todo-list>
 ```
 
-Refract elements can also be embedded within the html of other Refract elements:
+Likewise, unmodified JavaScript objects can be passed to attributes via `${...}`.  In the example below, an instance of the parent Refract web component instance is passed to the child instances:
 
 ```javascript
 class CarWheel extends Refract {
@@ -293,7 +348,7 @@ class CarBody extends Refract  {
 eval(CarBody.compile());
 ```
 
-And as seen above, attributes can be used to pass arguments to the nested element constructors.  Alternatively, we could write the CarBody class to use a loop and pass the number argument dynamically.  When one Refract element is embedded within another, constructor arguments can also be passed via `${...}` templates:
+Alternatively, we could write the CarBody class to use a loop and pass the number argument dynamically:
 
 ```javascript
 class CarWheel extends Refract {
@@ -337,8 +392,6 @@ class CarBody extends Refract  {
 
 
 
-==TODO: Document passing eval'd code as constructor args with {}==
-
 ### Deferred Rendering
 
 Maybe you want to setup your object a little before it's rendered.  In this case, pass `false` to the `autoRender` property then call `this.render()` whenever it's ready:
@@ -354,7 +407,7 @@ class TodoList extends Refract {
     init(items) {
         console.log(this.listParent); // undefined, not created yet.
         this.items = items;
-        this.render(); // Don't create child nodes until here.
+        this.autoRender = true; // Don't create child nodes until here.
         console.log(this.listParent); // Now it's created.
     }
 
@@ -369,6 +422,8 @@ class TodoList extends Refract {
     }
 }
 ```
+
+
 
 
 
@@ -544,19 +599,11 @@ In this case, Refract sees the `this.count` variable in the expression for `Coun
 
 ## How Refract works
 
-When `ClassName.compile()` is called, Refract parses the `html` property and calls `customElements.define` to register a custom tag name.  The first time a class is instantiated, Refract builds a virtual tree of the elements and expressions it contains.  It finds all `this.variables` within the expressions and watches for their values to change, via [JavaScript Proxies](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy).
+When `ClassName.compile()` is called, Refract parses the code in the `html()` function and calls `customElements.define` to register a custom tag name.  The first time a class is instantiated, Refract builds a virtual tree of the elements and expressions it contains.  It finds all variables referencing class properties within the expressions and watches for their values to change, via [JavaScript Proxies](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy).
 
 Additionally, Refract has a special code path for watching loop expressions created via `this.array.map(...)`, so that when the array powering a loop changes, only the html elements connected to the items changed are updated.
 
 ## Development
 
-### Running Tests
-
-Tests can be run one of two ways:
-
-1.  By loading tests/index.html in the browser and selecting which tests to run.
-
-2.  Currently broken:  By typing `deno test --allow-net` from a command prompt in the tests folder.  Required the deno runtime to be installed.  Individual tests can be run by typing `deno test --allow-net filename.build2.js`.  The --allow-net flag allows downloading required deno libraries.
-
-
+Tests can be run by loading tests/index.html in the browser and selecting which tests to run.
 
