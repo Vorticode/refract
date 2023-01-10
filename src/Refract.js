@@ -122,7 +122,7 @@ export default class Refract extends HTMLElement {
 			// Parse the html tokens to Virtual DOM
 			if (!this.constructor.virtualElement) {
 				if (this.html) // new path
-					this.constructor.htmlTokens = Parse.htmlFunctionReturn(this.html.toString());
+					this.constructor.htmlTokens = Parse.htmlFunctionReturn_(this.html.toString());
 
 				this.constructor.virtualElement = VElement.fromTokens(this.constructor.htmlTokens, [], null, this.constructor, 1)[0];
 				this.constructor.htmlTokens = null; // We don't need them any more.
@@ -131,7 +131,7 @@ export default class Refract extends HTMLElement {
 			Refract.constructing[this.tagName] = true;
 
 			this.virtualElement = this.constructor.virtualElement.clone(this);
-			this.virtualElement.apply(null, this);
+			this.virtualElement.apply_(null, this);
 
 			delete Refract.constructing[this.tagName];
 		}

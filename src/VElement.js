@@ -68,7 +68,7 @@ export default class VElement {
 	 *
 	 * @param parent {HTMLElement}
 	 * @param el {HTMLElement} */
-	apply(parent=null, el=null) {
+	apply_(parent=null, el=null) {
 		parent = parent || this.parent;
 		let tagName = this.tagName;
 
@@ -180,7 +180,7 @@ export default class VElement {
 			for (let vChild of slotChildren) {
 				vChild.scope = {...this.scope}
 				vChild.startIndex = count;
-				count += vChild.apply(this.el);
+				count += vChild.apply_(this.el);
 			}
 		}
 
@@ -193,7 +193,7 @@ export default class VElement {
 			vChild.scope = {...this.scope} // copy
 			vChild.refl = this.refl;
 			vChild.startIndex = count;
-			count += vChild.apply(this.el);
+			count += vChild.apply_(this.el);
 		}
 
 		// 5. Attributes (besides shadow)
@@ -246,9 +246,9 @@ export default class VElement {
 		// Attribute expressions
 		for (let expr of this.attributeExpressions) {
 			expr.scope = this.scope;
-			expr.apply(this.el)
+			expr.apply_(this.el)
 			expr.watch(() => {
-				expr.apply(this.el);
+				expr.apply_(this.el);
 			});
 		}
 
@@ -266,7 +266,7 @@ export default class VElement {
 				let assignFunc = createFunction(...Object.keys(this.scope), 'val', valueExprs[0].code + '=val;').bind(this.refl);
 
 				// Update the value when the input changes:
-				Utils.watchInput(this.el, (val, e) => {
+				Utils.watchInput_(this.el, (val, e) => {
 					Refract.currentEvent = e;
 					assignFunc(...Object.values(this.scope), val);
 					Refract.currentEvent = null;
@@ -449,6 +449,7 @@ export default class VElement {
 	 * @param html {string|string[]} Tokens will be removed from the beginning of the array as they're processed.
 	 * @param scopeVars {string[]}
 	 * @param vParent {VElement|VExpression}
+	 * @param Class
 	 * @return {(VElement|VExpression|string)[]} */
 	static fromHtml(html, scopeVars=[], vParent=null, Class) {
 		let tokens = lex(htmljs, [html].flat().join(''), 'template');

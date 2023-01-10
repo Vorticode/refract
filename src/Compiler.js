@@ -241,7 +241,7 @@ export class Compiler {
 
 		// New path.
 		if (self.prototype.html) {
-			result.tagName = Parse.htmlFunctionTagName(self.prototype.html.toString());
+			result.tagName = Parse.htmlFunctionTagName_(self.prototype.html.toString());
 			result.code = self.toString().slice(0, -1) + preInitCode + '}';
 		}
 
@@ -278,8 +278,8 @@ export class Compiler {
 				// Modify existing constructor
 				if (constr) { // is null if no match found.
 					// Find arguments
-					let argTokens = tokens.slice(constr.index + constr.length, Parse.findGroupEnd(tokens, constr.index + constr.length));
-					result.constructorArgs = Parse.findFunctionArgNames(argTokens);
+					let argTokens = tokens.slice(constr.index + constr.length, Parse.findGroupEnd_(tokens, constr.index + constr.length));
+					result.constructorArgs = Parse.findFunctionArgNames_(argTokens);
 
 					// Find super call in constructor body
 					let sup = fregex.matchFirst(
@@ -287,7 +287,7 @@ export class Compiler {
 						tokens,
 						constr.index + constr.length + argTokens.length);
 
-					let supEnd = Parse.findGroupEnd(tokens, sup.index + sup.length) + 1;
+					let supEnd = Parse.findGroupEnd_(tokens, sup.index + sup.length) + 1;
 					let e = fregex(Parse.ws, ';')(tokens.slice(supEnd));
 					supEnd += e;
 

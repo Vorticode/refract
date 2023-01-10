@@ -28,7 +28,7 @@ export default class VText {
 	 * @param parent {?HTMLElement}
 	 * @param el {HTMLElement|Node?}
 	 * @return {int} */
-	apply(parent=null, el=null) {
+	apply_(parent=null, el=null) {
 		if (el)
 			this.el = el;
 		else {

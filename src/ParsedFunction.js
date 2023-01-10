@@ -60,7 +60,7 @@ export class ParsedFunction {
 		 * @return {int} Index of token after the last arg token. */
 		const parseArgTokens = (tokens, start = 0) => {
 			assert(tokens[start].text === '(');
-			let groupEndIndex = Parse.findGroupEnd(tokens, start);
+			let groupEndIndex = Parse.findGroupEnd_(tokens, start);
 			if (groupEndIndex === null)
 				return -1;
 
@@ -163,7 +163,7 @@ export class ParsedFunction {
 					if (['whitespace', 'comment'].includes(token.type))
 						continue;
 					if (open.includes(token.text))
-						i = Parse.findGroupEnd(tokens, i, open, close)
+						i = Parse.findGroupEnd_(tokens, i, open, close)
 
 					// Here we're implicitly at depth zero because of the Parse.findGroupEnd() above.
 					else if (terminators.includes(token.text)) {
@@ -184,7 +184,7 @@ export class ParsedFunction {
 				}
 			}
 			else
-				bodyEnd = Parse.findGroupEnd(tokens, this.bodyStartIndex);
+				bodyEnd = Parse.findGroupEnd_(tokens, this.bodyStartIndex);
 
 
 			if (bodyEnd === null)

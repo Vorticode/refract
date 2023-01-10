@@ -15,15 +15,13 @@ export {assert};
 
 export default {
 
-
-
 	/**
 	 * Return a slice from the beginning of the string up until any item from limiters is found.
 	 * @param string {string}
 	 * @param limiters {string|string[]}
 	 * @param offset {int=}
 	 * @return {string} */
-	munchUntil(string, limiters, offset) {
+	munchUntil_(string, limiters, offset) {
 		if (typeof limiters === 'string')
 			limiters = [limiters];
 		offset = offset || 0;
@@ -50,7 +48,7 @@ export default {
 		return true;
 	},
 
-	arrayStartsWith(haystack, prefix) {
+	arrayStartsWith_(haystack, prefix) {
 		for (let i=0; i<prefix.length; i++)
 			if (haystack[i] !== prefix[i]) // will be undefined if prefix is longer than haystack, and that will still work.
 				return false;
@@ -85,7 +83,7 @@ export default {
 	 * When the input's value changes, call the callback with the new, typed value.
 	 * @param el {HTMLInputElement|HTMLElement}
 	 * @param callback {function(val:*, event)}	 */
-	watchInput(el, callback) {
+	watchInput_(el, callback) {
 		let tagName = el.tagName;
 		let isContentEditable = el.hasAttribute('contenteditable') && el.getAttribute('contenteditable') !== 'false';
 		let isTextArea = tagName==='TEXTAREA';

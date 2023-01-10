@@ -109,7 +109,7 @@ export default class VExpression {
 	 * @param parent {HTMLElement} If set, this is always eqeual to this.parent?
 	 * @param el {HTMLElement} Unused.  Only here to match
 	 * @return {int} Number of elements created. d*/
-	apply(parent=null, el=null) {
+	apply_(parent=null, el=null) {
 		this.parent = parent || this.parent;
 
 		// if (window.debug)
@@ -186,7 +186,7 @@ export default class VExpression {
 				else
 					for (let vChild of item) {
 						vChild.startIndex = startIndex;
-						let num = vChild.apply(this.parent, null);
+						let num = vChild.apply_(this.parent, null);
 						startIndex += num;
 						count += num;
 					}
@@ -337,7 +337,7 @@ export default class VExpression {
 		//if (path[0] !== this.watchPaths[0][1]) // Faster short-circuit for the code below?
 		//	return;
 
-		if (this.type==='loop' && Utils.arrayStartsWith(path.slice(0, -2), this.watchPaths[0].slice(1))) {
+		if (this.type==='loop' && Utils.arrayStartsWith_(path.slice(0, -2), this.watchPaths[0].slice(1))) {
 			// Do nothing, because the watch should trigger on the child VExpression instead of this one.
 			return;
 		}
@@ -400,7 +400,7 @@ export default class VExpression {
 						for (let j in this.loopParamNames)
 							newItem.scope[this.loopParamNames[j]] = params[j];
 
-						newItem.apply(this.parent, null);
+						newItem.apply_(this.parent, null);
 						i++;
 					}
 				}
@@ -411,7 +411,7 @@ export default class VExpression {
 		}
 
 		// Path 3:  Replace all items:
-		this.apply();
+		this.apply_();
 		this.updateSubsequentIndices_();
 
 		Refract.currentVElement = null;
@@ -673,7 +673,7 @@ export default class VExpression {
 			// Later, scope object will be matched with param names to call this function.
 			// We call replacehashExpr() b/c we're valuating a whole string of code all at once, and the nested #{} aren't
 			// understood by the vanilla JavaScript that executes the template string.
-			tokens = Parse.replaceHashExpr(tokens, null, Class.name);
+			tokens = Parse.replaceHashExpr_(tokens, null, Class.name);
 
 			/**
 			 * We want sub-templates within the expression to be parsed to find their own variables,
@@ -681,7 +681,7 @@ export default class VExpression {
 			 * Unless we do this, their own variables will be evaluated immediately, instead of parsed and watched. */
 			// console.log(tokens.join(''));
 
-			tokens = Parse.escape$(tokens);
+			tokens = Parse.escape$_(tokens);
 			//console.log(tokens.join(''));
 
 			// Trim required.  B/c if there's a line return after return, the function will return undefined!

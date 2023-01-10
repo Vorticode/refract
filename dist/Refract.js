@@ -927,15 +927,13 @@ var assert = expr => {
 
 var utils = {
 
-
-
 	/**
 	 * Return a slice from the beginning of the string up until any item from limiters is found.
 	 * @param string {string}
 	 * @param limiters {string|string[]}
 	 * @param offset {int=}
 	 * @return {string} */
-	munchUntil(string, limiters, offset) {
+	munchUntil_(string, limiters, offset) {
 		if (typeof limiters === 'string')
 			limiters = [limiters];
 		offset = offset || 0;
@@ -962,7 +960,7 @@ var utils = {
 		return true;
 	},
 
-	arrayStartsWith(haystack, prefix) {
+	arrayStartsWith_(haystack, prefix) {
 		for (let i=0; i<prefix.length; i++)
 			if (haystack[i] !== prefix[i]) // will be undefined if prefix is longer than haystack, and that will still work.
 				return false;
@@ -997,7 +995,7 @@ var utils = {
 	 * When the input's value changes, call the callback with the new, typed value.
 	 * @param el {HTMLInputElement|HTMLElement}
 	 * @param callback {function(val:*, event)}	 */
-	watchInput(el, callback) {
+	watchInput_(el, callback) {
 		let tagName = el.tagName;
 		let isContentEditable = el.hasAttribute('contenteditable') && el.getAttribute('contenteditable') !== 'false';
 		let isTextArea = tagName==='TEXTAREA';
@@ -2070,7 +2068,7 @@ class ParsedFunction {
 		 * @return {int} Index of token after the last arg token. */
 		const parseArgTokens = (tokens, start = 0) => {
 			assert(tokens[start].text === '(');
-			let groupEndIndex = Parse.findGroupEnd(tokens, start);
+			let groupEndIndex = Parse.findGroupEnd_(tokens, start);
 			if (groupEndIndex === null)
 				return -1;
 
@@ -2173,7 +2171,7 @@ class ParsedFunction {
 					if (['whitespace', 'comment'].includes(token.type))
 						continue;
 					if (open.includes(token.text))
-						i = Parse.findGroupEnd(tokens, i, open, close);
+						i = Parse.findGroupEnd_(tokens, i, open, close);
 
 					// Here we're implicitly at depth zero because of the Parse.findGroupEnd() above.
 					else if (terminators.includes(token.text)) {
@@ -2194,7 +2192,7 @@ class ParsedFunction {
 				}
 			}
 			else
-				bodyEnd = Parse.findGroupEnd(tokens, this.bodyStartIndex);
+				bodyEnd = Parse.findGroupEnd_(tokens, this.bodyStartIndex);
 
 
 			if (bodyEnd === null)
@@ -2287,17 +2285,16 @@ class ParsedFunction {
 }
 
 var Parse = {
+
 	/**
 	 * Create a fregex to find expressions that start with "this" or with local variables.
 	 * @param vars
 	 * @return {function(*): (boolean|number)} */
 	createVarExpression_(vars=[]) {
-
 		let key = vars.join(','); // Benchmarking shows this cache does speed things up a little.
 		let result = varExpressionCache[key];
 		if (result)
 			return result;
-
 
 		return varExpressionCache[key] = fregex(
 			fregex.or(
@@ -2318,7 +2315,7 @@ var Parse = {
 	 * @param terminators {(Token|string)[]}
 	 * @param dir {int} Direction.  Must be 1 or -1;  A value of 0 will cause an infinite loop.
 	 * @return {?int} The index of the end token, or terminator if supplied.  Null if no match.*/
-	findGroupEnd(tokens, start=0, open=['(', '{'], close=[')', '}'], terminators=[], dir=1) {
+	findGroupEnd_(tokens, start=0, open=['(', '{'], close=[')', '}'], terminators=[], dir=1) {
 		let depth = 0;
 		let startOnOpen = open.includes(tokens[start].text);
 
@@ -2347,7 +2344,7 @@ var Parse = {
 	 * Given the tokens of a function(...) definition from findFunctionArgToken(), find the argument names.
 	 * @param tokens {Token[]}
 	 * @return {string[]} */
-	findFunctionArgNames(tokens) {
+	findFunctionArgNames_(tokens) {
 		let result = [];
 		let find = 1, depth=0; // Don't find identifiers after an =.
 		for (let token of tokens) {
@@ -2368,7 +2365,7 @@ var Parse = {
 	 * @param tokens {Token[]}
 	 * @param start {int}
 	 * @return {int|null} */
-	findFunctionStart(tokens, start=0) {
+	findFunctionStart_(tokens, start=0) {
 		for (let i=start, token; token=tokens[i]; i++) {
 			if (token == 'function')
 				return i;
@@ -2394,16 +2391,16 @@ var Parse = {
 	 * Replace `${`string`}` with `\${\`string\`}`, but not within function bodies.
 	 * @param tokens {Token[]}
 	 * @return {Token[]} */
-	escape$(tokens) {
+	escape$_(tokens) {
 		let result = tokens.map(t=>({...t}));// copy each
-		let fstart = this.findFunctionStart(result);
+		let fstart = this.findFunctionStart_(result);
 		for (let i=0, token; token=result[i]; i++) {
 
 			// Skip function bodies.
 			if (i===fstart) {
 				let pf = new ParsedFunction(result.slice(fstart));
 				i = fstart + pf.bodyStartIndex +pf.bodyTokens.length + 1;
-				fstart = this.findFunctionStart(result, i);
+				fstart = this.findFunctionStart_(result, i);
 			}
 
 			if (token.type === 'template')
@@ -2419,15 +2416,15 @@ var Parse = {
 	 * A better version would use lex but stop lexxing after we get to the tag name.
 	 * @param code {string} The code returned by function.toString().
 	 * @returns {string} */
-	htmlFunctionTagName(code) {
+	htmlFunctionTagName_(code) {
 		code = code
 			.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, '')  // remove js comments - stackoverflow.com/a/15123777/
 			.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*|<!--[\s\S]*?-->$/); // remove html comments.
 
-		code = utils.munchUntil(code, '{');
-		code = utils.munchUntil(code, 'return');
-		code = utils.munchUntil(code, ['`', `"`, "'"]);
-		code = utils.munchUntil(code, ['<']);
+		code = utils.munchUntil_(code, '{');
+		code = utils.munchUntil_(code, 'return'); // Return is optional.  munchUntil() will return the same string if not found.
+		code = utils.munchUntil_(code, ['`', `"`, "'"]);
+		code = utils.munchUntil_(code, ['<']);
 		let match = code.match(/<(\w+-[\w-]+)/);
 		return match[1]; // 1 to get part in parenthesees.
 	},
@@ -2436,7 +2433,7 @@ var Parse = {
 	 * Parse the return value of the html function into tokens.
 	 * @param tokens {string|Token[]} The code returned by function.toString().
 	 * @return {Token[]} */
-	htmlFunctionReturn(tokens) {
+	htmlFunctionReturn_(tokens) {
 		if (typeof tokens === 'string')
 			tokens = lex(lexHtmlJs, tokens, 'js');
 
@@ -2477,13 +2474,13 @@ var Parse = {
 	 * @param mode
 	 * @param className
 	 * @return {Token[]} */
-	replaceHashExpr(tokens, mode, className) {
+	replaceHashExpr_(tokens, mode, className) {
 		let result = [];
 		let isHash = false;
 		for (let token of tokens) {
 			// TODO: Completely recreate the original tokens, instead of just string versions of them:
 			if (token.tokens) {
-				let tokens = Parse.replaceHashExpr(token.tokens, token.mode, className);
+				let tokens = Parse.replaceHashExpr_(token.tokens, token.mode, className);
 				result.push({text: tokens.map(t=>t.text).join(''), type: token.type, tokens, mode: token.mode});
 			}
 			else if (token.text == '#{' && token.type == 'expr') {
@@ -2535,7 +2532,7 @@ var Parse = {
 
 
 		let funcTokens = tokens.slice(mapExpr.length);
-		let startIndex = Parse.findFunctionStart(funcTokens);
+		let startIndex = Parse.findFunctionStart_(funcTokens);
 		if (startIndex === -1)
 			return [null, null];
 		let f = new ParsedFunction(funcTokens.slice(startIndex));
@@ -2756,7 +2753,7 @@ class VText {
 	 * @param parent {?HTMLElement}
 	 * @param el {HTMLElement|Node?}
 	 * @return {int} */
-	apply(parent=null, el=null) {
+	apply_(parent=null, el=null) {
 		if (el)
 			this.el = el;
 		else {
@@ -2915,7 +2912,7 @@ class VExpression {
 	 * @param parent {HTMLElement} If set, this is always eqeual to this.parent?
 	 * @param el {HTMLElement} Unused.  Only here to match
 	 * @return {int} Number of elements created. d*/
-	apply(parent=null, el=null) {
+	apply_(parent=null, el=null) {
 		this.parent = parent || this.parent;
 
 		// if (window.debug)
@@ -2992,7 +2989,7 @@ class VExpression {
 				else
 					for (let vChild of item) {
 						vChild.startIndex = startIndex;
-						let num = vChild.apply(this.parent, null);
+						let num = vChild.apply_(this.parent, null);
 						startIndex += num;
 						count += num;
 					}
@@ -3143,7 +3140,7 @@ class VExpression {
 		//if (path[0] !== this.watchPaths[0][1]) // Faster short-circuit for the code below?
 		//	return;
 
-		if (this.type==='loop' && utils.arrayStartsWith(path.slice(0, -2), this.watchPaths[0].slice(1))) {
+		if (this.type==='loop' && utils.arrayStartsWith_(path.slice(0, -2), this.watchPaths[0].slice(1))) {
 			// Do nothing, because the watch should trigger on the child VExpression instead of this one.
 			return;
 		}
@@ -3206,7 +3203,7 @@ class VExpression {
 						for (let j in this.loopParamNames)
 							newItem.scope[this.loopParamNames[j]] = params[j];
 
-						newItem.apply(this.parent, null);
+						newItem.apply_(this.parent, null);
 						i++;
 					}
 				}
@@ -3217,7 +3214,7 @@ class VExpression {
 		}
 
 		// Path 3:  Replace all items:
-		this.apply();
+		this.apply_();
 		this.updateSubsequentIndices_();
 
 		Refract.currentVElement = null;
@@ -3479,7 +3476,7 @@ class VExpression {
 			// Later, scope object will be matched with param names to call this function.
 			// We call replacehashExpr() b/c we're valuating a whole string of code all at once, and the nested #{} aren't
 			// understood by the vanilla JavaScript that executes the template string.
-			tokens = Parse.replaceHashExpr(tokens, null, Class.name);
+			tokens = Parse.replaceHashExpr_(tokens, null, Class.name);
 
 			/**
 			 * We want sub-templates within the expression to be parsed to find their own variables,
@@ -3487,7 +3484,7 @@ class VExpression {
 			 * Unless we do this, their own variables will be evaluated immediately, instead of parsed and watched. */
 			// console.log(tokens.join(''));
 
-			tokens = Parse.escape$(tokens);
+			tokens = Parse.escape$_(tokens);
 			//console.log(tokens.join(''));
 
 			// Trim required.  B/c if there's a line return after return, the function will return undefined!
@@ -3571,7 +3568,7 @@ class VElement {
 	 *
 	 * @param parent {HTMLElement}
 	 * @param el {HTMLElement} */
-	apply(parent=null, el=null) {
+	apply_(parent=null, el=null) {
 		parent = parent || this.parent;
 		let tagName = this.tagName;
 
@@ -3683,7 +3680,7 @@ class VElement {
 			for (let vChild of slotChildren) {
 				vChild.scope = {...this.scope};
 				vChild.startIndex = count;
-				count += vChild.apply(this.el);
+				count += vChild.apply_(this.el);
 			}
 		}
 
@@ -3696,7 +3693,7 @@ class VElement {
 			vChild.scope = {...this.scope}; // copy
 			vChild.refl = this.refl;
 			vChild.startIndex = count;
-			count += vChild.apply(this.el);
+			count += vChild.apply_(this.el);
 		}
 
 		// 5. Attributes (besides shadow)
@@ -3749,9 +3746,9 @@ class VElement {
 		// Attribute expressions
 		for (let expr of this.attributeExpressions) {
 			expr.scope = this.scope;
-			expr.apply(this.el);
+			expr.apply_(this.el);
 			expr.watch(() => {
-				expr.apply(this.el);
+				expr.apply_(this.el);
 			});
 		}
 
@@ -3769,7 +3766,7 @@ class VElement {
 				let assignFunc = createFunction(...Object.keys(this.scope), 'val', valueExprs[0].code + '=val;').bind(this.refl);
 
 				// Update the value when the input changes:
-				utils.watchInput(this.el, (val, e) => {
+				utils.watchInput_(this.el, (val, e) => {
 					Refract.currentEvent = e;
 					assignFunc(...Object.values(this.scope), val);
 					Refract.currentEvent = null;
@@ -3952,6 +3949,7 @@ class VElement {
 	 * @param html {string|string[]} Tokens will be removed from the beginning of the array as they're processed.
 	 * @param scopeVars {string[]}
 	 * @param vParent {VElement|VExpression}
+	 * @param Class
 	 * @return {(VElement|VExpression|string)[]} */
 	static fromHtml(html, scopeVars=[], vParent=null, Class) {
 		let tokens = lex(lexHtmlJs, [html].flat().join(''), 'template');
@@ -4418,7 +4416,7 @@ class Compiler {
 
 		// New path.
 		if (self.prototype.html) {
-			result.tagName = Parse.htmlFunctionTagName(self.prototype.html.toString());
+			result.tagName = Parse.htmlFunctionTagName_(self.prototype.html.toString());
 			result.code = self.toString().slice(0, -1) + preInitCode + '}';
 		}
 
@@ -4455,8 +4453,8 @@ class Compiler {
 				// Modify existing constructor
 				if (constr) { // is null if no match found.
 					// Find arguments
-					let argTokens = tokens.slice(constr.index + constr.length, Parse.findGroupEnd(tokens, constr.index + constr.length));
-					result.constructorArgs = Parse.findFunctionArgNames(argTokens);
+					let argTokens = tokens.slice(constr.index + constr.length, Parse.findGroupEnd_(tokens, constr.index + constr.length));
+					result.constructorArgs = Parse.findFunctionArgNames_(argTokens);
 
 					// Find super call in constructor body
 					let sup = fregex.matchFirst(
@@ -4464,7 +4462,7 @@ class Compiler {
 						tokens,
 						constr.index + constr.length + argTokens.length);
 
-					let supEnd = Parse.findGroupEnd(tokens, sup.index + sup.length) + 1;
+					let supEnd = Parse.findGroupEnd_(tokens, sup.index + sup.length) + 1;
 					let e = fregex(Parse.ws, ';')(tokens.slice(supEnd));
 					supEnd += e;
 
@@ -4765,7 +4763,7 @@ class Refract extends HTMLElement {
 			// Parse the html tokens to Virtual DOM
 			if (!this.constructor.virtualElement) {
 				if (this.html) // new path
-					this.constructor.htmlTokens = Parse.htmlFunctionReturn(this.html.toString());
+					this.constructor.htmlTokens = Parse.htmlFunctionReturn_(this.html.toString());
 
 				this.constructor.virtualElement = VElement.fromTokens(this.constructor.htmlTokens, [], null, this.constructor, 1)[0];
 				this.constructor.htmlTokens = null; // We don't need them any more.
@@ -4774,7 +4772,7 @@ class Refract extends HTMLElement {
 			Refract.constructing[this.tagName] = true;
 
 			this.virtualElement = this.constructor.virtualElement.clone(this);
-			this.virtualElement.apply(null, this);
+			this.virtualElement.apply_(null, this);
 
 			delete Refract.constructing[this.tagName];
 		}

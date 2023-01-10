@@ -7,17 +7,16 @@ import {ParsedFunction} from "./ParsedFunction.js";
 
 
 var Parse = {
+
 	/**
 	 * Create a fregex to find expressions that start with "this" or with local variables.
 	 * @param vars
 	 * @return {function(*): (boolean|number)} */
 	createVarExpression_(vars=[]) {
-
 		let key = vars.join(','); // Benchmarking shows this cache does speed things up a little.
 		let result = varExpressionCache[key];
 		if (result)
 			return result;
-
 
 		return varExpressionCache[key] = fregex(
 			fregex.or(
@@ -38,7 +37,7 @@ var Parse = {
 	 * @param terminators {(Token|string)[]}
 	 * @param dir {int} Direction.  Must be 1 or -1;  A value of 0 will cause an infinite loop.
 	 * @return {?int} The index of the end token, or terminator if supplied.  Null if no match.*/
-	findGroupEnd(tokens, start=0, open=['(', '{'], close=[')', '}'], terminators=[], dir=1) {
+	findGroupEnd_(tokens, start=0, open=['(', '{'], close=[')', '}'], terminators=[], dir=1) {
 		let depth = 0;
 		let startOnOpen = open.includes(tokens[start].text);
 
@@ -67,7 +66,7 @@ var Parse = {
 	 * Given the tokens of a function(...) definition from findFunctionArgToken(), find the argument names.
 	 * @param tokens {Token[]}
 	 * @return {string[]} */
-	findFunctionArgNames(tokens) {
+	findFunctionArgNames_(tokens) {
 		let result = [];
 		let find = 1, depth=0; // Don't find identifiers after an =.
 		for (let token of tokens) {
@@ -88,7 +87,7 @@ var Parse = {
 	 * @param tokens {Token[]}
 	 * @param start {int}
 	 * @return {int|null} */
-	findFunctionStart(tokens, start=0) {
+	findFunctionStart_(tokens, start=0) {
 		for (let i=start, token; token=tokens[i]; i++) {
 			if (token == 'function')
 				return i;
@@ -114,16 +113,16 @@ var Parse = {
 	 * Replace `${`string`}` with `\${\`string\`}`, but not within function bodies.
 	 * @param tokens {Token[]}
 	 * @return {Token[]} */
-	escape$(tokens) {
+	escape$_(tokens) {
 		let result = tokens.map(t=>({...t}));// copy each
-		let fstart = this.findFunctionStart(result);
+		let fstart = this.findFunctionStart_(result);
 		for (let i=0, token; token=result[i]; i++) {
 
 			// Skip function bodies.
 			if (i===fstart) {
 				let pf = new ParsedFunction(result.slice(fstart));
 				i = fstart + pf.bodyStartIndex +pf.bodyTokens.length + 1;
-				fstart = this.findFunctionStart(result, i);
+				fstart = this.findFunctionStart_(result, i);
 			}
 
 			if (token.type === 'template')
@@ -139,15 +138,15 @@ var Parse = {
 	 * A better version would use lex but stop lexxing after we get to the tag name.
 	 * @param code {string} The code returned by function.toString().
 	 * @returns {string} */
-	htmlFunctionTagName(code) {
+	htmlFunctionTagName_(code) {
 		code = code
 			.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, '')  // remove js comments - stackoverflow.com/a/15123777/
 			.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*|<!--[\s\S]*?-->$/) // remove html comments.
 
-		code = Utils.munchUntil(code, '{');
-		code = Utils.munchUntil(code, 'return');
-		code = Utils.munchUntil(code, ['`', `"`, "'"]);
-		code = Utils.munchUntil(code, ['<']);
+		code = Utils.munchUntil_(code, '{');
+		code = Utils.munchUntil_(code, 'return'); // Return is optional.  munchUntil() will return the same string if not found.
+		code = Utils.munchUntil_(code, ['`', `"`, "'"]);
+		code = Utils.munchUntil_(code, ['<']);
 		let match = code.match(/<(\w+-[\w-]+)/);
 		return match[1]; // 1 to get part in parenthesees.
 	},
@@ -156,7 +155,7 @@ var Parse = {
 	 * Parse the return value of the html function into tokens.
 	 * @param tokens {string|Token[]} The code returned by function.toString().
 	 * @return {Token[]} */
-	htmlFunctionReturn(tokens) {
+	htmlFunctionReturn_(tokens) {
 		if (typeof tokens === 'string')
 			tokens = lex(lexHtmlJs, tokens, 'js');
 
@@ -197,13 +196,13 @@ var Parse = {
 	 * @param mode
 	 * @param className
 	 * @return {Token[]} */
-	replaceHashExpr(tokens, mode, className) {
+	replaceHashExpr_(tokens, mode, className) {
 		let result = [];
 		let isHash = false;
 		for (let token of tokens) {
 			// TODO: Completely recreate the original tokens, instead of just string versions of them:
 			if (token.tokens) {
-				let tokens = Parse.replaceHashExpr(token.tokens, token.mode, className);
+				let tokens = Parse.replaceHashExpr_(token.tokens, token.mode, className);
 				result.push({text: tokens.map(t=>t.text).join(''), type: token.type, tokens, mode: token.mode});
 			}
 			else if (token.text == '#{' && token.type == 'expr') {
@@ -255,7 +254,7 @@ var Parse = {
 
 
 		let funcTokens = tokens.slice(mapExpr.length);
-		let startIndex = Parse.findFunctionStart(funcTokens);
+		let startIndex = Parse.findFunctionStart_(funcTokens);
 		if (startIndex === -1)
 			return [null, null];
 		let f = new ParsedFunction(funcTokens.slice(startIndex));
