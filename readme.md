@@ -121,7 +121,7 @@ Ids that match html attribute names such as `title` or `disabled` may give unpre
 
 ### Template Interpolation
 
-As with regular JavaScript, template strings can be inserted via `${...}`.  The alternate `#{...}` templates will escape html entities before they're printed.  If your IDE doesn't understand `#{...}` syntax, you can also use the `h()` function to escape HTML:
+As with regular JavaScript, template strings can be inserted via `${...}`.  The alternate `#{...}` templates will escape html entities before they're printed.  If your IDE doesn't understand `#{...}` syntax, you can also use the `h()` function to escape HTML.  But note that the `h()` function will always convert single and double quotes to html entities by default, since it doesn't know when it's escaping text for an attribute.
 
 ```javascript
 import Refract, {h} from 'https://vorticode.github.io/refract/dist/Refract.min.js';
@@ -135,7 +135,7 @@ class Resume extends Refract {
 	html() { return `
         <r-resume>
             <h1>Resume for #{this.firstName} ${h(this.lastName)}</h1>
-            <div>${this.resumeHtml}>/div>            
+            <div title="${h(this.lastName)}">${this.resumeHtml}>/div>            
         </r-resume>`
 	}
 }
@@ -479,6 +479,10 @@ TODO:  Document this feature.
 ### Watching
 
 TODO:  Document this feature.
+
+## Functions
+
+TODO
 
 ## Browser Support
 

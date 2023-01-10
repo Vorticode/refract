@@ -327,7 +327,7 @@ Refract.constructing = {};
 Refract.htmlDecode = Html.decode;
 Refract.htmlEncode = Html.encode;
 
-var h = Html.encode;
+var h = (text, quotes=`"'`) => Html.encode(text, quotes);
 export {h};
 
 // Expose useful internals to users of Refract:

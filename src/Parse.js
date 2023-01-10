@@ -83,28 +83,6 @@ var Parse = {
 		}
 		return result;
 	},
-
-
-	/**
-	 * @deprecated for ParseFunction class.
-	 * Find all tokens that are function arguments, not counting any open or close parens.
-	 * @param tokens {Token[]} Should start at the beginning of a function.
-	 * @param start {int} Index of the first token of the function.
-	 * E.g., below the first token is the start of the function.
-	 *   function(a,b) {...}
-	 *   function foo(a,b) {...}
-	 *   a => a+1
-	 *   (a) => a+1*/
-	findFunctionArgRange(tokens, start=0) {
-		const isArrow = tokens[start] != 'function';
-		if (isArrow && tokens[start] != '(')
-			return [start, start+1]; // single argument 'item => item+1'
-		while (tokens[start] != '(' && start < tokens.length)
-			start++;
-
-		return [start+1, this.findGroupEnd(tokens, start+1)];
-	},
-
 	/**
 	 * Loop through the tokens and find the start of a function.
 	 * @param tokens {Token[]}
@@ -133,35 +111,6 @@ var Parse = {
 	},
 
 	/**
-	 * @deprecated for ParseFunction class.
-	 * Finds the last token of a function, not including a trailing semicolon.
-	 * @param tokens {Token[]}
-	 * @param start {int} Must be the index of the first token of the function.
-	 * @return {int|null} */
-	findFunctionEnd(tokens, start) {
-		let isArrow = tokens[start].text !== 'function';
-		let depth = 0, groups = (isArrow && tokens[start] != '(') ? 1 : 2;
-		for (let i=start, token; token = tokens[i]; i++) {
-
-			if (!depth && isArrow && (token == ';' || token == ')'))
-				return i;
-
-			if (token == '(' || token == '{')
-				depth++;
-			else if (token == ')' || token == '}') {
-				depth--;
-				if (!depth) {
-					groups--;
-					if (!groups)
-						return i+1;
-				}
-			}
-		}
-		return null;
-	},
-
-
-	/**
 	 * Replace `${`string`}` with `\${\`string\`}`, but not within function bodies.
 	 * @param tokens {Token[]}
 	 * @return {Token[]} */
@@ -181,29 +130,6 @@ var Parse = {
 				result[i].text = '`'+ token.text.slice(1, -1).replace(/\${/g, '\\${').replace(/`/g, '\\`') + '`';
 		}
 		return result;
-	},
-
-	/**
-	 * Find the start and end of the first function within tokens.
-	 * @param tokens {Token[]}
-	 * @param start {int=}
-	 * @return {[start:int, end:int]|null} */
-	findFunction(tokens, start = 0) {
-		// Types of functions to account for:
-		// a => a+1;
-		// a => (a+1);
-		// (a => a+1)
-		// a => { return a+1 }
-		// (a) => { return {a:1} }
-		// function(a) { return a+1 }
-		// method(a) { return a+1 }
-
-		// Find the beginning of the function.
-		let functionStart = this.findFunctionStart(tokens, start);
-		if (functionStart === null)
-			return null;
-		let end = this.findFunctionEnd(tokens, functionStart);
-		return [functionStart, end];
 	},
 
 	/**
@@ -326,16 +252,14 @@ var Parse = {
 		if (!mapExpr)
 			return [null, null];
 
+
+
 		let funcTokens = tokens.slice(mapExpr.length);
-		let functionIndices = Parse.findFunction(funcTokens);
-		if (!functionIndices || functionIndices[0] !== 0)
+		let startIndex = Parse.findFunctionStart(funcTokens);
+		if (startIndex === -1)
 			return [null, null];
-		funcTokens = funcTokens.slice(...functionIndices);
-
-		let argIndices = Parse.findFunctionArgRange(funcTokens);
-		let argTokens = funcTokens.slice(...argIndices);
-		let loopParamNames = Parse.findFunctionArgNames(argTokens);
-
+		let f = new ParsedFunction(funcTokens.slice(startIndex));
+		let loopParamNames = [...f.getArgNames()]
 
 
 		// Old path:

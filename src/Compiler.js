@@ -338,14 +338,12 @@ export class Compiler {
 					else if (braceDepth === 1) {
 						if (!htmlIdx && token.text == 'html')
 							htmlIdx = i;
-						else if (!constructorIdx && token.text == 'constructor') {
+						else if (!constructorIdx && token.text == 'constructor')
 							constructorIdx = i;
-						}
 					}
 
-					if (htmlIdx && constructorIdx) {
+					if (htmlIdx && constructorIdx)
 						break;
-					}
 					i++;
 				}
 
