@@ -140,7 +140,7 @@ export default class Refract extends HTMLElement {
 		if (this.__toRender.size) {
 
 			// Remove children of parents in this set.
-			for (let [vexpr, args] of this.__toRender.entries()) {
+			for (let vexpr of this.__toRender.keys()) {
 
 				// If a parent vexpr is being re-applied, no need to re-apply this one too.
 				let vparent = vexpr;
@@ -174,7 +174,7 @@ export default class Refract extends HTMLElement {
 			if (hval === null)
 				return alt;
 
-			let val = Refract.htmlDecode(hval);
+			let val = Html.decode(hval);
 
 			// As JSON
 			try {
@@ -327,10 +327,6 @@ Refract.constructing = {};
 Refract.htmlDecode = Html.decode;
 Refract.htmlEncode = Html.encode;
 
-/**
- * TODO: Make a version of this that escapes the proper way depending on the context, automatically.
- * backslashes when in js strings
- * escape single or double quotes or tempalte tags if inside those strings. */
 var h = Html.encode;
 export {h};
 

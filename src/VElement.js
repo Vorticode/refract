@@ -4,7 +4,7 @@ import Refract from './Refract.js';
 import lex from "./lex.js";
 import htmljs from "./lex-htmljs.js";
 htmljs.allowHashTemplates = true;
-import {div} from "./Html.js";
+import Html, {div} from "./Html.js";
 import Utils from "./utils.js";
 import delve from "./delve.js";
 
@@ -439,7 +439,7 @@ export default class VElement {
 				result.push(val)
 			}
 			else
-				result.push(Refract.htmlDecode(attrPart)); // decode because this will be passed to setAttribute()
+				result.push(Html.decode(attrPart)); // decode because this will be passed to setAttribute()
 		}
 		return result.map(Utils.toString).join('');
 	}

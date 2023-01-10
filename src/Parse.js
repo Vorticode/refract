@@ -298,7 +298,6 @@ var Parse = {
 			result.splice(result.length - 1, 0, ...extra, new Token(')'));
 		}
 
-
 		return result;
 	},
 

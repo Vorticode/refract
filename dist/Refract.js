@@ -2578,7 +2578,6 @@ var Parse = {
 			result.splice(result.length - 1, 0, ...extra, new Token(')'));
 		}
 
-
 		return result;
 	},
 
@@ -2987,13 +2986,6 @@ class VExpression {
 
 	// Evaluate and loopItem functions update both this.children and the real DOM elements.
 
-
-	constructor() {
-		//#IFDEV
-		//this.stack = (new Error()).stack.split(/\n\s+at /g).slice(1);
-		//#ENDIF
-	}
-
 	/**
 	 * Evaluate this expression and either add children to parent or set attributes on parent.
 	 * @param parent {HTMLElement} If set, this is always eqeual to this.parent?
@@ -3005,19 +2997,21 @@ class VExpression {
 		// if (window.debug)
 		// 	debugger;
 
+		//#IFDEV
+
 		// See if this ever happens?
 		if (parent && parent !== this.parent)
 			debugger;
 
-		//#IFDEV
+
 		if (this.attrName)
 			throw new Error("Cannot apply an VExpression that's for an attribute.  Use evalVAttribute() or .exec.apply() instead.");
 
 		// Make sure we're not applying on an element that's been removed.
-		if (!('virtualElement' in this.parent) && !this.parent.parentNode)
-			return 0;
+		if (!('virtualElement' in this.parent) && !this.parent.parentNode) {
+			debugger;
+		}
 		//#ENDIF
-
 
 		// VExpression creates one or more attributes.
 		if (this.attributes) {
@@ -3218,9 +3212,7 @@ class VExpression {
 			return;
 
 
-
-
-		//window.requestAnimationFrame(() => {
+		Refract.currentVElement = this;
 
 		// Path 1:  If modifying a property on a single array item.
 		// TODO: watchPaths besides 0?
@@ -3304,8 +3296,10 @@ class VExpression {
 		this.apply();
 		this.updateSubsequentIndices_();
 
+		Refract.currentVElement = null;
+
+
 		// TODO: Should we have a path that generates the new children and compares them with the existing children and only change what's changed?
-		//});
 	}
 
 
@@ -4024,7 +4018,7 @@ class VElement {
 				result.push(val);
 			}
 			else
-				result.push(Refract.htmlDecode(attrPart)); // decode because this will be passed to setAttribute()
+				result.push(Html.decode(attrPart)); // decode because this will be passed to setAttribute()
 		}
 		return result.map(utils.toString).join('');
 	}
@@ -4583,7 +4577,6 @@ class Compiler {
 
 			// 3. Parse html property
 			{
-
 				// A. Find html template token
 				// Make sure we're finding html = ` and the constructor at the top level, and not inside a function.
 				// This search is also faster than if we use matchFirst() from the first token.
@@ -4868,7 +4861,7 @@ class Refract extends HTMLElement {
 		if (this.__toRender.size) {
 
 			// Remove children of parents in this set.
-			for (let [vexpr, args] of this.__toRender.entries()) {
+			for (let vexpr of this.__toRender.keys()) {
 
 				// If a parent vexpr is being re-applied, no need to re-apply this one too.
 				let vparent = vexpr;
@@ -4902,7 +4895,7 @@ class Refract extends HTMLElement {
 			if (hval === null)
 				return alt;
 
-			let val = Refract.htmlDecode(hval);
+			let val = Html.decode(hval);
 
 			// As JSON
 			try {
@@ -5055,10 +5048,6 @@ Refract.constructing = {};
 Refract.htmlDecode = Html.decode;
 Refract.htmlEncode = Html.encode;
 
-/**
- * TODO: Make a version of this that escapes the proper way depending on the context, automatically.
- * backslashes when in js strings
- * escape single or double quotes or tempalte tags if inside those strings. */
 var h = Html.encode;
 
 export default Refract;

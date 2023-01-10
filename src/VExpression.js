@@ -6,6 +6,7 @@ import VElement from './VElement.js';
 import VText from "./VText.js";
 import lex from "./lex.js";
 import lexHtmljs from "./lex-htmljs.js";
+import Refract from "./Refract.js";
 
 /**
  * A parsed ${} or #{} expression embedded in an html template ``  */
@@ -103,13 +104,6 @@ export default class VExpression {
 
 	// Evaluate and loopItem functions update both this.children and the real DOM elements.
 
-
-	constructor() {
-		//#IFDEV
-		//this.stack = (new Error()).stack.split(/\n\s+at /g).slice(1);
-		//#ENDIF
-	}
-
 	/**
 	 * Evaluate this expression and either add children to parent or set attributes on parent.
 	 * @param parent {HTMLElement} If set, this is always eqeual to this.parent?
@@ -121,19 +115,21 @@ export default class VExpression {
 		// if (window.debug)
 		// 	debugger;
 
+		//#IFDEV
+
 		// See if this ever happens?
 		if (parent && parent !== this.parent)
 			debugger;
 
-		//#IFDEV
+
 		if (this.attrName)
 			throw new Error("Cannot apply an VExpression that's for an attribute.  Use evalVAttribute() or .exec.apply() instead.");
 
 		// Make sure we're not applying on an element that's been removed.
-		if (!('virtualElement' in this.parent) && !this.parent.parentNode)
-			return 0;
+		if (!('virtualElement' in this.parent) && !this.parent.parentNode) {
+			debugger;
+		}
 		//#ENDIF
-
 
 		// VExpression creates one or more attributes.
 		if (this.attributes) {
@@ -334,9 +330,7 @@ export default class VExpression {
 			return;
 
 
-
-
-		//window.requestAnimationFrame(() => {
+		Refract.currentVElement = this;
 
 		// Path 1:  If modifying a property on a single array item.
 		// TODO: watchPaths besides 0?
@@ -420,8 +414,10 @@ export default class VExpression {
 		this.apply();
 		this.updateSubsequentIndices_();
 
+		Refract.currentVElement = null;
+
+
 		// TODO: Should we have a path that generates the new children and compares them with the existing children and only change what's changed?
-		//});
 	}
 
 

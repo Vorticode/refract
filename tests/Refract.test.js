@@ -390,7 +390,7 @@ Testimony.test('Refract.expr.loopInExprLoop', () => {
 		html() { return `
 			<x-133>
 				${this.items.slice().map((variable, i) =>		
-					`}<div>
+					`<div>
 						${this.images.map(image => 
 							`<div data-value="/#{image}"><div title="#{image}"></div>`
 						)}		
@@ -783,8 +783,7 @@ Testimony.test('Refract.attributes.basic', () => {
 
 	class A extends Refract {
 		title = 'Hello';
-		html =
-			`<x-82 title="${this.title}"></x-82>`;
+		html() { `<x-82 title="${this.title}"></x-82>`}
 	}
 	eval(A.compile());
 
@@ -801,7 +800,7 @@ Testimony.test('Refract.attributes.StyleObject', () => {
 
 	class A extends Refract {
 		styles = '';
-		html() { return `<x-87><div style="width: 10px; ${this.styles} height: 20px"></div></x-87>`}
+		html() {`<x-87><div style="width: 10px; ${this.styles} height: 20px"></div></x-87>`}
 	}
 	eval(A.compile());
 
@@ -821,7 +820,7 @@ Testimony.test('Refract.attributes.StyleObject', () => {
 Testimony.test('Refract.attributes._Set', () => {
 	class A extends Refract {
 		classes = new Set();
-		html() { return `<x-85><div class="one ${this.classes}"></div></x-85>`}
+		html() { `<x-85><div class="one ${this.classes}"></div></x-85>`}
 	}
 	eval(A.compile());
 	let a = new A();
@@ -1220,10 +1219,10 @@ Testimony.test('Refract.loop.Constant', () => {
 
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
-		html =
-			`<x-65>${this.fruits.map(fruit =>
+		html() { return `
+			<x-65>${this.fruits.map(fruit =>
 				`<p>1</p>`
-			)}</x-65>`;
+			)}</x-65>`}
 	}
 	eval(A.compile());
 
@@ -1236,12 +1235,12 @@ Testimony.test('Refract.loop.nested', () => {
 	class A extends Refract {
 		fruits = ['Apple', 'Banana']; // TODO Test defining these properties with "pets" first, before fruits, with varExpressionsRecursive()
 		pets = ['Cat', 'Dog'];
-		html =
-			`<x-70>${this.fruits.map(fruit => 
+		html() { return `
+			<x-70>${this.fruits.map(fruit => 
 				`${this.pets.map(pet=> 
 					`<p>${fruit} ${pet}</p>`
 				)}`
-			)}</x-70>`;
+			)}</x-70>`}
 	}
 	eval(A.compile());
 
@@ -1289,12 +1288,12 @@ Testimony.test('Refract.loop.nested2', () => {
 			}
 		];
 
-		html =
-			`<x-72>${this.pets.map(pet =>
+		html() { return `
+			<x-72>${this.pets.map(pet =>
 				pet.activities.map(activity=>
 					`<p>#{pet.name} will ${activity}.</p>`
 				)
-			)}</x-72>`;
+			)}</x-72>`}
 	}
 	eval(A.compile());
 
@@ -1351,12 +1350,12 @@ Testimony.test('Refract.loop.nested3', () => {
 			}
 		];
 
-		html =
-			`<x-740>${this.pets.map(pet =>
+		html() { return `
+			<x-740>${this.pets.map(pet =>
 				pet.activities.map(activity=>
 					`<p>#{pet.name} #{this.verb} ${activity.name}.</p>`
 				)
-			)}</x-740>`;
+			)}</x-740>`}
 	}
 	eval(A.compile());
 
@@ -1377,10 +1376,10 @@ Testimony.test('Refract.loop.Slice', () => {
 	// fails if we have escape$, and it doesn't stop within function bodies:
 	class A extends Refract {
 		items = ['a', 'b'];
-		html =
-			`<x-745>${this.items.slice().map(item =>
+		html() { return `
+			<x-745>${this.items.slice().map(item =>
 				`${item}`
-			)}</x-745>`;
+			)}</x-745>`}
 	}
 	eval(A.compile());
 
@@ -1399,10 +1398,10 @@ Testimony.test('Refract.loop.Expr', () => {
 
 	class A extends Refract {
 		fruits = ['Apple'];
-		html =
-			`<x-750>${this.fruits.map(fruit =>
+		html() { return `
+			<x-750>${this.fruits.map(fruit =>
 				fruit + `${fruit}`
-			)}</x-750>`;
+			)}</x-750>`}
 	}
 	eval(A.compile());
 
@@ -1417,10 +1416,10 @@ Testimony.test('Refract.loop.Expr2', () => {
 
 	class A extends Refract {
 		formulas = ['a>b', 'c<d&e'];
-		html =
-			`<x-760>${this.formulas.slice().map(formula =>
+		html() { return `
+			<x-760>${this.formulas.slice().map(formula =>
 				`#{formula}`
-			)}</x-760>`;
+			)}</x-760>`}
 	}
 	eval(A.compile());
 
@@ -1432,10 +1431,10 @@ Testimony.test('Refract.loop.Expr3', () => { // Make sure attribute quotes are e
 
 	class A extends Refract {
 		entities = ['"', "'"];
-		html =
-			`<x-765>${this.entities.slice().map(ent =>
+		html() { return `
+			<x-765>${this.entities.slice().map(ent =>
 				`<div title="#{ent}">#{ent}</div>`
-			)}</x-765>`;
+			)}</x-765>`}
 	}
 	eval(A.compile());
 
@@ -1511,10 +1510,10 @@ Testimony.test('Refract.loop.attributeExpr', () => { // Make sure loop scope is 
 		files = [
 			{selected: 'no'},
 		];
-		html =
-			`<x-768>${this.files.map(file =>
+		html() { return `
+			<x-768>${this.files.map(file =>
 				`<div class="${file.selected}">one</div>`
-			)}</x-768>`;
+			)}</x-768>`}
 	}
 	eval(A.compile());
 
@@ -1535,10 +1534,10 @@ Testimony.test('Refract.loop.If', () => {
 
 	class A extends Refract {
 		fruits = ['Apple', 'Banana'];
-		html =
-			`<x-770>${this.fruits.map(fruit =>
+		html() { return `
+			<x-770>${this.fruits.map(fruit =>
 				fruit.startsWith('A') ? fruit : ''
-			)}</x-770>`;
+			)}</x-770>`}
 	}
 	eval(A.compile());
 
@@ -1577,14 +1576,14 @@ Testimony.test('Refract.loop.IfNested', () => {
 			}
 		];
 
-		html =
-			`<x-790>${this.pets.map(pet =>
+		html() { return `
+			<x-790>${this.pets.map(pet =>
 				pet.activities.map(activity =>
 					activity.length >= 5
 						? `<p>#{pet.name} will ${activity}.</p>`
 						: ``
 				)
-			)}</x-790>`;
+			)}</x-790>`}
 	}
 
 	eval(A.compile());
@@ -1617,13 +1616,13 @@ Testimony.test('Refract.loop.ifNested2', () => {
 			}
 		];
 
-		html =
-			`<x-80>${this.pets.map(pet =>
+		html() { return `
+			<x-80>${this.pets.map(pet =>
 				pet.name.startsWith('C')
 					? pet.activities.map(activity =>
 						`<p>#{pet.name} will ${activity}.</p>`)					
 					: ''				
-			)}</x-80>`;
+			)}</x-80>`}
 	}
 
 	eval(A.compile());
@@ -2270,7 +2269,7 @@ Testimony.test('Refract.slot.basic', () => {
 		init() {
 					}
 
-		html =  `<a-400><p><slot></slot></p></a-400>`;
+		html() { return `<a-400><p><slot></slot></p></a-400>`}
 	}
 
 	eval(A.compile());
@@ -2285,7 +2284,7 @@ Testimony.test('Refract.slot.Eval', () => {
 						this.item = 3;
 		}
 
-		html =  `<a-402><p><slot></slot></p></a-402>`;
+		html() { return `<a-402><p><slot></slot></p></a-402>`}
 	}
 
 	eval(A.compile());
@@ -2313,8 +2312,7 @@ Testimony.test('Refract.slot.Loop', () => {
 
 Testimony.test('Refract.slot.multiple', () => {
 	class A extends Refract {
-		html =
-		`<a-415><p><slot></slot></p><slot></slot></a-415>`;
+		html() { return `<a-415><p><slot></slot></p><slot></slot></a-415>`}
 	}
 	eval(A.compile());
 

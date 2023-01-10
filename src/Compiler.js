@@ -324,7 +324,6 @@ export class Compiler {
 
 			// 3. Parse html property
 			{
-
 				// A. Find html template token
 				// Make sure we're finding html = ` and the constructor at the top level, and not inside a function.
 				// This search is also faster than if we use matchFirst() from the first token.
