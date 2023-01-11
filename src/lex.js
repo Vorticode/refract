@@ -200,12 +200,10 @@ export default function lex(grammar, code, mode=null, options={}, line=1, col=1,
 
 			// 3. Process token
 			index += length;
+			if (options.callback && options.callback(tokenObj) === false)
+				return result;
+
 			result.push(tokenObj);
-			if (options.callback) {
-				let status = options.callback(tokenObj);
-				if (status === false)
-					return result;
-			}
 
 			// 4. Increment line/col number.
 			// line += (token.match(/\n/g) || []).length; // count line returns

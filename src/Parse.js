@@ -154,7 +154,7 @@ var Parse = {
 	/**
 	 * Parse the return value of the html function into tokens.
 	 * @param tokens {string|Token[]} The code returned by function.toString().
-	 * @return {Token[]} */
+	 * @return {?Token[]} */
 	htmlFunctionReturn_(tokens) {
 		if (typeof tokens === 'string')
 			tokens = lex(lexHtmlJs, tokens, 'js');
@@ -165,8 +165,8 @@ var Parse = {
 			fregex.zeroOrOne(';')
 		], tokens);
 
-		if (!htmlMatch && !self.prototype.html)
-			throw new Error(`Class ${self.name} is missing an html function with a template value.`);
+		if (!htmlMatch)
+			return null;
 
 		let template = htmlMatch.filter(t=>t.tokens || t.type==='string')[0]; // only the template token has sub-tokens.
 

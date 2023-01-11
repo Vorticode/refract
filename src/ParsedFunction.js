@@ -5,7 +5,6 @@ import Parse from "./Parse.js";
 
 export class ParsedFunction {
 
-
 	name;
 
 	/**
@@ -101,11 +100,13 @@ export class ParsedFunction {
 			if (argEndIndex === -1)
 				return onError('Cannot find closing ) and end of arguments list.');
 
-			let bodyStartIndex = tokens.slice(argEndIndex).findIndex(token => token.text === '{')
-			if (this.bodyStartIndex === -1)
-				return onError('Cannot find start of function body.');
+			if (parseBody) {
+				let bodyStartIndex = tokens.slice(argEndIndex).findIndex(token => token.text === '{')
+				if (this.bodyStartIndex === -1)
+					return onError('Cannot find start of function body.');
 
-			this.bodyStartIndex = argEndIndex + bodyStartIndex;
+				this.bodyStartIndex = argEndIndex + bodyStartIndex;
+			}
 		}
 
 
@@ -129,21 +130,23 @@ export class ParsedFunction {
 				this.argTokens = [tokens[0]];
 			}
 
+			if (parseBody) {
 
-			// Find arrow
-			let arrowIndex = tokens.slice(argEndIndex).findIndex(token => token.text === '=>');
-			if (arrowIndex === -1)
-				return onError('Cannot find arrow before function body.');
+				// Find arrow
+				let arrowIndex = tokens.slice(argEndIndex).findIndex(token => token.text === '=>');
+				if (arrowIndex === -1)
+					return onError('Cannot find arrow before function body.');
 
-			// Find first real token after arrow
-			let bodyStartIndex = tokens.slice(argEndIndex + arrowIndex + 1).findIndex(token => !['whitespace', 'ln', 'comment'].includes(token.type))
-			if (bodyStartIndex === -1)
-				return onError('Cannot find function body.');
-			this.bodyStartIndex = argEndIndex + arrowIndex + 1 + bodyStartIndex;
-			if (tokens[this.bodyStartIndex]?.text === '{')
-				this.type = `arrow${type}Brace`;
-			else
-				this.type = `arrow${type}`;
+				// Find first real token after arrow
+				let bodyStartIndex = tokens.slice(argEndIndex + arrowIndex + 1).findIndex(token => !['whitespace', 'ln', 'comment'].includes(token.type))
+				if (bodyStartIndex === -1)
+					return onError('Cannot find function body.');
+				this.bodyStartIndex = argEndIndex + arrowIndex + 1 + bodyStartIndex;
+				if (tokens[this.bodyStartIndex]?.text === '{')
+					this.type = `arrow${type}Brace`;
+				else
+					this.type = `arrow${type}`;
+			}
 		}
 
 		// Find body.
@@ -162,6 +165,8 @@ export class ParsedFunction {
 				for (let i=this.bodyStartIndex, token; token=tokens[i]; i++) {
 					if (['whitespace', 'comment'].includes(token.type))
 						continue;
+
+
 					if (open.includes(token.text))
 						i = Parse.findGroupEnd_(tokens, i, open, close)
 
@@ -174,7 +179,9 @@ export class ParsedFunction {
 						hanging = true;
 					else if (!hanging && token.type === 'ln') {
 						let nextToken = tokens.slice(i).find(token => !['whitespace', 'ln', 'comment'].includes(token.type))
-						if (terminators.includes(nextToken) || nextToken.type !== 'operator') {
+						if (!nextToken)
+							bodyEnd = i - 1;
+						else if (terminators.includes(nextToken) || nextToken.type !== 'operator') {
 							bodyEnd = i;
 							break
 						}

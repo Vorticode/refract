@@ -1976,12 +1976,10 @@ function lex(grammar, code, mode=null, options={}, line=1, col=1, index=0) {
 
 			// 3. Process token
 			index += length;
+			if (options.callback && options.callback(tokenObj) === false)
+				return result;
+
 			result.push(tokenObj);
-			if (options.callback) {
-				let status = options.callback(tokenObj);
-				if (status === false)
-					return result;
-			}
 
 			// 4. Increment line/col number.
 			// line += (token.match(/\n/g) || []).length; // count line returns
@@ -2010,7 +2008,6 @@ var lexCache = {};
 //window.slowMatches = {};
 
 class ParsedFunction {
-
 
 	name;
 
@@ -2107,11 +2104,13 @@ class ParsedFunction {
 			if (argEndIndex === -1)
 				return onError('Cannot find closing ) and end of arguments list.');
 
-			let bodyStartIndex = tokens.slice(argEndIndex).findIndex(token => token.text === '{');
-			if (this.bodyStartIndex === -1)
-				return onError('Cannot find start of function body.');
+			if (parseBody) {
+				let bodyStartIndex = tokens.slice(argEndIndex).findIndex(token => token.text === '{');
+				if (this.bodyStartIndex === -1)
+					return onError('Cannot find start of function body.');
 
-			this.bodyStartIndex = argEndIndex + bodyStartIndex;
+				this.bodyStartIndex = argEndIndex + bodyStartIndex;
+			}
 		}
 
 
@@ -2135,21 +2134,23 @@ class ParsedFunction {
 				this.argTokens = [tokens[0]];
 			}
 
+			if (parseBody) {
 
-			// Find arrow
-			let arrowIndex = tokens.slice(argEndIndex).findIndex(token => token.text === '=>');
-			if (arrowIndex === -1)
-				return onError('Cannot find arrow before function body.');
+				// Find arrow
+				let arrowIndex = tokens.slice(argEndIndex).findIndex(token => token.text === '=>');
+				if (arrowIndex === -1)
+					return onError('Cannot find arrow before function body.');
 
-			// Find first real token after arrow
-			let bodyStartIndex = tokens.slice(argEndIndex + arrowIndex + 1).findIndex(token => !['whitespace', 'ln', 'comment'].includes(token.type));
-			if (bodyStartIndex === -1)
-				return onError('Cannot find function body.');
-			this.bodyStartIndex = argEndIndex + arrowIndex + 1 + bodyStartIndex;
-			if (tokens[this.bodyStartIndex]?.text === '{')
-				this.type = `arrow${type}Brace`;
-			else
-				this.type = `arrow${type}`;
+				// Find first real token after arrow
+				let bodyStartIndex = tokens.slice(argEndIndex + arrowIndex + 1).findIndex(token => !['whitespace', 'ln', 'comment'].includes(token.type));
+				if (bodyStartIndex === -1)
+					return onError('Cannot find function body.');
+				this.bodyStartIndex = argEndIndex + arrowIndex + 1 + bodyStartIndex;
+				if (tokens[this.bodyStartIndex]?.text === '{')
+					this.type = `arrow${type}Brace`;
+				else
+					this.type = `arrow${type}`;
+			}
 		}
 
 		// Find body.
@@ -2168,6 +2169,8 @@ class ParsedFunction {
 				for (let i=this.bodyStartIndex, token; token=tokens[i]; i++) {
 					if (['whitespace', 'comment'].includes(token.type))
 						continue;
+
+
 					if (open.includes(token.text))
 						i = Parse.findGroupEnd_(tokens, i, open, close);
 
@@ -2180,7 +2183,9 @@ class ParsedFunction {
 						hanging = true;
 					else if (!hanging && token.type === 'ln') {
 						let nextToken = tokens.slice(i).find(token => !['whitespace', 'ln', 'comment'].includes(token.type));
-						if (terminators.includes(nextToken) || nextToken.type !== 'operator') {
+						if (!nextToken)
+							bodyEnd = i - 1;
+						else if (terminators.includes(nextToken) || nextToken.type !== 'operator') {
 							bodyEnd = i;
 							break
 						}
@@ -2430,7 +2435,7 @@ var Parse = {
 	/**
 	 * Parse the return value of the html function into tokens.
 	 * @param tokens {string|Token[]} The code returned by function.toString().
-	 * @return {Token[]} */
+	 * @return {?Token[]} */
 	htmlFunctionReturn_(tokens) {
 		if (typeof tokens === 'string')
 			tokens = lex(lexHtmlJs, tokens, 'js');
@@ -2441,8 +2446,8 @@ var Parse = {
 			fregex.zeroOrOne(';')
 		], tokens);
 
-		if (!htmlMatch && !self.prototype.html)
-			throw new Error(`Class ${self.name} is missing an html function with a template value.`);
+		if (!htmlMatch)
+			return null;
 
 		let template = htmlMatch.filter(t=>t.tokens || t.type==='string')[0]; // only the template token has sub-tokens.
 
@@ -4753,8 +4758,11 @@ class Refract extends HTMLElement {
 
 			// Parse the html tokens to Virtual DOM
 			if (!this.constructor.virtualElement) {
-				if (this.html) // new path
+				if (this.html && typeof this.html === 'function') { // new path
 					this.constructor.htmlTokens = Parse.htmlFunctionReturn_(this.html.toString());
+					if (!this.constructor.htmlTokens)
+						throw new Error(`Class is missing an html function with a template value.`);
+				}
 
 				this.constructor.virtualElement = VElement.fromTokens(this.constructor.htmlTokens, [], null, this.constructor, 1)[0];
 				this.constructor.htmlTokens = null; // We don't need them any more.

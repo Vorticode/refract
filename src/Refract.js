@@ -121,8 +121,11 @@ export default class Refract extends HTMLElement {
 
 			// Parse the html tokens to Virtual DOM
 			if (!this.constructor.virtualElement) {
-				if (this.html) // new path
+				if (this.html && typeof this.html === 'function') { // new path
 					this.constructor.htmlTokens = Parse.htmlFunctionReturn_(this.html.toString());
+					if (!this.constructor.htmlTokens)
+						throw new Error(`Class is missing an html function with a template value.`);
+				}
 
 				this.constructor.virtualElement = VElement.fromTokens(this.constructor.htmlTokens, [], null, this.constructor, 1)[0];
 				this.constructor.htmlTokens = null; // We don't need them any more.

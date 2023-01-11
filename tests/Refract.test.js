@@ -2154,7 +2154,7 @@ Testimony.test('Refract.form.contenteditableExpr', () => {
 		err = e;
 	}
 	assert(err);
-	assertEquals(err.message.includes('expressions as children'), true);
+	assertEquals(err.message.includes('templates as children'), true);
 
 });
 
