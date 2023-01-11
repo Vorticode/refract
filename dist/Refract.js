@@ -4389,7 +4389,10 @@ class Compiler {
 		let preInitCode = `
 			__preInit = (() => {
 			
-				this.__autoRender = 'autoRender' in this ? this.autoRender : true;
+				if ('autoRender' in this)
+					this.__autoRender = this.autoRender;
+				else if (!('__autoRender' in this))
+					this.__autoRender = true;
 				
 				if (Object.getOwnPropertyDescriptor(this, 'autoRender')?.configurable !== false)
 					Object.defineProperty(this, 'autoRender', {
