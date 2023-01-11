@@ -1549,7 +1549,8 @@ function fregex(...rules) {
 		return i; // returns number of tokens used.
 	};
 	//#IFDEV
-	result.debug = 'and(' + rules.map(r => r.debug || r).join(', ') + ')';
+	if (fregex.debug)
+		result.debug = 'and(' + rules.map(r => r.debug || r).join(', ') + ')';
 	//#ENDIF
 	return result;
 
@@ -1571,7 +1572,8 @@ fregex.or = (...rules) => {
 		return false;
 	};
 	//#IFDEV
-	result.debug = 'or(' + rules.map(r => r.debug || r).join(', ') + ')';
+	if (fregex.debug)
+		result.debug = 'or(' + rules.map(r => r.debug || r).join(', ') + ')';
 	//#ENDIF
 	return result;
 };
@@ -1587,7 +1589,8 @@ fregex.not = (...rules) => {
 		f(tokens) === false ? 0 : false; // If it matches, return false, otherwise advance 0.
 
 	//#IFDEV
-	result.debug = 'not(' + rules.map(r => r.debug || r).join(', ') + ')';
+	if (fregex.debug)
+		result.debug = 'not(' + rules.map(r => r.debug || r).join(', ') + ')';
 	//#ENDIF
 	return result;
 };
@@ -1606,7 +1609,8 @@ fregex.nor = (...rules) => {
 		return 1;
 	};
 	//#IFDEV
-	result.debug = 'nor(' + rules.map(r => r.debug || r).join(', ') + ')';
+	if (fregex.debug)
+		result.debug = 'nor(' + rules.map(r => r.debug || r).join(', ') + ')';
 	//#ENDIF
 	return result;
 
@@ -1627,7 +1631,8 @@ fregex.zeroOrOne = (...rules) => {
 		return used;
 	};
 	//#IFDEV
-	result.debug = 'zeroOrOne(' + rules.map(r => r.debug || r).join(', ') + ')';
+	if (fregex.debug)
+		result.debug = 'zeroOrOne(' + rules.map(r => r.debug || r).join(', ') + ')';
 	//#ENDIF
 	return result;
 };
@@ -1653,7 +1658,8 @@ fregex.xOrMore = (x, ...rules) => {
 	};
 
 	//#IFDEV
-	result.debug = x+'OrMore(' + rules.map(r => r.debug || r).join(', ') + ')';
+	if (fregex.debug)
+		result.debug = x+'OrMore(' + rules.map(r => r.debug || r).join(', ') + ')';
 	//#ENDIF
 
 	return result;
@@ -1714,7 +1720,8 @@ fregex.lookAhead = (...rules) => {
 	};
 
 	//#IFDEV
-	result.debug = 'lookAhead(' + rules.map(r => r.debug || r).join(', ') + ')';
+	if (fregex.debug)
+		result.debug = 'lookAhead(' + rules.map(r => r.debug || r).join(', ') + ')';
 	//#ENDIF
 
 	return result;
@@ -1730,7 +1737,8 @@ fregex.end = tokens => {
 };
 
 //#IFDEV
-fregex.end.debug = 'end';
+if (fregex.debug)
+	fregex.end.debug = 'end';
 //#ENDIF
 
 
@@ -2530,58 +2538,25 @@ var Parse = {
 		if (!mapExpr)
 			return [null, null];
 
-
-
 		let funcTokens = tokens.slice(mapExpr.length);
 		let startIndex = Parse.findFunctionStart_(funcTokens);
-		if (startIndex === -1)
+
+		// Fail if function isn't the first thing in the map expression.
+		if (startIndex === null || startIndex !== 0)
 			return [null, null];
-		let f = new ParsedFunction(funcTokens.slice(startIndex));
-		let loopParamNames = [...f.getArgNames()];
+		let func = new ParsedFunction(funcTokens.slice(startIndex), true, () => false);
 
+		// Fail if we can't parse the function.
+		if (!func)
+			return [null, null];
 
-		// Old path:
-		let loopParamMatch = [
-			Parse.ws,
-			fregex.or([
-				{type: 'identifier'}, // single argument with no parens.
-				['(', Parse.ws, Parse.argList, Parse.ws, ')'] // match any number of arguments.
-			]),
-			Parse.ws,
-			'=>',
-			Parse.ws
-		];
+		// Fail if there's more code after the end of the map expression
+		let mapEnd = fregex([Parse.ws, ')', Parse.ws, fregex.zeroOrOne(';'), Parse.ws, fregex.end]);
+		let funcEndIndex = mapExpr.length + func.bodyStartIndex + func.bodyTokens.length;
+		if (!(mapEnd(tokens.slice(funcEndIndex))))
+			return [null, null];
 
-
-		// (item, i, array) =>
-		let paramExpr =  fregex.matchFirst(loopParamMatch, tokens.slice(mapExpr.length));
-		//let loopParamNames = Parse.filterArgNames(tokens.slice(mapExpr.length, mapExpr.length + paramExpr.length));
-
-		// Loop through remaining tokens, keep track of braceDepth, bracketDepth, and parenDepth, until we reach a closing ).
-		let loopBody = [];
-		let braceDepth=0, bracketDepth=0, parenDepth=0;
-		let lastToken = tokens.length-1; // Trim whitespace from end
-		while (tokens[lastToken].type === 'whitespace' || tokens[lastToken].type==='ln')
-			lastToken --;
-
-		let bodyTokens = tokens.slice(mapExpr.length + paramExpr.length, lastToken+1);
-		for (let i=0, token; token=bodyTokens[i]; i++) {
-
-			braceDepth   += {'{':1, '}':-1}[token] | 0; // Single | gives the same result as double ||, yields smaller minified size.
-			bracketDepth += {'[':1, ']':-1}[token] | 0;
-			parenDepth   += {'(':1, ')':-1}[token] | 0;
-
-			// We reached the closing parenthesee.
-			if (braceDepth === 0 && bracketDepth === 0 && parenDepth === -1) {
-				if (i === bodyTokens.length - 1)
-					return [loopParamNames, loopBody];
-				else // Has extra tokens at the end.  Therefore this isn't a simple map expr.
-					break; // e.g. this.array.map(...).reduce(...)
-			} else
-				loopBody.push(token);
-		}
-
-		return [null, null];
+		return [[...func.getArgNames()], func.bodyTokens];
 	},
 
 	/**

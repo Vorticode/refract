@@ -24,7 +24,8 @@ export default function fregex(...rules) {
 		return i; // returns number of tokens used.
 	}
 	//#IFDEV
-	result.debug = 'and(' + rules.map(r => r.debug || r).join(', ') + ')';
+	if (fregex.debug)
+		result.debug = 'and(' + rules.map(r => r.debug || r).join(', ') + ')';
 	//#ENDIF
 	return result;
 
@@ -46,7 +47,8 @@ fregex.or = (...rules) => {
 		return false;
 	}
 	//#IFDEV
-	result.debug = 'or(' + rules.map(r => r.debug || r).join(', ') + ')';
+	if (fregex.debug)
+		result.debug = 'or(' + rules.map(r => r.debug || r).join(', ') + ')';
 	//#ENDIF
 	return result;
 }
@@ -62,7 +64,8 @@ fregex.not = (...rules) => {
 		f(tokens) === false ? 0 : false; // If it matches, return false, otherwise advance 0.
 
 	//#IFDEV
-	result.debug = 'not(' + rules.map(r => r.debug || r).join(', ') + ')';
+	if (fregex.debug)
+		result.debug = 'not(' + rules.map(r => r.debug || r).join(', ') + ')';
 	//#ENDIF
 	return result;
 };
@@ -81,7 +84,8 @@ fregex.nor = (...rules) => {
 		return 1;
 	};
 	//#IFDEV
-	result.debug = 'nor(' + rules.map(r => r.debug || r).join(', ') + ')';
+	if (fregex.debug)
+		result.debug = 'nor(' + rules.map(r => r.debug || r).join(', ') + ')';
 	//#ENDIF
 	return result;
 
@@ -102,7 +106,8 @@ fregex.zeroOrOne = (...rules) => {
 		return used;
 	}
 	//#IFDEV
-	result.debug = 'zeroOrOne(' + rules.map(r => r.debug || r).join(', ') + ')';
+	if (fregex.debug)
+		result.debug = 'zeroOrOne(' + rules.map(r => r.debug || r).join(', ') + ')';
 	//#ENDIF
 	return result;
 };
@@ -128,7 +133,8 @@ fregex.xOrMore = (x, ...rules) => {
 	}
 
 	//#IFDEV
-	result.debug = x+'OrMore(' + rules.map(r => r.debug || r).join(', ') + ')';
+	if (fregex.debug)
+		result.debug = x+'OrMore(' + rules.map(r => r.debug || r).join(', ') + ')';
 	//#ENDIF
 
 	return result;
@@ -189,7 +195,8 @@ fregex.lookAhead = (...rules) => {
 	}
 
 	//#IFDEV
-	result.debug = 'lookAhead(' + rules.map(r => r.debug || r).join(', ') + ')';
+	if (fregex.debug)
+		result.debug = 'lookAhead(' + rules.map(r => r.debug || r).join(', ') + ')';
 	//#ENDIF
 
 	return result;
@@ -205,7 +212,8 @@ fregex.end = tokens => {
 };
 
 //#IFDEV
-fregex.end.debug = 'end';
+if (fregex.debug)
+	fregex.end.debug = 'end';
 //#ENDIF
 
 

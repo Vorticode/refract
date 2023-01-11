@@ -233,6 +233,7 @@ html() { return `
 html() { return `
     <todo-list>
         ${this.items.slice().map(item => `<p>#{item}</p>`)}
+        ${this.items.map(item => `<p>#{item}</p>`).join('')}
         ${this.getItems().map(item => `<p>#{item}</p>`)}
         ${this.items.map(function(item) { return `<p>#{item}</p>`})}
     </todo-list>`
