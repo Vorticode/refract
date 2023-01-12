@@ -3,7 +3,7 @@ Testimony.enableJsDom();
 
 //import Refract from './../dist/Refract.js';
 //import Refract from './../dist/Refract.min.js';
-import Refract from './../src/Refract.js';
+import Refract, {h} from './../src/Refract.js';
 import createEl from '../src/createEl.js';
 
 Refract.elsCreated = [];
@@ -1371,6 +1371,102 @@ Testimony.test('Refract.loop.nested3', () => {
 });
 
 
+Testimony.test('Refract.loop._grid', () => {
+
+	class A extends Refract {
+		rows = [[0], [0], [0]];
+		init() {
+			for (let i in this.rows)
+				this.rows[i][0] = i;
+
+			// Fails unless I do this.
+			//this.rows = this.rows.slice();
+		}
+
+		html() { return `
+			<a-750>
+				${this.rows.map(row => 
+					row.map(field => field)
+				)}
+			</a-750>`}
+	}
+	eval(A.compile());
+
+	let a = new A();
+	document.body.append(a);
+	console.log(a.outerHTML)
+});
+
+
+
+Testimony.test('Refract.loop._grid2', () => {
+
+
+	class ImportData extends Refract {
+		rows = [[]];
+		columns = ['id', 'name'];
+		csv = [
+			["id", "name"],
+			["1", "Aurora"],
+			["2", "Hamilton"],
+			["3", "Lakeville"],
+		];
+
+		init() {
+
+			let csvData = this.csv.slice(1);
+			for (let i in csvData) {
+				if (!this.rows[i])
+					this.rows[i] = [];
+				this.rows[i][0] = csvData[i][0];
+				//this.rows[i] = this.rows[i];
+			}
+			this.rows = this.rows.slice();
+		}
+
+		html() { return `
+			<import-data>				
+				<table>
+					<thead>
+						${this.columns.map(col => `<th>${col}</th>`)}
+					</thead>							
+					<tbody>
+						${this.rows.map(row => `
+							<tr>
+								${row.map(field => `
+									<td>${h(field)}</td>
+								`)}
+							</tr>`
+		)}				
+					</tbody>
+				</table>
+			</import-data>`}
+	}
+	eval(ImportData.compile());
+
+	let a = new ImportData();
+	document.body.append(a);
+	console.log(a.outerHTML)
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Testimony.test('Refract.loop.Slice', () => {
 
 	// fails if we have escape$, and it doesn't stop within function bodies:
@@ -1617,26 +1713,26 @@ Testimony.test('Refract.loop.ifNested2', () => {
 		];
 
 		html() { return `
-			<x-80>${this.pets.map(pet =>
+			<a-800>${this.pets.map(pet =>
 				pet.name.startsWith('C')
 					? pet.activities.map(activity =>
 						`<p>#{pet.name} will ${activity}.</p>`)					
 					: ''				
-			)}</x-80>`}
+			)}</a-800>`}
 	}
 
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-80><p>Cat will Sleep.</p><p>Cat will Eat.</p></x-80>`);
+	assertEquals(a.outerHTML, `<a-800><p>Cat will Sleep.</p><p>Cat will Eat.</p></a-800>`);
 
 	Refract.elsCreated = [];
 	a.pets[1].name='Cat2';
-	assertEquals(a.outerHTML, `<x-80><p>Cat will Sleep.</p><p>Cat will Eat.</p><p>Cat2 will Frolic.</p></x-80>`);
+	assertEquals(a.outerHTML, `<a-800><p>Cat will Sleep.</p><p>Cat will Eat.</p><p>Cat2 will Frolic.</p></a-800>`);
 	assertEquals(Refract.elsCreated, ["<p>", "Cat2 will Frolic."]);
 
 	a.pets[0].name = 'Bird';
-	assertEquals(a.outerHTML, `<x-80><p>Cat2 will Frolic.</p></x-80>`);
+	assertEquals(a.outerHTML, `<a-800><p>Cat2 will Frolic.</p></a-800>`);
 
 	// It recreates the whole thing because it has to re-evaluate the pet.name.startsWith('C') expression.
 	assertEquals(Refract.elsCreated, ['<p>', 'Cat2 will Frolic.']);

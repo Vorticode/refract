@@ -92,11 +92,11 @@ export default class Refract extends HTMLElement {
 	__disconnectedCallbacks = [];
 
 
-	constructor(args) {
+	constructor(autoRender=true) {
 		super();
 
 		// old path from before we used init()
-		if (args === false)
+		if (autoRender === false)
 			this.__autoRender = false;
 
 		// Used in old path from before we used init()
