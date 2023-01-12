@@ -503,7 +503,7 @@ import Utils, {removeProxies, isObj} from './utils.js';
 			WatchUtil.paths = new WeakMap();
 		}
 		//#ENDIF
-	};
+	}; // end WatchUtil
 
 
 

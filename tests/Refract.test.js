@@ -1132,6 +1132,47 @@ Testimony.test('Refract.loop.ItemProps', () => {
 Testimony.test('Refract.loop.ItemProps2', () => {
 	class A extends Refract {
 		fruits = [
+			['Apple'],
+			['Banana'],
+		];
+		html() { return `
+			<x-355>${this.fruits.map(fruit =>
+				`<p>${fruit[0]}</p>`
+			)}</x-355>`}
+	}
+	eval(A.compile());
+	let a = new A();
+	assertEquals(a.outerHTML, '<x-355><p>Apple</p><p>Banana</p></x-355>');
+
+	// Change item
+	Refract.elsCreated = [];
+	a.fruits[1][0] = 'Banana Split';
+	assertEquals(a.outerHTML, '<x-355><p>Apple</p><p>Banana Split</p></x-355>');
+	assertEquals(Refract.elsCreated, ['Banana Split']);
+
+	// Add item
+	Refract.elsCreated = [];
+	a.fruits.push(['Cherry']);
+	assertEquals(a.outerHTML, '<x-355><p>Apple</p><p>Banana Split</p><p>Cherry</p></x-355>');
+	assertEquals(Refract.elsCreated, ['<p>', 'Cherry']);
+
+	// Change added item
+	Refract.elsCreated = [];
+	a.fruits[2][0] = 'Cherry Pie';
+	assertEquals(a.outerHTML, '<x-355><p>Apple</p><p>Banana Split</p><p>Cherry Pie</p></x-355>');
+	assertEquals(Refract.elsCreated, ['Cherry Pie']);
+
+	// Remove item
+	Refract.elsCreated = [];
+	a.fruits.shift();
+	assertEquals(a.outerHTML, '<x-355><p>Banana Split</p><p>Cherry Pie</p></x-355>');
+	assertEquals(Refract.elsCreated, []);
+
+});
+
+Testimony.test('Refract.loop.ItemProps3', () => {
+	class A extends Refract {
+		fruits = [
 			{name: 'Apple', order: 1},
 			{name: 'Banana', order: 2}
 		];
@@ -1304,7 +1345,7 @@ Testimony.test('Refract.loop.nested2', () => {
 	Refract.elsCreated = [];
 	a.pets[0].activities.splice(1, 1);
 	assertEquals(a.outerHTML, `<x-72><p>Cat will Sleep.</p><p>Cat will Pur.</p><p>Dog will Frolic.</p><p>Dog will Fetch.</p></x-72>`);
-	assertEquals(Refract.elsCreated, []);
+	assertEquals(Refract.elsCreated, []); // Elements were only removed.  None should've been created.
 
 
 	Refract.elsCreated = [];
@@ -1371,30 +1412,29 @@ Testimony.test('Refract.loop.nested3', () => {
 });
 
 
-Testimony.test('Refract.loop._grid', () => {
+Testimony.test('Refract.loop.grid', () => {
 
 	class A extends Refract {
-		rows = [[0], [0], [0]];
+		rows = [[0], [0]];
 		init() {
 			for (let i in this.rows)
 				this.rows[i][0] = i;
-
-			// Fails unless I do this.
-			//this.rows = this.rows.slice();
 		}
 
 		html() { return `
-			<a-750>
-				${this.rows.map(row => 
+			<a-750>${this.rows.map(row => 
 					row.map(field => field)
-				)}
-			</a-750>`}
+			)}</a-750>`}
 	}
 	eval(A.compile());
 
 	let a = new A();
-	document.body.append(a);
-	console.log(a.outerHTML)
+	assert.eq(a.outerHTML, `<a-750>01</a-750>`);
+
+	Refract.elsCreated = [];
+	a.rows[0][0] = 4;
+	assert.eq(a.outerHTML, `<a-750>41</a-750>`);
+	assert.eq(Refract.elsCreated, ['4']);
 });
 
 
@@ -1403,43 +1443,27 @@ Testimony.test('Refract.loop._grid2', () => {
 
 
 	class ImportData extends Refract {
-		rows = [[]];
-		columns = ['id', 'name'];
-		csv = [
-			["id", "name"],
-			["1", "Aurora"],
-			["2", "Hamilton"],
-			["3", "Lakeville"],
-		];
+		rows = [];
 
 		init() {
 
-			let csvData = this.csv.slice(1);
-			for (let i in csvData) {
-				if (!this.rows[i])
+			let data = [1, 2];
+
+			for (let i in data) {
+				if (!this.rows[i]) {
 					this.rows[i] = [];
-				this.rows[i][0] = csvData[i][0];
-				//this.rows[i] = this.rows[i];
+				}
+				//window.debug = true;
+				this.rows[i][0] = data[i];
 			}
-			this.rows = this.rows.slice();
+			//this.rows = this.rows.slice();
 		}
 
 		html() { return `
 			<import-data>				
-				<table>
-					<thead>
-						${this.columns.map(col => `<th>${col}</th>`)}
-					</thead>							
-					<tbody>
-						${this.rows.map(row => `
-							<tr>
-								${row.map(field => `
-									<td>${h(field)}</td>
-								`)}
-							</tr>`
-		)}				
-					</tbody>
-				</table>
+				${this.rows.map(row =>
+					row.map(field => field)
+				)}
 			</import-data>`}
 	}
 	eval(ImportData.compile());

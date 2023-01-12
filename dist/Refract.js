@@ -535,7 +535,7 @@ var ascendIf = regex => code => {
 			WatchUtil.paths = new WeakMap();
 		}
 		//#ENDIF
-	};
+	}; // end WatchUtil
 
 
 
@@ -2860,8 +2860,15 @@ class VExpression {
 
 
 
-	/** @type {Object<string, *>} */
+	/**
+	 * @deprecated for scope2
+	 * @type {Object<string, *>} */
 	scope = {};
+
+	/**
+	 * Stores a map from local variable names, to their value and their path from the root reflection object.
+	 * @type {Object<varName:string, [value:*, path:string[]]>} */
+	scope2 = {};
 
 	/** @type {int} DOM index of the first DOM child created by this VExpression within parent. */
 	startIndex = 0;
@@ -2869,11 +2876,10 @@ class VExpression {
 	/** @type {int} the number of DOM children created by this VExpression within parent. */
 	childCount = 0;
 
-
 	/**
 	 * Arguments passed to Watch.add() for this expression.  We track them here so we can later remove them via Watch.remove().
 	 * See also this.watchPaths.
-	 * @type {[Refract, string[], function][]} */
+	 * @type {[root:Refract|Object, path:string[], callback:function][]} */
 	watches = [];
 
 	//#IFDEV
@@ -2882,6 +2888,11 @@ class VExpression {
 	//#ENDIF
 
 	// Evaluate and loopItem functions update both this.children and the real DOM elements.
+
+	constructor(parent, scope2) {
+		if (parent)
+			this.refl = parent.refl;
+	}
 
 	/**
 	 * Evaluate this expression and either add children to parent or set attributes on parent.
@@ -2907,6 +2918,7 @@ class VExpression {
 		// Make sure we're not applying on an element that's been removed.
 		if (!('virtualElement' in this.parent) && !this.parent.parentNode) {
 			debugger;
+			return 0;
 		}
 		//#ENDIF
 
@@ -3001,6 +3013,7 @@ class VExpression {
 		result.startIndex = this.startIndex;
 		result.childCount = this.childCount;
 		result.scope = {...this.scope};
+		result.scope2 = {...this.scope2};
 
 		result.isHash = this.isHash;
 
@@ -3076,11 +3089,19 @@ class VExpression {
 				for (let template of this.loopItemEls) {
 					let vel = template.clone(this.refl, this);
 					vel.scope = {...this.scope};
+					vel.scope2 = {...this.scope2};
 
 					// Assign values to the parameters of the function given to .map() that's used to loop.
 					let len2 = this.loopParamNames.length;
-					for (let j=0; j<len2; j++) // Benchmarking shows this loop is about 2% faster than for...in.
+					for (let j=0; j<len2; j++) { // Benchmarking shows this loop is about 2% faster than for...in.
 						vel.scope[this.loopParamNames[j]] = params[j];
+
+
+						// Path to the loop param variable:
+						let path = [...this.watchPaths[0], i+'']; // VExpression loops always have one watchPath.
+						let fullPath = this.getFullPath(path);
+						vel.scope2[this.loopParamNames[j]] = [params[j], fullPath]; // scope2[name] = [value, path]
+					}
 
 					group.push(vel);
 				}
@@ -3091,6 +3112,21 @@ class VExpression {
 		}
 
 		return result;
+	}
+
+	/**
+	 * Convert a local variable path to a path from the root Reflect element.
+	 * @param path {string[]}
+	 * @returns {string[]} */
+	getFullPath(path) {
+		if (path[0] === 'this')
+			return path;
+
+		while (path[0] in this.scope2) {
+			let parentPath = this.scope2[path[0]][1];
+			path = [...parentPath, ...path.slice(1)];
+		}
+		return path;
 	}
 
 	/**
@@ -3107,16 +3143,12 @@ class VExpression {
 		if (!this.vParent)
 			return;
 
-
 		Refract.currentVElement = this;
 
 		// Path 1:  If modifying a property on a single array item.
-		// TODO: watchPaths besides 0?
-		//if (path[0] !== this.watchPaths[0][1]) // Faster short-circuit for the code below?
-		//	return;
-
 		if (this.type==='loop' && utils.arrayStartsWith_(path.slice(0, -2), this.watchPaths[0].slice(1))) {
 			// Do nothing, because the watch should trigger on the child VExpression instead of this one.
+			//debugger;
 			return;
 		}
 
@@ -3172,11 +3204,17 @@ class VExpression {
 					for (let newItem of this.vChildren[index]) {
 						newItem.startIndex = startIndex + i;
 						newItem.scope = {...this.scope};
+						newItem.scope2 = {...this.scope2};
 						newItem.parent = this.parent;
 
 						let params = [array[index], index, array];
-						for (let j in this.loopParamNames)
+						for (let j in this.loopParamNames) {
 							newItem.scope[this.loopParamNames[j]] = params[j];
+
+							//debugger;
+							let path = [...this.watchPaths[0], i+''];
+							newItem.scope2[this.loopParamNames[j]] = [params[j], this.getFullPath(path)];
+						}
 
 						newItem.apply_(this.parent, null);
 						i++;
@@ -3344,20 +3382,36 @@ class VExpression {
 	 * All calls to Watch.add() (i.e. all watches) used by Refract come through this function.
 	 * @param callback {function} */
 	watch(callback) {
-
 		for (let path of this.watchPaths) {
 			let root = this.refl;
+
 
 			// slice() to remove the "this" element from the watch path.
 			if (path[0] === 'this')
 				path = path.slice(1);
 
 			// Allow paths into the current scope to be watched.
-			else if (path[0] in this.scope && path.length > 1) {
+			else if (path.length && path[0] in this.scope) {
 
-				// Resolve root to the path of the scope.
-				root = this.scope[path[0]];
-				path = path.slice(1);
+				if (path[0] in this.scope ) {
+
+					if (path.length > 1) {
+						root = this.scope[path[0]]; // Set root to the path of the scope.
+						path = path.slice(1);
+					}
+
+					// Subscribing directly to a loop item instead of a child property of it:
+					else if (path[0] in this.scope2) {
+						let path2 = this.scope2[path[0]][1];
+						root = delve(this.refl, path2.slice(1, -1));
+						path = path2.slice(-1);
+					}
+					// else
+					//
+					// 	debugger;
+				}
+
+
 			}
 
 			// Make sure it's not a primitive b/c we can't subscribe to primitives.
@@ -3387,6 +3441,7 @@ class VExpression {
 		if (vParent) {
 			result.refl = vParent.refl;
 			result.scope = {...vParent.scope};
+			result.scope2 = {...vParent.scope2};
 		}
 
 		result.attrName = attrName;
