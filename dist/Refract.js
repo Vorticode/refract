@@ -3069,7 +3069,7 @@ class VExpression {
 					else {
 						html += ''; // can be a number.
 						if (html.length) {
-							let vels = VElement.fromHtml(html, scopeVarNames, this, this.refl.constructor).flat();
+							let vels = VElement.fromHtml(html, scopeVarNames, this, this.refl).flat();
 							result.push(vels);
 						}
 					}
@@ -3432,12 +3432,13 @@ class VExpression {
 	 * @param scope {string[]} Variables created by parent loops.  This lets us build watchPaths only of variables
 	 *     that trace back to a this.property in the parent Refract, instead of from any variable or js identifier.
 	 * @param vParent {VElement|VExpression}
-	 * @param Class
+	 * @param refl
 	 * @param attrName {string?} If set, this VExpression is part of an attribute, otherwise it creates html child nodes.
 	 * @return {VExpression} */
-	static fromTokens(tokens, scope, vParent, Class, attrName) {
+	static fromTokens(tokens, scope, vParent, refl, attrName) {
 		let result = new VExpression();
 		result.vParent = vParent;
+
 		if (vParent) {
 			result.refl = vParent.refl;
 			result.scope = {...vParent.scope};
@@ -3466,8 +3467,6 @@ class VExpression {
 
 		// Get the createFunction() from the class if it's already been instantiated.  Else use Refract's temporary createfunction().
 		// This lets us use other variabls defiend in the same scope as the class that extends Refract.
-		//let Class = ((vParent && vParent.refl && vParent.refl.constructor) || window.RefractCurrentClass);
-
 		if (loopBody) {
 			result.type = 'loop';
 
@@ -3476,19 +3475,20 @@ class VExpression {
 
 			for (let p of loopParamNames)
 				scope.push(p);
-			result.exec = Class.createFunction(...scope, 'return ' + watchPathTokens[0].join(''));
+
+			result.exec = refl.constructor.createFunction(...scope, 'return ' + watchPathTokens[0].join(''));
 
 			// If the loop body is a single `template` string:
 			// TODO Why is this special path necessary, instead of always just using the else path?
 			let loopBodyTrimmed = loopBody.filter(token => token.type !== 'whitespace' && token.type !== 'ln');
 			if (loopBodyTrimmed.length === 1 && loopBodyTrimmed[0].type === 'template') {
 				// Remove beginning and end string delimiters, parse items.
-				result.loopItemEls = VElement.fromTokens(loopBodyTrimmed[0].tokens.slice(1, -1), scope, vParent, Class);
+				result.loopItemEls = VElement.fromTokens(loopBodyTrimmed[0].tokens.slice(1, -1), scope, vParent, refl);
 			}
 
 			// The loop body is more complex javascript code:
 			else
-				result.loopItemEls = [VExpression.fromTokens(loopBody, scope, vParent, Class)];
+				result.loopItemEls = [VExpression.fromTokens(loopBody, scope, vParent, refl)];
 		}
 
 		else {
@@ -3506,7 +3506,7 @@ class VExpression {
 			// Later, scope object will be matched with param names to call this function.
 			// We call replacehashExpr() b/c we're valuating a whole string of code all at once, and the nested #{} aren't
 			// understood by the vanilla JavaScript that executes the template string.
-			tokens = Parse.replaceHashExpr_(tokens, null, Class.name);
+			tokens = Parse.replaceHashExpr_(tokens, null, refl.constructor.name);
 
 			/**
 			 * We want sub-templates within the expression to be parsed to find their own variables,
@@ -3521,7 +3521,7 @@ class VExpression {
 			let body = tokens.map(t=>t.text).join('');
 			if (tokens[0].text != '{')
 				body = 'return (' + body.trim() + ')';
-			result.exec = Class.createFunction(...scope, body);
+			result.exec = refl.constructor.createFunction(...scope, body);
 		}
 
 		// Get just the identifier names between the dots.
@@ -3579,6 +3579,11 @@ class VElement {
 
 	/** @type {Object<string, string>} */
 	scope = {};
+
+	/**
+	 * Stores a map from local variable names, to their value and their path from the root Refract object.
+	 * @type {Object<varName:string, [value:*, path:string[]]>} */
+	scope2 = {};
 
 	/** @type {int} DOM index of the first DOM child created by this VExpression within parent. */
 	startIndex = 0;
@@ -3706,9 +3711,10 @@ class VElement {
 		// 3. Slot content
 		let count = 0;
 		if (tagName === 'slot') {
-			let slotChildren = VElement.fromHtml(this.refl.slotHtml, Object.keys(this.scope), this, this.refl.constructor);
+			let slotChildren = VElement.fromHtml(this.refl.slotHtml, Object.keys(this.scope), this, this.refl);
 			for (let vChild of slotChildren) {
 				vChild.scope = {...this.scope};
+				vChild.scope2 = {...this.scope2};
 				vChild.startIndex = count;
 				count += vChild.apply_(this.el);
 			}
@@ -3991,11 +3997,12 @@ class VElement {
 	 * @param tokens {Token[]}
 	 * @param scopeVars {string[]}
 	 * @param vParent {VElement|VExpression?}
+	 * @param refl
 	 * @param limit {int|boolean=} Find no more than this many items.
 	 * @param index {int=} used internally.
 	 * @return {(VElement|VExpression|string)[]}
 	 *     Array with a .index property added, to keep track of what token we're on. */
-	static fromTokens(tokens, scopeVars=[], vParent=null, Class, limit=false, index=0) {
+	static fromTokens(tokens, scopeVars=[], vParent=null, refl, limit=false, index=0) {
 		if (!tokens.length)
 			return [];
 
@@ -4009,13 +4016,13 @@ class VElement {
 
 			// Expression child
 			else if (token.type === 'expr')
-				result.push(VExpression.fromTokens(token.tokens, scopeVars, vParent, Class));
+				result.push(VExpression.fromTokens(token.tokens, scopeVars, vParent, refl));
 
 			// Collect tagName and attributes from open tag.
 			else if (token.type === 'openTag') {
 				let vel = new VElement();
 				vel.vParent = vParent;
-				vel.refl = vParent?.refl;
+				vel.refl = refl || vParent?.refl;
 				if (vParent)
 					vel.scope = {...vParent.scope};
 				let attrName='';
@@ -4038,12 +4045,12 @@ class VElement {
 						if (tagToken.type === 'string')
 							for (let exprToken of tagToken.tokens.slice(1, -1)) { // slice to remove surrounding quotes.
 								if (exprToken.type === 'expr')
-									attrValues.push(VExpression.fromTokens(exprToken.tokens, scopeVars, vParent, Class, attrName));
+									attrValues.push(VExpression.fromTokens(exprToken.tokens, scopeVars, vParent, refl, attrName));
 								else // string:
 									attrValues.push(exprToken.text);
 							}
 						else if (tagToken.type === 'expr') // expr not in string.
-							attrValues.push(VExpression.fromTokens(tagToken.tokens, scopeVars, vParent, Class, attrName));
+							attrValues.push(VExpression.fromTokens(tagToken.tokens, scopeVars, vParent, refl, attrName));
 						//#IFDEV
 						else
 							throw new Error(); // Shouldn't happen.
@@ -4055,7 +4062,7 @@ class VElement {
 
 					// Expression that creates attribute(s)
 					else if (tagToken.type === 'expr') {
-						let expr = VExpression.fromTokens(tagToken.tokens, scopeVars, vParent, Class);
+						let expr = VExpression.fromTokens(tagToken.tokens, scopeVars, vParent, refl);
 						expr.attributes = []; // Marks it as being an attribute expression.
 						vel.attributeExpressions.push(expr);
 					}
@@ -4069,7 +4076,7 @@ class VElement {
 					index++;
 
 					// New path:
-					vel.vChildren = VElement.fromTokens(tokens, scopeVars, vel, Class, false, index);
+					vel.vChildren = VElement.fromTokens(tokens, scopeVars, vel, refl, false, index);
 					index = vel.vChildren.index; // What is this?
 				}
 
@@ -4797,7 +4804,7 @@ class Refract extends HTMLElement {
 						throw new Error(`Class is missing an html function with a template value.`);
 				}
 
-				this.constructor.virtualElement = VElement.fromTokens(this.constructor.htmlTokens, [], null, this.constructor, 1)[0];
+				this.constructor.virtualElement = VElement.fromTokens(this.constructor.htmlTokens, [], null, this, 1)[0];
 				this.constructor.htmlTokens = null; // We don't need them any more.
 			}
 

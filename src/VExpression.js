@@ -291,7 +291,7 @@ export default class VExpression {
 					else {
 						html += ''; // can be a number.
 						if (html.length) {
-							let vels = VElement.fromHtml(html, scopeVarNames, this, this.refl.constructor).flat();
+							let vels = VElement.fromHtml(html, scopeVarNames, this, this.refl).flat();
 							result.push(vels);
 						}
 					}
@@ -654,12 +654,13 @@ export default class VExpression {
 	 * @param scope {string[]} Variables created by parent loops.  This lets us build watchPaths only of variables
 	 *     that trace back to a this.property in the parent Refract, instead of from any variable or js identifier.
 	 * @param vParent {VElement|VExpression}
-	 * @param Class
+	 * @param refl
 	 * @param attrName {string?} If set, this VExpression is part of an attribute, otherwise it creates html child nodes.
 	 * @return {VExpression} */
-	static fromTokens(tokens, scope, vParent, Class, attrName) {
+	static fromTokens(tokens, scope, vParent, refl, attrName) {
 		let result = new VExpression();
 		result.vParent = vParent;
+
 		if (vParent) {
 			result.refl = vParent.refl;
 			result.scope = {...vParent.scope};
@@ -688,8 +689,6 @@ export default class VExpression {
 
 		// Get the createFunction() from the class if it's already been instantiated.  Else use Refract's temporary createfunction().
 		// This lets us use other variabls defiend in the same scope as the class that extends Refract.
-		//let Class = ((vParent && vParent.refl && vParent.refl.constructor) || window.RefractCurrentClass);
-
 		if (loopBody) {
 			result.type = 'loop';
 
@@ -698,19 +697,20 @@ export default class VExpression {
 
 			for (let p of loopParamNames)
 				scope.push(p);
-			result.exec = Class.createFunction(...scope, 'return ' + watchPathTokens[0].join(''));
+
+			result.exec = refl.constructor.createFunction(...scope, 'return ' + watchPathTokens[0].join(''));
 
 			// If the loop body is a single `template` string:
 			// TODO Why is this special path necessary, instead of always just using the else path?
 			let loopBodyTrimmed = loopBody.filter(token => token.type !== 'whitespace' && token.type !== 'ln');
 			if (loopBodyTrimmed.length === 1 && loopBodyTrimmed[0].type === 'template') {
 				// Remove beginning and end string delimiters, parse items.
-				result.loopItemEls = VElement.fromTokens(loopBodyTrimmed[0].tokens.slice(1, -1), scope, vParent, Class);
+				result.loopItemEls = VElement.fromTokens(loopBodyTrimmed[0].tokens.slice(1, -1), scope, vParent, refl);
 			}
 
 			// The loop body is more complex javascript code:
 			else
-				result.loopItemEls = [VExpression.fromTokens(loopBody, scope, vParent, Class)];
+				result.loopItemEls = [VExpression.fromTokens(loopBody, scope, vParent, refl)];
 		}
 
 		else {
@@ -728,7 +728,7 @@ export default class VExpression {
 			// Later, scope object will be matched with param names to call this function.
 			// We call replacehashExpr() b/c we're valuating a whole string of code all at once, and the nested #{} aren't
 			// understood by the vanilla JavaScript that executes the template string.
-			tokens = Parse.replaceHashExpr_(tokens, null, Class.name);
+			tokens = Parse.replaceHashExpr_(tokens, null, refl.constructor.name);
 
 			/**
 			 * We want sub-templates within the expression to be parsed to find their own variables,
@@ -743,7 +743,7 @@ export default class VExpression {
 			let body = tokens.map(t=>t.text).join('');
 			if (tokens[0].text != '{')
 				body = 'return (' + body.trim() + ')';
-			result.exec = Class.createFunction(...scope, body);
+			result.exec = refl.constructor.createFunction(...scope, body);
 		}
 
 		// Get just the identifier names between the dots.

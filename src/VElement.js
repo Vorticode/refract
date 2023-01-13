@@ -50,6 +50,11 @@ export default class VElement {
 	/** @type {Object<string, string>} */
 	scope = {};
 
+	/**
+	 * Stores a map from local variable names, to their value and their path from the root Refract object.
+	 * @type {Object<varName:string, [value:*, path:string[]]>} */
+	scope2 = {};
+
 	/** @type {int} DOM index of the first DOM child created by this VExpression within parent. */
 	startIndex = 0;
 
@@ -176,9 +181,10 @@ export default class VElement {
 		// 3. Slot content
 		let count = 0;
 		if (tagName === 'slot') {
-			let slotChildren = VElement.fromHtml(this.refl.slotHtml, Object.keys(this.scope), this, this.refl.constructor);
+			let slotChildren = VElement.fromHtml(this.refl.slotHtml, Object.keys(this.scope), this, this.refl);
 			for (let vChild of slotChildren) {
 				vChild.scope = {...this.scope}
+				vChild.scope2 = {...this.scope2}
 				vChild.startIndex = count;
 				count += vChild.apply_(this.el);
 			}
@@ -461,11 +467,12 @@ export default class VElement {
 	 * @param tokens {Token[]}
 	 * @param scopeVars {string[]}
 	 * @param vParent {VElement|VExpression?}
+	 * @param refl
 	 * @param limit {int|boolean=} Find no more than this many items.
 	 * @param index {int=} used internally.
 	 * @return {(VElement|VExpression|string)[]}
 	 *     Array with a .index property added, to keep track of what token we're on. */
-	static fromTokens(tokens, scopeVars=[], vParent=null, Class, limit=false, index=0) {
+	static fromTokens(tokens, scopeVars=[], vParent=null, refl, limit=false, index=0) {
 		if (!tokens.length)
 			return [];
 
@@ -479,13 +486,13 @@ export default class VElement {
 
 			// Expression child
 			else if (token.type === 'expr')
-				result.push(VExpression.fromTokens(token.tokens, scopeVars, vParent, Class));
+				result.push(VExpression.fromTokens(token.tokens, scopeVars, vParent, refl));
 
 			// Collect tagName and attributes from open tag.
 			else if (token.type === 'openTag') {
 				let vel = new VElement();
 				vel.vParent = vParent;
-				vel.refl = vParent?.refl;
+				vel.refl = refl || vParent?.refl;
 				if (vParent)
 					vel.scope = {...vParent.scope};
 				let attrName='';
@@ -508,12 +515,12 @@ export default class VElement {
 						if (tagToken.type === 'string')
 							for (let exprToken of tagToken.tokens.slice(1, -1)) { // slice to remove surrounding quotes.
 								if (exprToken.type === 'expr')
-									attrValues.push(VExpression.fromTokens(exprToken.tokens, scopeVars, vParent, Class, attrName));
+									attrValues.push(VExpression.fromTokens(exprToken.tokens, scopeVars, vParent, refl, attrName));
 								else // string:
 									attrValues.push(exprToken.text);
 							}
 						else if (tagToken.type === 'expr') // expr not in string.
-							attrValues.push(VExpression.fromTokens(tagToken.tokens, scopeVars, vParent, Class, attrName));
+							attrValues.push(VExpression.fromTokens(tagToken.tokens, scopeVars, vParent, refl, attrName));
 						//#IFDEV
 						else
 							throw new Error(); // Shouldn't happen.
@@ -525,7 +532,7 @@ export default class VElement {
 
 					// Expression that creates attribute(s)
 					else if (tagToken.type === 'expr') {
-						let expr = VExpression.fromTokens(tagToken.tokens, scopeVars, vParent, Class);
+						let expr = VExpression.fromTokens(tagToken.tokens, scopeVars, vParent, refl);
 						expr.attributes = []; // Marks it as being an attribute expression.
 						vel.attributeExpressions.push(expr);
 					}
@@ -539,7 +546,7 @@ export default class VElement {
 					index++
 
 					// New path:
-					vel.vChildren = VElement.fromTokens(tokens, scopeVars, vel, Class, false, index);
+					vel.vChildren = VElement.fromTokens(tokens, scopeVars, vel, refl, false, index);
 					index = vel.vChildren.index; // What is this?
 				}
 
