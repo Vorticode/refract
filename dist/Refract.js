@@ -2787,6 +2787,26 @@ class VText {
 	}
 }
 
+class ScopeItem {
+	/** @type {string[]} */
+	path;
+
+	value;
+
+	/**
+	 * @param path {string[]}
+	 * @param value {*} */
+	constructor(path, value=undefined) {
+		this.path = path;
+		this.value = value;
+	}
+
+	clone() {
+		return new ScopeItem(this.path.slice(), this.value);
+	}
+}
+
+
 /**
  * @extends {Map<string, ScopeItem>} */
 class Scope extends Map {
@@ -2795,8 +2815,6 @@ class Scope extends Map {
 	/**
 	 * @return {Scope} */
 	clone() {
-		if (this.size)
-			debugger;
 		let result = new Scope();
 		for (let [name, scopeItem] of this)
 			result.set(name, scopeItem.clone());
@@ -2893,11 +2911,12 @@ class VExpression {
 
 
 	/**
-	 * @deprecated for scope2
+	 * @deprecated for scope3
 	 * @type {Object<string, *>} */
 	scope = {};
 
 	/**
+	 * @deprecated for scope3.
 	 * Stores a map from local variable names, to their value and their path from the root reflection object.
 	 * @type {Object<varName:string, [value:*, path:string[]]>} */
 	scope2 = {};
@@ -2927,8 +2946,9 @@ class VExpression {
 	 * Take an array of javascript tokens and build a VExpression from them.
 	 * @param tokens {?Token[]} May or may not include surrounding ${ ... } tokens.
 	 * @param vParent {VElement|VExpression}
-	 * @param scopeVars {?string[]} Variables created by parent loops.  This lets us build watchPaths only of variables
+	 * @param scopeVars {?string[]} NAmes of variables created by parent loops.  This lets us build watchPaths only of variables
 	 *     that trace back to a this.property in the parent Refract, instead of from any variable or js identifier.
+	 *     Note this is different than the scope property which is copied from the vParent.
 	 * @param attrName {?string} If set, this VExpression is part of an attribute, otherwise it creates html child nodes.
 	 * @return {VExpression} */
 	constructor(tokens=null, vParent=null, scopeVars=null, attrName=null) {
@@ -2940,7 +2960,10 @@ class VExpression {
 				assert(this.refl);
 			//#ENDIF
 
+
 			this.scope = {...vParent.scope};
+			this.scope3 = vParent.scope3.clone();
+			//console.log(this.code, this.scope)
 		}
 
 		if (tokens) {
@@ -3145,9 +3168,9 @@ class VExpression {
 
 		result.startIndex = this.startIndex;
 		result.childCount = this.childCount;
+
 		result.scope = {...this.scope};
 		result.scope2 = {...this.scope2};
-
 		result.scope3 = this.scope3.clone();
 
 		result.isHash = this.isHash;
@@ -3225,6 +3248,7 @@ class VExpression {
 					let vel = template.clone(this.refl, this);
 					vel.scope = {...this.scope};
 					vel.scope2 = {...this.scope2};
+					vel.scope3 = this.scope3.clone();
 
 					// Assign values to the parameters of the function given to .map() that's used to loop.
 					let len2 = this.loopParamNames.length;
@@ -3236,6 +3260,7 @@ class VExpression {
 						let path = [...this.watchPaths[0], i+'']; // VExpression loops always have one watchPath.
 						let fullPath = this.getFullPath(path);
 						vel.scope2[this.loopParamNames[j]] = [params[j], fullPath]; // scope2[name] = [value, path]
+						vel.scope3.set(this.loopParamNames[j], new ScopeItem(fullPath, [params[j]])); // scope3[name] = [path, value]
 					}
 
 					group.push(vel);
@@ -3266,6 +3291,8 @@ class VExpression {
 
 	/**
 	 * Called when a watched value changes.
+	 * TODO: Write addLoopItem and removeLoopItem functions?
+	 * Just call apply() when updating existing loop items?
 	 * @param action {string} Can be 'remove', 'insert', or 'set'.
 	 * @param path {string[]}
 	 * @param value {string} not used.
@@ -3280,8 +3307,9 @@ class VExpression {
 
 		Refract.currentVElement = this;
 
+
 		// Path 1:  If modifying a property on a single array item.
-		if (this.type==='loop' && utils.arrayStartsWith_(path.slice(0, -2), this.watchPaths[0].slice(1))) {
+		if (this.type==='loop' && path.length > 2 && utils.arrayStartsWith_(path.slice(0, -2), this.watchPaths[0].slice(1))) {
 			// Do nothing, because the watch should trigger on the child VExpression instead of this one.
 			//debugger;
 			return;
@@ -3328,10 +3356,12 @@ class VExpression {
 					if (action === 'insert')
 						this.vChildren.splice(index, 0, []);
 
-					if (this.type === 'simple') // [below] TODO: Need to evaluate this expression instead of just using the value from the array?
+					if (this.type === 'simple') // A simple expression ${this.var} always just prints the value.  TODO: Does this html-escape?
 						this.vChildren[index] = [new VText(array[index], this.refl)];
-					else  // loop
+					else { // loop
 						this.vChildren[index] = this.loopItemEls.map(vel => vel.clone(this.refl, this));
+
+					}
 
 					// 3. Add/update those new elements in the real DOM.
 					let i = 0;
@@ -3340,15 +3370,20 @@ class VExpression {
 						newItem.startIndex = startIndex + i;
 						newItem.scope = {...this.scope};
 						newItem.scope2 = {...this.scope2};
+						newItem.scope3 = this.scope3.clone();
 						newItem.parent = this.parent;
 
+
+						// TODO: This code is mostly duplicated in evalToVElements()
 						let params = [array[index], index, array];
 						for (let j in this.loopParamNames) {
 							newItem.scope[this.loopParamNames[j]] = params[j];
 
-							//debugger;
-							let path = [...this.watchPaths[0], i+''];
-							newItem.scope2[this.loopParamNames[j]] = [params[j], this.getFullPath(path)];
+							let path = [...this.watchPaths[0], (i+index)+''];
+							let fullPath = this.getFullPath(path);
+
+							newItem.scope2[this.loopParamNames[j]] = [params[j], fullPath];
+							newItem.scope3.set(this.loopParamNames[j], new ScopeItem(fullPath, [params[j]])); // scope3[name] = [path, value]
 						}
 
 						newItem.apply_(this.parent, null);
@@ -3517,6 +3552,8 @@ class VExpression {
 	 * All calls to Watch.add() (i.e. all watches) used by Refract come through this function.
 	 * @param callback {function} */
 	watch(callback) {
+
+
 		for (let path of this.watchPaths) {
 			let root = this.refl;
 
@@ -3603,10 +3640,13 @@ class VElement {
 	 * @type {string|null} */
 	//staticCode = null;
 
-	/** @type {Object<string, string>} */
+	/**
+	 * @deprecated for scope3
+	 * @type {Object<string, string>} */
 	scope = {};
 
 	/**
+	 * @deprecated for scope3
 	 * Stores a map from local variable names, to their value and their path from the root Refract object.
 	 * @type {Object<varName:string, [value:*, path:string[]]>} */
 	scope2 = {};
@@ -3628,6 +3668,7 @@ class VElement {
 			this.vParent = parent;
 			this.refl = parent.refl;
 			this.scope = {...parent.scope};
+			this.scope3 = parent.scope3.clone();
 		}
 
 		//#IFDEV
@@ -3807,6 +3848,7 @@ class VElement {
 			for (let vChild of slotChildren) {
 				vChild.scope = {...this.scope};
 				vChild.scope2 = {...this.scope2};
+				vChild.scope3 = this.scope3.clone();
 				vChild.startIndex = count;
 				count += vChild.apply_(this.el);
 			}
@@ -3819,6 +3861,7 @@ class VElement {
 				throw new Error("textarea and contenteditable can't have templates as children. Use value=${this.variable} instead.");
 
 			vChild.scope = {...this.scope}; // copy
+			vChild.scope3 = this.scope3.clone();
 			vChild.refl = this.refl;
 			vChild.startIndex = count;
 			count += vChild.apply_(this.el);
@@ -3832,6 +3875,7 @@ class VElement {
 					let expr = attrPart;
 					expr.parent = this.el;
 					expr.scope = this.scope; // Share scope with attributes.
+					expr.scope3 = this.scope3.clone();
 					expr.watch(() => {
 						if (name === 'value')
 							setInputValue(this.refl, this.el, value, this.scope);
@@ -3874,6 +3918,7 @@ class VElement {
 		// Attribute expressions
 		for (let expr of this.attributeExpressions) {
 			expr.scope = this.scope;
+			expr.scope3 = this.scope3.clone();
 			expr.apply_(this.el);
 			expr.watch(() => {
 				expr.apply_(this.el);

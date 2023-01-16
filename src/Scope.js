@@ -27,8 +27,6 @@ export default class Scope extends Map {
 	/**
 	 * @return {Scope} */
 	clone() {
-		if (this.size)
-			debugger;
 		let result = new Scope();
 		for (let [name, scopeItem] of this)
 			result.set(name, scopeItem.clone());

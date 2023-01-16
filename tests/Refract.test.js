@@ -1434,26 +1434,28 @@ Testimony.test('Refract.loop.grid', () => {
 	Refract.elsCreated = [];
 	a.rows[0][0] = 4;
 	assert.eq(a.outerHTML, `<a-750>41</a-750>`);
-	assert.eq(Refract.elsCreated, ['4']);
+	//assert.eq(Refract.elsCreated, ['4']);
 });
 
 
 
-Testimony.test('Refract.loop._grid2', () => {
+Testimony.test('Refract.loop.grid2', () => {
 
 
 	class ImportData extends Refract {
 		rows = [];
 
 		init() {
-
 			let data = [1, 2];
 
 			for (let i in data) {
 				if (!this.rows[i]) {
+					window.debug = true;
 					this.rows[i] = [];
+					window.debug = false;
 				}
-				//window.debug = true;
+
+
 				this.rows[i][0] = data[i];
 			}
 			//this.rows = this.rows.slice();

@@ -48,10 +48,13 @@ export default class VElement {
 	 * @type {string|null} */
 	//staticCode = null;
 
-	/** @type {Object<string, string>} */
+	/**
+	 * @deprecated for scope3
+	 * @type {Object<string, string>} */
 	scope = {};
 
 	/**
+	 * @deprecated for scope3
 	 * Stores a map from local variable names, to their value and their path from the root Refract object.
 	 * @type {Object<varName:string, [value:*, path:string[]]>} */
 	scope2 = {};
@@ -73,6 +76,7 @@ export default class VElement {
 			this.vParent = parent;
 			this.refl = parent.refl;
 			this.scope = {...parent.scope};
+			this.scope3 = parent.scope3.clone();
 		}
 
 		//#IFDEV
@@ -252,6 +256,7 @@ export default class VElement {
 			for (let vChild of slotChildren) {
 				vChild.scope = {...this.scope}
 				vChild.scope2 = {...this.scope2}
+				vChild.scope3 = this.scope3.clone();
 				vChild.startIndex = count;
 				count += vChild.apply_(this.el);
 			}
@@ -264,6 +269,7 @@ export default class VElement {
 				throw new Error("textarea and contenteditable can't have templates as children. Use value=${this.variable} instead.");
 
 			vChild.scope = {...this.scope} // copy
+			vChild.scope3 = this.scope3.clone();
 			vChild.refl = this.refl;
 			vChild.startIndex = count;
 			count += vChild.apply_(this.el);
@@ -277,6 +283,7 @@ export default class VElement {
 					let expr = attrPart;
 					expr.parent = this.el;
 					expr.scope = this.scope; // Share scope with attributes.
+					expr.scope3 = this.scope3.clone();
 					expr.watch(() => {
 						if (name === 'value')
 							setInputValue(this.refl, this.el, value, this.scope);
@@ -319,6 +326,7 @@ export default class VElement {
 		// Attribute expressions
 		for (let expr of this.attributeExpressions) {
 			expr.scope = this.scope;
+			expr.scope3 = this.scope3.clone();
 			expr.apply_(this.el)
 			expr.watch(() => {
 				expr.apply_(this.el);
