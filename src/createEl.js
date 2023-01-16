@@ -1,7 +1,7 @@
 // TODO: Move this into Html.js?
-let cache = new Map(); // We use a map so we can cache properties like 'constructor' // TODO: Cache should exist per-document?
-let divCache = new WeakMap();
-let templateCache = new WeakMap();
+let cache_ = new Map(); // We use a map so we can cache properties like 'constructor' // TODO: Cache should exist per-document?
+let divCache_ = new WeakMap();
+let templateCache_ = new WeakMap();
 
 // let div = document.createElement('div');
 // let template = document.createElement('template');
@@ -23,21 +23,21 @@ export default function(html, trim=true, doc=document) {
 	// And don't use an item from the cache with cloneNode() because that will call the constructor more than once!
 	if (html.match(/^<\S+-\S+/)) {
 
-		let div = divCache.get(doc);
+		let div = divCache_.get(doc);
 		if (!div)
-			divCache.set(doc, div = doc.createElement('div'));
+			divCache_.set(doc, div = doc.createElement('div'));
 		div.innerHTML = html;
 		return div.removeChild(div.firstChild)
 	}
 
-	let existing = cache.get(html);
+	let existing = cache_.get(html);
 	if (existing)
 		return existing.cloneNode(true);
 
 
-	let template = templateCache.get(doc);
+	let template = templateCache_.get(doc);
 	if (!template)
-		templateCache.set(doc, template = doc.createElement('template'));
+		templateCache_.set(doc, template = doc.createElement('template'));
 
 	// Create
 	template.innerHTML = html;
@@ -47,7 +47,7 @@ export default function(html, trim=true, doc=document) {
 	// Because if we use cloneNode with a custom element that has slots, it will take all of the regular, non-slot
 	// children of the element and insert them into the slot.
 	if (!template.content.querySelector('slot'))
-		cache.set(html, template.content.firstChild.cloneNode(true));
+		cache_.set(html, template.content.firstChild.cloneNode(true));
 
 	return template.content.removeChild(template.content.firstChild);
 }

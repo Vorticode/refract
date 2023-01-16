@@ -308,7 +308,7 @@ var ascendIf = regex => code => {
 			// This is covered by the test Watch.arrayShift2()
 			// TODO: This can be faster if we only update the affected array elements.
 			if (['splice', 'shift', 'sort', 'reverse', 'unshift'].includes(func)) { // ops that modify within the array.
-				WatchUtil.rebuildArray(array, startIndex, null, null);
+				WatchUtil.rebuildArray_(array, startIndex, null, null);
 			}
 
 			// Trigger a notification for every array element changed, instead of one for every sub-operation.
@@ -369,7 +369,7 @@ var ascendIf = regex => code => {
 		 * @param startIndex {int?} If set, only rebuild array elements at and after this index.
 		 * @param path {string[]=}
 		 * @param visited {WeakSet=} */
-		rebuildArray(obj, startIndex, path, visited) {
+		rebuildArray_(obj, startIndex, path, visited) {
 			path = path || [];
 			visited = visited || new WeakSet();
 			if (startIndex === undefined)
@@ -422,12 +422,12 @@ var ascendIf = regex => code => {
 			if (Array.isArray(obj))
 				for (let i=startIndex; i<obj.length; i++) {
 					if (Array.isArray(obj[i]) || isObj(obj[i]))
-						WatchUtil.rebuildArray(obj[i], 0, [...path, i+''], visited);
+						WatchUtil.rebuildArray_(obj[i], 0, [...path, i+''], visited);
 				}
 			else if (isObj(obj))
 				for (let i in obj)
 					if (Array.isArray(obj[i]) || isObj(obj[i]))
-						WatchUtil.rebuildArray(obj[i], 0, [...path, i+''], visited);
+						WatchUtil.rebuildArray_(obj[i], 0, [...path, i+''], visited);
 		},
 
 		/**
@@ -562,7 +562,7 @@ var ascendIf = regex => code => {
 	};
 }
 
-var dontCreateValue = {};
+var dontCreateValue_ = {};
 
 /**
  * Follow a path into a object.
@@ -571,8 +571,8 @@ var dontCreateValue = {};
  * @param createVal {*}  If set, non-existant paths will be created and value at path will be set to createVal.
  * @param watchless {boolean}
  * @return The value, or undefined if it can't be reached. */
-function delve(obj, path, createVal=dontCreateValue, watchless=false) {
-	let create = createVal !== dontCreateValue;
+function delve(obj, path, createVal=dontCreateValue_, watchless=false) {
+	let create = createVal !== dontCreateValue_;
 
 	if (!obj && !create && path.length)
 		return undefined;
@@ -622,7 +622,7 @@ function delve(obj, path, createVal=dontCreateValue, watchless=false) {
 	return obj;
 }
 
-delve.dontCreateValue = dontCreateValue;
+delve.dontCreateValue = dontCreateValue_;
 
 /**
  * Allow subscribing only to specific properties of an object.
@@ -1485,10 +1485,10 @@ var removeProxies = (obj, visited) => {
 
 	/**
 	 * Expand the lookup rules such as a-z and 0-9, in place. */
-	function expandFastMatch(obj) {
+	function expandFastMatch_(obj) {
 		for (let name in obj) {
 			if (!obj[name].length) // not an array, recurse:
-				expandFastMatch(obj[name]);
+				expandFastMatch_(obj[name]);
 
 			if (name.length > 1) {
 				let originalName = name;
@@ -1515,7 +1515,7 @@ var removeProxies = (obj, visited) => {
 
 	}
 	for (let name in lexHtmlJs.fastMatch)
-		expandFastMatch(lexHtmlJs.fastMatch[name]);
+		expandFastMatch_(lexHtmlJs.fastMatch[name]);
 
 	Object.freeze(lexHtmlJs.fastMatch);
 
@@ -2303,16 +2303,16 @@ var Parse = {
 	 * @return {function(*): (boolean|number)} */
 	createVarExpression_(vars=[]) {
 		let key = vars.join(','); // Benchmarking shows this cache does speed things up a little.
-		let result = varExpressionCache[key];
+		let result = varExpressionCache_[key];
 		if (result)
 			return result;
 
-		return varExpressionCache[key] = fregex(
+		return varExpressionCache_[key] = fregex(
 			fregex.or(
-				fregex('this', Parse.ws, fregex.oneOrMore(property)),  // this.prop
-				...vars.map(v => fregex(v, fregex.zeroOrMore(property)))    // item.prop
+				fregex('this', Parse.ws, fregex.oneOrMore(property_)),  // this.prop
+				...vars.map(v => fregex(v, fregex.zeroOrMore(property_)))    // item.prop
 			),
-			terminator
+			terminator_
 		);
 	},
 
@@ -2461,8 +2461,9 @@ var Parse = {
 
 
 		// 1 Template
+		let innerTokens;
 		if (template.tokens)
-			var innerTokens = template.tokens.slice(1, -1);
+			innerTokens = template.tokens.slice(1, -1);
 
 		// 2 Non-template
 		else { // TODO: Is there better a way to unescape "'hello \'everyone'" type strings than eval() ?
@@ -2606,7 +2607,7 @@ var Parse = {
 
 
 
-let varExpressionCache = {};
+let varExpressionCache_ = {};
 
 
 // Whitespace
@@ -2614,7 +2615,7 @@ Parse.ws = fregex.zeroOrMore(fregex.or(
 	{type: 'whitespace'}, {type: 'ln'}
 ));
 
-let indexType = [
+let indexType_ = [
 	{type: 'number'},
 	{type: 'hex'},
 	{type: 'string'},
@@ -2622,50 +2623,28 @@ let indexType = [
 ];
 
 // TODO: actually parse instead of just finding the right type of tokens.
-Parse.isLValue = fregex.oneOrMore(
+Parse.isLValue_ = fregex.oneOrMore(
 	fregex.or(
 		'this', '.', '[', ']', {type: 'identifier'}, {type: 'number'}, {type: 'hex'}, {type: 'string'}, {type: 'template'}, {type: 'whitespace'}, {type: 'ln'}
 	)
 );
 
-let terminator = fregex.lookAhead([
+let terminator_ = fregex.lookAhead([
 	fregex.or(
 		fregex.end, // no more tokens
 		fregex.not(Parse.ws, '(')
 	)
 ]);
-let property = fregex(
+let property_ = fregex(
 	fregex.or(
 		fregex(Parse.ws, fregex.or('.', '?.') , Parse.ws, {type: 'identifier'}), //.item
-		fregex(Parse.ws, fregex.zeroOrOne('?.'), '[',  Parse.ws, fregex.or(...indexType), Parse.ws, ']') // ['item']
+		fregex(Parse.ws, fregex.zeroOrOne('?.'), '[',  Parse.ws, fregex.or(...indexType_), Parse.ws, ']') // ['item']
 	),
-	terminator // TODO: Why is the terminator here?
+	terminator_ // TODO: Why is the terminator here?
 );
 
-
-/** @deprecated */
-Parse.arg = fregex([
-	{type: 'identifier'},
-	Parse.ws,
-	fregex.zeroOrOne([
-		'=', Parse.ws, fregex.or([
-			...indexType,
-			{type: 'identifier'},
-			{type: 'regex'},
-		])
-	])
-]);
-
-/** @deprecated */
-Parse.argList = fregex.zeroOrMore([
-	Parse.arg,
-	fregex.zeroOrMore([
-		Parse.ws, ',', Parse.ws, Parse.arg
-	])
-]);
-
 var div = document.createElement('div');
-var decodeCache = {};
+var decodeCache_ = {};
 
 var Html = {
 
@@ -2679,12 +2658,12 @@ var Html = {
 
 		return html // Fast solution inspired by https://stackoverflow.com/a/43282001
 			.replace(/&[#A-Z0-9]+;/gi, entity => {
-				let result = decodeCache[entity];
+				let result = decodeCache_[entity];
 				if (result)
 					return result;
 
 				div.innerHTML = entity; // create and cache new entity
-				return decodeCache[entity] = div.textContent;
+				return decodeCache_[entity] = div.textContent;
 			});
 
 	},
@@ -2744,7 +2723,7 @@ class VText {
 
 				let rTag = this.refr_.tagName.toLowerCase();
 
-				text = VText.styleReplace(this.text, rTag, this.refr_.dataset.style);
+				text = VText.styleReplace_(this.text, rTag, this.refr_.dataset.style);
 			}
 			else
 				text = this.text;
@@ -2782,7 +2761,7 @@ class VText {
 	}
 	//#ENDIF
 
-	static styleReplace(text, rTag, styleId) {
+	static styleReplace_(text, rTag, styleId) {
 		return text.replace(new RegExp(rTag+'|:host', 'g'), rTag + '[data-style="' +  styleId + '"]')
 	}
 }
@@ -2801,7 +2780,7 @@ class ScopeItem {
 		this.value = value;
 	}
 
-	clone() {
+	clone_() {
 		return new ScopeItem(this.path.slice(), this.value);
 	}
 }
@@ -2817,7 +2796,7 @@ class Scope extends Map {
 	clone_() {
 		let result = new Scope();
 		for (let [name, scopeItem] of this)
-			result.set(name, scopeItem.clone());
+			result.set(name, scopeItem.clone_());
 		return result;
 	}
 
@@ -3013,7 +2992,7 @@ class VExpression {
 				// TODO: This duplicates code executed in Parse.varExpressions_ above?
 				if (Parse.createVarExpression_(scopeVars)(tokens) !== tokens.length) {
 					// This will find things like this.values[this.index].name
-					if (Parse.isLValue(tokens) === tokens.length)
+					if (Parse.isLValue_(tokens) === tokens.length)
 						this.type = 'simple';
 					else
 						this.type = 'complex';
@@ -3198,9 +3177,9 @@ class VExpression {
 		this.watches_ = [];
 
 		// Add new watches
-		if (!this.receiveNotificationBindThis)
-			this.receiveNotificationBindThis = this.receiveNotification_.bind(this);
-		this.watch_(this.receiveNotificationBindThis);
+		if (!this.receiveNotificationBindThis_)
+			this.receiveNotificationBindThis_ = this.receiveNotification_.bind(this);
+		this.watch_(this.receiveNotificationBindThis_);
 
 
 		let result = [];
@@ -3738,7 +3717,7 @@ class VElement {
 
 				let args = [];
 				if (Class.prototype.init) {// new path with init()
-					args = Refract.compiler.populateArgsFromAttribs(this, Class.getInitArgs());
+					args = Refract.compiler.populateArgsFromAttribs(this, Class.getInitArgs_());
 				}
 				//#IFDEV
 				else if (Class.constructorArgs) // old path that uses constructor()
@@ -4228,9 +4207,9 @@ function setInputValue_(ref, el, value, scope) {
 }
 
 // TODO: Move this into Html.js?
-let cache = new Map(); // We use a map so we can cache properties like 'constructor' // TODO: Cache should exist per-document?
-let divCache = new WeakMap();
-let templateCache = new WeakMap();
+let cache_ = new Map(); // We use a map so we can cache properties like 'constructor' // TODO: Cache should exist per-document?
+let divCache_ = new WeakMap();
+let templateCache_ = new WeakMap();
 
 // let div = document.createElement('div');
 // let template = document.createElement('template');
@@ -4252,21 +4231,21 @@ function createEl(html, trim=true, doc=document) {
 	// And don't use an item from the cache with cloneNode() because that will call the constructor more than once!
 	if (html.match(/^<\S+-\S+/)) {
 
-		let div = divCache.get(doc);
+		let div = divCache_.get(doc);
 		if (!div)
-			divCache.set(doc, div = doc.createElement('div'));
+			divCache_.set(doc, div = doc.createElement('div'));
 		div.innerHTML = html;
 		return div.removeChild(div.firstChild)
 	}
 
-	let existing = cache.get(html);
+	let existing = cache_.get(html);
 	if (existing)
 		return existing.cloneNode(true);
 
 
-	let template = templateCache.get(doc);
+	let template = templateCache_.get(doc);
 	if (!template)
-		templateCache.set(doc, template = doc.createElement('template'));
+		templateCache_.set(doc, template = doc.createElement('template'));
 
 	// Create
 	template.innerHTML = html;
@@ -4276,7 +4255,7 @@ function createEl(html, trim=true, doc=document) {
 	// Because if we use cloneNode with a custom element that has slots, it will take all of the regular, non-slot
 	// children of the element and insert them into the slot.
 	if (!template.content.querySelector('slot'))
-		cache.set(html, template.content.firstChild.cloneNode(true));
+		cache_.set(html, template.content.firstChild.cloneNode(true));
 
 	return template.content.removeChild(template.content.firstChild);
 }
@@ -4478,42 +4457,43 @@ class Compiler {
 	 */
 	static createModifiedClass(self) {
 		let result = {};
-		result.originalClass = self;
+		result.originalClass_ = self;
 
 		// This code runs after the call to super() and after all the other properties are initialized.
 
 		// Turn autoRender into a property if it's not a property already.
 		// It might be a property if we inherit from another Refract class.
+		let preInitVal = (() => {
+
+			if ('autoRender' in this)
+				this.__autoRender = this.autoRender;
+			else if (!('__autoRender' in this))
+				this.__autoRender = true;
+
+			if (Object.getOwnPropertyDescriptor(this, 'autoRender')?.configurable !== false)
+				Object.defineProperty(this, 'autoRender', {
+					get() {
+						return this.__autoRender
+					},
+					set(val) {
+						this.__autoRender = val;
+						if (val)
+							this.render();
+					}
+				});
+
+			if (this.__autoRender)
+				this.render();
+
+			if (this.init) {
+				let args = this.parentElement
+					? Refract.compiler.populateArgsFromAttribs(this, this.constructor.getInitArgs_())
+					: this.constructorArgs2_;
+				this.init(...args);
+			}
+		}).toString();
 		let preInitCode = `
-			__preInit = (() => {
-			
-				if ('autoRender' in this)
-					this.__autoRender = this.autoRender;
-				else if (!('__autoRender' in this))
-					this.__autoRender = true;
-				
-				if (Object.getOwnPropertyDescriptor(this, 'autoRender')?.configurable !== false)
-					Object.defineProperty(this, 'autoRender', {
-						get() {
-							return this.__autoRender
-						},
-						set(val) {
-							this.__autoRender = val;
-							if (val)
-								this.render();
-						}
-					});
-			
-				if (this.__autoRender)
-					this.render();
-				
-				if (this.init) {
-					let args = this.parentElement
-						? Refract.compiler.populateArgsFromAttribs(this, this.constructor.getInitArgs())
-						: this.constructorArgs2;
-					this.init(...args);
-				}
-			})();`;
+			__preInit = (${preInitVal})()`;
 
 		// New path.
 		if (self.prototype.html) {
@@ -4690,14 +4670,14 @@ class Compiler {
 		NewClass.htmlTokens = compiled.htmlTokens;
 
 		// 2. Copy methods and fields from old class to new class, so that debugging within them will still work.
-		for (let name of Object.getOwnPropertyNames(compiled.originalClass.prototype))
+		for (let name of Object.getOwnPropertyNames(compiled.originalClass_.prototype))
 			if (name !== 'constructor')
-				NewClass.prototype[name] = compiled.originalClass.prototype[name];
+				NewClass.prototype[name] = compiled.originalClass_.prototype[name];
 
 		// 3. Copy static methods and fields, so that debugging within them will still work.
-		for (let staticField of Object.getOwnPropertyNames(compiled.originalClass))
+		for (let staticField of Object.getOwnPropertyNames(compiled.originalClass_))
 			if (!(staticField in Refract)) // If not inherited
-				NewClass[staticField] = compiled.originalClass[staticField];
+				NewClass[staticField] = compiled.originalClass_[staticField];
 
 
 		// Re-evaluate static functions so that any references to its own class points to the new instance and not the old one.
@@ -4840,7 +4820,7 @@ class Refract extends HTMLElement {
 			this.__autoRender = false;
 
 		// Used in old path from before we used init()?
-		this.constructorArgs2 = arguments;
+		this.constructorArgs2_ = arguments;
 	}
 
 	/**
@@ -4937,7 +4917,7 @@ class Refract extends HTMLElement {
 		}
 	}
 
-	static getInitArgs() {
+	static getInitArgs_() {
 		if (!this.initArgs && this.prototype.init) {
 			let pf = new ParsedFunction(this.prototype.init, false);
 			this.initArgs = [...pf.getArgNames_()];

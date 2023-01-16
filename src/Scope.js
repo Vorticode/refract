@@ -13,7 +13,7 @@ export class ScopeItem {
 		this.value = value;
 	}
 
-	clone() {
+	clone_() {
 		return new ScopeItem(this.path.slice(), this.value);
 	}
 }
@@ -29,7 +29,7 @@ export default class Scope extends Map {
 	clone_() {
 		let result = new Scope();
 		for (let [name, scopeItem] of this)
-			result.set(name, scopeItem.clone());
+			result.set(name, scopeItem.clone_());
 		return result;
 	}
 

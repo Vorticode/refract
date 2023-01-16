@@ -100,7 +100,7 @@ export default class Refract extends HTMLElement {
 			this.__autoRender = false;
 
 		// Used in old path from before we used init()?
-		this.constructorArgs2 = arguments;
+		this.constructorArgs2_ = arguments;
 	}
 
 	/**
@@ -197,7 +197,7 @@ export default class Refract extends HTMLElement {
 		}
 	}
 
-	static getInitArgs() {
+	static getInitArgs_() {
 		if (!this.initArgs && this.prototype.init) {
 			let pf = new ParsedFunction(this.prototype.init, false);
 			this.initArgs = [...pf.getArgNames_()];

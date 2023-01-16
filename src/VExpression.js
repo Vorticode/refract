@@ -188,7 +188,7 @@ export default class VExpression {
 				// TODO: This duplicates code executed in Parse.varExpressions_ above?
 				if (Parse.createVarExpression_(scopeVars)(tokens) !== tokens.length) {
 					// This will find things like this.values[this.index].name
-					if (Parse.isLValue(tokens) === tokens.length)
+					if (Parse.isLValue_(tokens) === tokens.length)
 						this.type = 'simple';
 					else
 						this.type = 'complex';
@@ -373,9 +373,9 @@ export default class VExpression {
 		this.watches_ = [];
 
 		// Add new watches
-		if (!this.receiveNotificationBindThis)
-			this.receiveNotificationBindThis = this.receiveNotification_.bind(this);
-		this.watch_(this.receiveNotificationBindThis);
+		if (!this.receiveNotificationBindThis_)
+			this.receiveNotificationBindThis_ = this.receiveNotification_.bind(this);
+		this.watch_(this.receiveNotificationBindThis_);
 
 
 		let result = [];

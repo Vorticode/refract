@@ -173,7 +173,7 @@ export default class VElement {
 
 				let args = []
 				if (Class.prototype.init) {// new path with init()
-					args = Refract.compiler.populateArgsFromAttribs(this, Class.getInitArgs());
+					args = Refract.compiler.populateArgsFromAttribs(this, Class.getInitArgs_());
 				}
 				//#IFDEV
 				else if (Class.constructorArgs) // old path that uses constructor()

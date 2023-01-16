@@ -382,10 +382,10 @@ import utils from './utils.js';
 
 	/**
 	 * Expand the lookup rules such as a-z and 0-9, in place. */
-	function expandFastMatch(obj) {
+	function expandFastMatch_(obj) {
 		for (let name in obj) {
 			if (!obj[name].length) // not an array, recurse:
-				expandFastMatch(obj[name]);
+				expandFastMatch_(obj[name]);
 
 			if (name.length > 1) {
 				let originalName = name;
@@ -412,7 +412,7 @@ import utils from './utils.js';
 
 	}
 	for (let name in lexHtmlJs.fastMatch)
-		expandFastMatch(lexHtmlJs.fastMatch[name]);
+		expandFastMatch_(lexHtmlJs.fastMatch[name]);
 
 	Object.freeze(lexHtmlJs.fastMatch);
 

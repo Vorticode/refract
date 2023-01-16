@@ -1,7 +1,7 @@
 import Utils from "./utils.js";
 
 var div = document.createElement('div');
-var decodeCache = {};
+var decodeCache_ = {};
 
 export default {
 
@@ -15,12 +15,12 @@ export default {
 
 		return html // Fast solution inspired by https://stackoverflow.com/a/43282001
 			.replace(/&[#A-Z0-9]+;/gi, entity => {
-				let result = decodeCache[entity];
+				let result = decodeCache_[entity];
 				if (result)
 					return result;
 
 				div.innerHTML = entity; // create and cache new entity
-				return decodeCache[entity] = div.textContent;
+				return decodeCache_[entity] = div.textContent;
 			});
 
 	},

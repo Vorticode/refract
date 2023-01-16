@@ -43,7 +43,7 @@ export default class VText {
 
 				let rTag = this.refr_.tagName.toLowerCase();
 
-				text = VText.styleReplace(this.text, rTag, this.refr_.dataset.style);
+				text = VText.styleReplace_(this.text, rTag, this.refr_.dataset.style);
 			}
 			else
 				text = this.text;
@@ -81,7 +81,7 @@ export default class VText {
 	}
 	//#ENDIF
 
-	static styleReplace(text, rTag, styleId) {
+	static styleReplace_(text, rTag, styleId) {
 		return text.replace(new RegExp(rTag+'|:host', 'g'), rTag + '[data-style="' +  styleId + '"]')
 	}
 }

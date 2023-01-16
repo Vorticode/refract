@@ -14,16 +14,16 @@ var Parse = {
 	 * @return {function(*): (boolean|number)} */
 	createVarExpression_(vars=[]) {
 		let key = vars.join(','); // Benchmarking shows this cache does speed things up a little.
-		let result = varExpressionCache[key];
+		let result = varExpressionCache_[key];
 		if (result)
 			return result;
 
-		return varExpressionCache[key] = fregex(
+		return varExpressionCache_[key] = fregex(
 			fregex.or(
-				fregex('this', Parse.ws, fregex.oneOrMore(property)),  // this.prop
-				...vars.map(v => fregex(v, fregex.zeroOrMore(property)))    // item.prop
+				fregex('this', Parse.ws, fregex.oneOrMore(property_)),  // this.prop
+				...vars.map(v => fregex(v, fregex.zeroOrMore(property_)))    // item.prop
 			),
-			terminator
+			terminator_
 		);
 	},
 
@@ -172,8 +172,9 @@ var Parse = {
 
 
 		// 1 Template
+		let innerTokens;
 		if (template.tokens)
-			var innerTokens = template.tokens.slice(1, -1);
+			innerTokens = template.tokens.slice(1, -1);
 
 		// 2 Non-template
 		else { // TODO: Is there better a way to unescape "'hello \'everyone'" type strings than eval() ?
@@ -317,7 +318,7 @@ var Parse = {
 
 
 
-let varExpressionCache = {};
+let varExpressionCache_ = {};
 
 
 // Whitespace
@@ -325,7 +326,7 @@ Parse.ws = fregex.zeroOrMore(fregex.or(
 	{type: 'whitespace'}, {type: 'ln'}
 ));
 
-let indexType = [
+let indexType_ = [
 	{type: 'number'},
 	{type: 'hex'},
 	{type: 'string'},
@@ -333,47 +334,27 @@ let indexType = [
 ];
 
 // TODO: actually parse instead of just finding the right type of tokens.
-Parse.isLValue = fregex.oneOrMore(
+Parse.isLValue_ = fregex.oneOrMore(
 	fregex.or(
 		'this', '.', '[', ']', {type: 'identifier'}, {type: 'number'}, {type: 'hex'}, {type: 'string'}, {type: 'template'}, {type: 'whitespace'}, {type: 'ln'}
 	)
 );
 
-let terminator = fregex.lookAhead([
+let terminator_ = fregex.lookAhead([
 	fregex.or(
 		fregex.end, // no more tokens
 		fregex.not(Parse.ws, '(')
 	)
 ]);
-let property = fregex(
+let property_ = fregex(
 	fregex.or(
 		fregex(Parse.ws, fregex.or('.', '?.') , Parse.ws, {type: 'identifier'}), //.item
-		fregex(Parse.ws, fregex.zeroOrOne('?.'), '[',  Parse.ws, fregex.or(...indexType), Parse.ws, ']') // ['item']
+		fregex(Parse.ws, fregex.zeroOrOne('?.'), '[',  Parse.ws, fregex.or(...indexType_), Parse.ws, ']') // ['item']
 	),
-	terminator // TODO: Why is the terminator here?
+	terminator_ // TODO: Why is the terminator here?
 );
 
 
-/** @deprecated */
-Parse.arg = fregex([
-	{type: 'identifier'},
-	Parse.ws,
-	fregex.zeroOrOne([
-		'=', Parse.ws, fregex.or([
-			...indexType,
-			{type: 'identifier'},
-			{type: 'regex'},
-		])
-	])
-]);
-
-/** @deprecated */
-Parse.argList = fregex.zeroOrMore([
-	Parse.arg,
-	fregex.zeroOrMore([
-		Parse.ws, ',', Parse.ws, Parse.arg
-	])
-]);
 
 
 export default Parse;

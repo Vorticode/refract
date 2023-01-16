@@ -205,42 +205,43 @@ export class Compiler {
 	 */
 	static createModifiedClass(self) {
 		let result = {};
-		result.originalClass = self;
+		result.originalClass_ = self;
 
 		// This code runs after the call to super() and after all the other properties are initialized.
 
 		// Turn autoRender into a property if it's not a property already.
 		// It might be a property if we inherit from another Refract class.
+		let preInitVal = (() => {
+
+			if ('autoRender' in this)
+				this.__autoRender = this.autoRender;
+			else if (!('__autoRender' in this))
+				this.__autoRender = true;
+
+			if (Object.getOwnPropertyDescriptor(this, 'autoRender')?.configurable !== false)
+				Object.defineProperty(this, 'autoRender', {
+					get() {
+						return this.__autoRender
+					},
+					set(val) {
+						this.__autoRender = val;
+						if (val)
+							this.render();
+					}
+				});
+
+			if (this.__autoRender)
+				this.render();
+
+			if (this.init) {
+				let args = this.parentElement
+					? Refract.compiler.populateArgsFromAttribs(this, this.constructor.getInitArgs_())
+					: this.constructorArgs2_;
+				this.init(...args);
+			}
+		}).toString();
 		let preInitCode = `
-			__preInit = (() => {
-			
-				if ('autoRender' in this)
-					this.__autoRender = this.autoRender;
-				else if (!('__autoRender' in this))
-					this.__autoRender = true;
-				
-				if (Object.getOwnPropertyDescriptor(this, 'autoRender')?.configurable !== false)
-					Object.defineProperty(this, 'autoRender', {
-						get() {
-							return this.__autoRender
-						},
-						set(val) {
-							this.__autoRender = val;
-							if (val)
-								this.render();
-						}
-					});
-			
-				if (this.__autoRender)
-					this.render();
-				
-				if (this.init) {
-					let args = this.parentElement
-						? Refract.compiler.populateArgsFromAttribs(this, this.constructor.getInitArgs())
-						: this.constructorArgs2;
-					this.init(...args);
-				}
-			})();`;
+			__preInit = (${preInitVal})()`;
 
 		// New path.
 		if (self.prototype.html) {
@@ -417,14 +418,14 @@ export class Compiler {
 		NewClass.htmlTokens = compiled.htmlTokens;
 
 		// 2. Copy methods and fields from old class to new class, so that debugging within them will still work.
-		for (let name of Object.getOwnPropertyNames(compiled.originalClass.prototype))
+		for (let name of Object.getOwnPropertyNames(compiled.originalClass_.prototype))
 			if (name !== 'constructor')
-				NewClass.prototype[name] = compiled.originalClass.prototype[name];
+				NewClass.prototype[name] = compiled.originalClass_.prototype[name];
 
 		// 3. Copy static methods and fields, so that debugging within them will still work.
-		for (let staticField of Object.getOwnPropertyNames(compiled.originalClass))
+		for (let staticField of Object.getOwnPropertyNames(compiled.originalClass_))
 			if (!(staticField in Refract)) // If not inherited
-				NewClass[staticField] = compiled.originalClass[staticField];
+				NewClass[staticField] = compiled.originalClass_[staticField];
 
 
 		// Re-evaluate static functions so that any references to its own class points to the new instance and not the old one.

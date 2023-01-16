@@ -276,7 +276,7 @@ import Utils, {removeProxies, isObj} from './utils.js';
 			// This is covered by the test Watch.arrayShift2()
 			// TODO: This can be faster if we only update the affected array elements.
 			if (['splice', 'shift', 'sort', 'reverse', 'unshift'].includes(func)) { // ops that modify within the array.
-				WatchUtil.rebuildArray(array, startIndex, null, null);
+				WatchUtil.rebuildArray_(array, startIndex, null, null);
 			}
 
 			// Trigger a notification for every array element changed, instead of one for every sub-operation.
@@ -337,7 +337,7 @@ import Utils, {removeProxies, isObj} from './utils.js';
 		 * @param startIndex {int?} If set, only rebuild array elements at and after this index.
 		 * @param path {string[]=}
 		 * @param visited {WeakSet=} */
-		rebuildArray(obj, startIndex, path, visited) {
+		rebuildArray_(obj, startIndex, path, visited) {
 			path = path || [];
 			visited = visited || new WeakSet();
 			if (startIndex === undefined)
@@ -390,12 +390,12 @@ import Utils, {removeProxies, isObj} from './utils.js';
 			if (Array.isArray(obj))
 				for (let i=startIndex; i<obj.length; i++) {
 					if (Array.isArray(obj[i]) || isObj(obj[i]))
-						WatchUtil.rebuildArray(obj[i], 0, [...path, i+''], visited);
+						WatchUtil.rebuildArray_(obj[i], 0, [...path, i+''], visited);
 				}
 			else if (isObj(obj))
 				for (let i in obj)
 					if (Array.isArray(obj[i]) || isObj(obj[i]))
-						WatchUtil.rebuildArray(obj[i], 0, [...path, i+''], visited);
+						WatchUtil.rebuildArray_(obj[i], 0, [...path, i+''], visited);
 		},
 
 		/**
