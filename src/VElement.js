@@ -5,7 +5,7 @@ import lex from "./lex.js";
 import htmljs from "./lex-htmljs.js";
 htmljs.allowHashTemplates = true;
 import Html, {div} from "./Html.js";
-import Utils from "./utils.js";
+import Utils, {assert} from "./utils.js";
 import delve from "./delve.js";
 import Scope from "./Scope.js";
 
@@ -62,23 +62,73 @@ export default class VElement {
 	startIndex = 0;
 
 	/**
-	 * @param tagName {?string}
+	 * @param tokens {?Token[]}
 	 * @param parent {VElement|VExpression|Refract}
-	 * @param scope {?Scope}
-	 * @param attributes {?Object<string, string[]>} */
-	constructor(tagName=null, attributes=null, parent=null, scope=null) {
-		this.tagName = tagName || '';
-		this.attributes = attributes || {};
-
+	 * @param scopeVars {string[]}*/
+	constructor(tokens=null, parent=null, scopeVars=null) {
 
 		if (parent instanceof HTMLElement)
 			this.refl = parent
 		else if (parent) {
 			this.vParent = parent;
 			this.refl = parent.refl;
+			this.scope = {...parent.scope};
 		}
 
-		this.scope3 = scope;
+		//#IFDEV
+		if (parent)
+			assert(this.refl);
+		//#ENDIF
+
+		if (tokens) {
+			let attrName='';
+			let tagTokens = tokens.filter(token => token.type !== 'whitespace') // Tokens excluding whitespace.
+
+			for (let j=0, token; (token = tagTokens[j]); j++) {
+				if (j === 0)
+					this.tagName = token.text.slice(1);
+
+				else if (token.type === 'attribute') {
+					attrName = token.text;
+					this.attributes[attrName] = []; // Attribute w/o value, or without value yet.
+				}
+
+				// Attribute value string or expression
+				else if (attrName && tagTokens[j-1] == '=') {
+					let attrValues = [];
+
+					// Tokens within attribute value string.
+					if (token.type === 'string')
+						for (let exprToken of token.tokens.slice(1, -1)) { // slice to remove surrounding quotes.
+							if (exprToken.type === 'expr')
+								attrValues.push(new VExpression(exprToken.tokens, this, scopeVars, attrName));
+							else // string:
+								attrValues.push(exprToken.text);
+						}
+					else if (token.type === 'expr') // expr not in string.
+						attrValues.push(new VExpression(token.tokens, this, scopeVars, attrName));
+					//#IFDEV
+					else
+						throw new Error(); // Shouldn't happen.
+					//#ENDIF
+
+					this.attributes[attrName] = attrValues;
+					attrName = undefined;
+				}
+
+				// Expression that creates attribute(s)
+				else if (token.type === 'expr') {
+					let expr = new VExpression(token.tokens, this, scopeVars);
+					expr.attributes = []; // Marks it as being an attribute expression.
+					this.attributeExpressions.push(expr);
+				}
+				else if (token.text === '>' || token.text === '/>')
+					break;
+			}
+
+		}
+
+		//this.scope3 = scope;
 	}
 
 
@@ -337,7 +387,8 @@ export default class VElement {
 	 * @param vParent {null|VElement|VExpression}
 	 * @return {VElement} */
 	clone(refl, vParent=null) {
-		let result = new VElement(this.tagName);
+		let result = new VElement();
+		result.tagName = this.tagName;
 		result.refl = refl || this.refl;
 		result.vParent = vParent;
 
@@ -485,7 +536,7 @@ export default class VElement {
 	 * @param scopeVars {string[]}
 	 * @param vParent {VElement|VExpression?}
 	 * @param refl
-	 * @param limit {int|boolean=} Find no more than this many items.
+	 * @param limit {int|boolean=} Find no more than this many nodes in the result.
 	 * @param index {int=} used internally.
 	 * @return {(VElement|VExpression|string)[]}
 	 *     Array with a .index property added, to keep track of what token we're on. */
@@ -507,56 +558,11 @@ export default class VElement {
 
 			// Collect tagName and attributes from open tag.
 			else if (token.type === 'openTag') {
-				let vel = new VElement();
-				vel.vParent = vParent;
-				vel.refl = refl || vParent?.refl;
-				if (vParent)
-					vel.scope = {...vParent.scope};
-				let attrName='';
-				let tagTokens = token.tokens.filter(token => token.type !== 'whitespace') // Tokens excluding whitespace.
+				let vel = new VElement(token.tokens, vParent||refl, scopeVars);
 
-				for (let j=0, tagToken; (tagToken = tagTokens[j]); j++) {
-					if (j === 0)
-						vel.tagName = tagToken.text.slice(1);
+				result.push(vel);
 
-					else if (tagToken.type === 'attribute') {
-						attrName = tagToken.text;
-						vel.attributes[attrName] = []; // Attribute w/o value, or without value yet.
-					}
-
-					// Attribute value string or expression
-					else if (attrName && tagTokens[j-1] == '=') {
-						let attrValues = [];
-
-						// Tokens within attribute value string.
-						if (tagToken.type === 'string')
-							for (let exprToken of tagToken.tokens.slice(1, -1)) { // slice to remove surrounding quotes.
-								if (exprToken.type === 'expr')
-									attrValues.push(new VExpression(exprToken.tokens, vel, scopeVars, attrName));
-								else // string:
-									attrValues.push(exprToken.text);
-							}
-						else if (tagToken.type === 'expr') // expr not in string.
-							attrValues.push(new VExpression(tagToken.tokens, vel, scopeVars, attrName));
-						//#IFDEV
-						else
-							throw new Error(); // Shouldn't happen.
-						//#ENDIF
-
-						vel.attributes[attrName] = attrValues;
-						attrName = undefined;
-					}
-
-					// Expression that creates attribute(s)
-					else if (tagToken.type === 'expr') {
-						let expr = new VExpression(tagToken.tokens, vel, scopeVars);
-						expr.attributes = []; // Marks it as being an attribute expression.
-						vel.attributeExpressions.push(expr);
-					}
-				}
-
-				let isSelfClosing = tagTokens[tagTokens.length-1].text == '/>' || vel.tagName.toLowerCase() in selfClosingTags;
-
+				let isSelfClosing = token.tokens[token.tokens.length-1].text == '/>' || vel.tagName.toLowerCase() in selfClosingTags;
 
 				// Process children if not a self-closing tag.
 				if (!isSelfClosing) {
@@ -566,8 +572,6 @@ export default class VElement {
 					vel.vChildren = VElement.fromTokens(tokens, scopeVars, vel, refl, false, index);
 					index = vel.vChildren.index; // What is this?
 				}
-
-				result.push(vel);
 			}
 
 			// Collect close tag.

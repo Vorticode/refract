@@ -2925,21 +2925,23 @@ class VExpression {
 
 	/**
 	 * Take an array of javascript tokens and build a VExpression from them.
-	 * @param tokens {Token[]} May or may not include surrounding ${ ... } tokens.
-	 * @param scope {string[]} Variables created by parent loops.  This lets us build watchPaths only of variables
-	 *     that trace back to a this.property in the parent Refract, instead of from any variable or js identifier.
+	 * @param tokens {?Token[]} May or may not include surrounding ${ ... } tokens.
 	 * @param vParent {VElement|VExpression}
-	 * @param attrName {string?} If set, this VExpression is part of an attribute, otherwise it creates html child nodes.
+	 * @param scopeVars {?string[]} Variables created by parent loops.  This lets us build watchPaths only of variables
+	 *     that trace back to a this.property in the parent Refract, instead of from any variable or js identifier.
+	 * @param attrName {?string} If set, this VExpression is part of an attribute, otherwise it creates html child nodes.
 	 * @return {VExpression} */
-	constructor(tokens=null, vParent=null, scope=null, attrName=null) {
+	constructor(tokens=null, vParent=null, scopeVars=null, attrName=null) {
 		this.vParent = vParent;
 		if (vParent) {
 			this.refl = vParent.refl;
+			//#IFDEV
+			if (parent)
+				assert(this.refl);
+			//#ENDIF
 
 			this.scope = {...vParent.scope};
 		}
-		//this.scope3 = scope;
-
 
 		if (tokens) {
 			// remove enclosing ${ }
@@ -2954,10 +2956,10 @@ class VExpression {
 
 			// Find the watchPathTokens before we call fromTokens() on child elements.
 			// That way we don't descend too deep.
-			let watchPathTokens = Parse.varExpressions_(tokens, scope);
+			let watchPathTokens = Parse.varExpressions_(tokens, scopeVars);
 
 			// Find loopItem props if this is a loop.
-			let [loopParamNames, loopBody] = Parse.simpleMapExpression_(tokens, scope);
+			let [loopParamNames, loopBody] = Parse.simpleMapExpression_(tokens, scopeVars);
 
 			// Get the createFunction() from the class if it's already been instantiated.  Else use Refract's temporary createfunction().
 			// This lets us use other variabls defiend in the same scope as the class that extends Refract.
@@ -2968,27 +2970,27 @@ class VExpression {
 				this.loopParamNames = loopParamNames;
 
 				for (let p of loopParamNames)
-					scope.push(p);
+					scopeVars.push(p);
 
-				this.exec = this.refl.constructor.createFunction(...scope, 'return ' + watchPathTokens[0].join(''));
+				this.exec = this.refl.constructor.createFunction(...scopeVars, 'return ' + watchPathTokens[0].join(''));
 
 				// If the loop body is a single `template` string:
 				// TODO Why is this special path necessary, instead of always just using the else path?
 				let loopBodyTrimmed = loopBody.filter(token => token.type !== 'whitespace' && token.type !== 'ln');
 				if (loopBodyTrimmed.length === 1 && loopBodyTrimmed[0].type === 'template') {
 					// Remove beginning and end string delimiters, parse items.
-					this.loopItemEls = VElement.fromTokens(loopBodyTrimmed[0].tokens.slice(1, -1), scope, vParent, this.refl);
+					this.loopItemEls = VElement.fromTokens(loopBodyTrimmed[0].tokens.slice(1, -1), scopeVars, vParent, this.refl);
 				}
 
 				// The loop body is more complex javascript code:
 				else {
 					// TODO: No tests hit htis path.
-					this.loopItemEls = [new VExpression(loopBody, this, scope)];
+					this.loopItemEls = [new VExpression(loopBody, this, scopeVars)];
 				}
 			} else {
 
 				// TODO: This duplicates code executed in Parse.varExpressions_ above?
-				if (Parse.createVarExpression_(scope)(tokens) !== tokens.length) {
+				if (Parse.createVarExpression_(scopeVars)(tokens) !== tokens.length) {
 					// This will find things like this.values[this.index].name
 					if (Parse.isLValue(tokens) === tokens.length)
 						this.type = 'simple';
@@ -3015,7 +3017,7 @@ class VExpression {
 				let body = tokens.map(t => t.text).join('');
 				if (tokens[0].text != '{')
 					body = 'return (' + body.trim() + ')';
-				this.exec = this.refl.constructor.createFunction(...scope, body);
+				this.exec = this.refl.constructor.createFunction(...scopeVars, body);
 			}
 
 			// Get just the identifier names between the dots.
@@ -3615,23 +3617,73 @@ class VElement {
 	startIndex = 0;
 
 	/**
-	 * @param tagName {?string}
+	 * @param tokens {?Token[]}
 	 * @param parent {VElement|VExpression|Refract}
-	 * @param scope {?Scope}
-	 * @param attributes {?Object<string, string[]>} */
-	constructor(tagName=null, attributes=null, parent=null, scope=null) {
-		this.tagName = tagName || '';
-		this.attributes = attributes || {};
-
+	 * @param scopeVars {string[]}*/
+	constructor(tokens=null, parent=null, scopeVars=null) {
 
 		if (parent instanceof HTMLElement)
 			this.refl = parent;
 		else if (parent) {
 			this.vParent = parent;
 			this.refl = parent.refl;
+			this.scope = {...parent.scope};
 		}
 
-		this.scope3 = scope;
+		//#IFDEV
+		if (parent)
+			assert(this.refl);
+		//#ENDIF
+
+		if (tokens) {
+			let attrName='';
+			let tagTokens = tokens.filter(token => token.type !== 'whitespace'); // Tokens excluding whitespace.
+
+			for (let j=0, token; (token = tagTokens[j]); j++) {
+				if (j === 0)
+					this.tagName = token.text.slice(1);
+
+				else if (token.type === 'attribute') {
+					attrName = token.text;
+					this.attributes[attrName] = []; // Attribute w/o value, or without value yet.
+				}
+
+				// Attribute value string or expression
+				else if (attrName && tagTokens[j-1] == '=') {
+					let attrValues = [];
+
+					// Tokens within attribute value string.
+					if (token.type === 'string')
+						for (let exprToken of token.tokens.slice(1, -1)) { // slice to remove surrounding quotes.
+							if (exprToken.type === 'expr')
+								attrValues.push(new VExpression(exprToken.tokens, this, scopeVars, attrName));
+							else // string:
+								attrValues.push(exprToken.text);
+						}
+					else if (token.type === 'expr') // expr not in string.
+						attrValues.push(new VExpression(token.tokens, this, scopeVars, attrName));
+					//#IFDEV
+					else
+						throw new Error(); // Shouldn't happen.
+					//#ENDIF
+
+					this.attributes[attrName] = attrValues;
+					attrName = undefined;
+				}
+
+				// Expression that creates attribute(s)
+				else if (token.type === 'expr') {
+					let expr = new VExpression(token.tokens, this, scopeVars);
+					expr.attributes = []; // Marks it as being an attribute expression.
+					this.attributeExpressions.push(expr);
+				}
+				else if (token.text === '>' || token.text === '/>')
+					break;
+			}
+
+		}
+
+		//this.scope3 = scope;
 	}
 
 
@@ -3890,7 +3942,8 @@ class VElement {
 	 * @param vParent {null|VElement|VExpression}
 	 * @return {VElement} */
 	clone(refl, vParent=null) {
-		let result = new VElement(this.tagName);
+		let result = new VElement();
+		result.tagName = this.tagName;
 		result.refl = refl || this.refl;
 		result.vParent = vParent;
 
@@ -4038,7 +4091,7 @@ class VElement {
 	 * @param scopeVars {string[]}
 	 * @param vParent {VElement|VExpression?}
 	 * @param refl
-	 * @param limit {int|boolean=} Find no more than this many items.
+	 * @param limit {int|boolean=} Find no more than this many nodes in the result.
 	 * @param index {int=} used internally.
 	 * @return {(VElement|VExpression|string)[]}
 	 *     Array with a .index property added, to keep track of what token we're on. */
@@ -4060,56 +4113,11 @@ class VElement {
 
 			// Collect tagName and attributes from open tag.
 			else if (token.type === 'openTag') {
-				let vel = new VElement();
-				vel.vParent = vParent;
-				vel.refl = refl || vParent?.refl;
-				if (vParent)
-					vel.scope = {...vParent.scope};
-				let attrName='';
-				let tagTokens = token.tokens.filter(token => token.type !== 'whitespace'); // Tokens excluding whitespace.
+				let vel = new VElement(token.tokens, vParent||refl, scopeVars);
 
-				for (let j=0, tagToken; (tagToken = tagTokens[j]); j++) {
-					if (j === 0)
-						vel.tagName = tagToken.text.slice(1);
+				result.push(vel);
 
-					else if (tagToken.type === 'attribute') {
-						attrName = tagToken.text;
-						vel.attributes[attrName] = []; // Attribute w/o value, or without value yet.
-					}
-
-					// Attribute value string or expression
-					else if (attrName && tagTokens[j-1] == '=') {
-						let attrValues = [];
-
-						// Tokens within attribute value string.
-						if (tagToken.type === 'string')
-							for (let exprToken of tagToken.tokens.slice(1, -1)) { // slice to remove surrounding quotes.
-								if (exprToken.type === 'expr')
-									attrValues.push(new VExpression(exprToken.tokens, vel, scopeVars, attrName));
-								else // string:
-									attrValues.push(exprToken.text);
-							}
-						else if (tagToken.type === 'expr') // expr not in string.
-							attrValues.push(new VExpression(tagToken.tokens, vel, scopeVars, attrName));
-						//#IFDEV
-						else
-							throw new Error(); // Shouldn't happen.
-						//#ENDIF
-
-						vel.attributes[attrName] = attrValues;
-						attrName = undefined;
-					}
-
-					// Expression that creates attribute(s)
-					else if (tagToken.type === 'expr') {
-						let expr = new VExpression(tagToken.tokens, vel, scopeVars);
-						expr.attributes = []; // Marks it as being an attribute expression.
-						vel.attributeExpressions.push(expr);
-					}
-				}
-
-				let isSelfClosing = tagTokens[tagTokens.length-1].text == '/>' || vel.tagName.toLowerCase() in selfClosingTags;
-
+				let isSelfClosing = token.tokens[token.tokens.length-1].text == '/>' || vel.tagName.toLowerCase() in selfClosingTags;
 
 				// Process children if not a self-closing tag.
 				if (!isSelfClosing) {
@@ -4119,8 +4127,6 @@ class VElement {
 					vel.vChildren = VElement.fromTokens(tokens, scopeVars, vel, refl, false, index);
 					index = vel.vChildren.index; // What is this?
 				}
-
-				result.push(vel);
 			}
 
 			// Collect close tag.

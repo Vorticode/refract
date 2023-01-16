@@ -118,21 +118,23 @@ export default class VExpression {
 
 	/**
 	 * Take an array of javascript tokens and build a VExpression from them.
-	 * @param tokens {Token[]} May or may not include surrounding ${ ... } tokens.
-	 * @param scope {string[]} Variables created by parent loops.  This lets us build watchPaths only of variables
-	 *     that trace back to a this.property in the parent Refract, instead of from any variable or js identifier.
+	 * @param tokens {?Token[]} May or may not include surrounding ${ ... } tokens.
 	 * @param vParent {VElement|VExpression}
-	 * @param attrName {string?} If set, this VExpression is part of an attribute, otherwise it creates html child nodes.
+	 * @param scopeVars {?string[]} Variables created by parent loops.  This lets us build watchPaths only of variables
+	 *     that trace back to a this.property in the parent Refract, instead of from any variable or js identifier.
+	 * @param attrName {?string} If set, this VExpression is part of an attribute, otherwise it creates html child nodes.
 	 * @return {VExpression} */
-	constructor(tokens=null, vParent=null, scope=null, attrName=null) {
+	constructor(tokens=null, vParent=null, scopeVars=null, attrName=null) {
 		this.vParent = vParent;
 		if (vParent) {
 			this.refl = vParent.refl;
+			//#IFDEV
+			if (parent)
+				assert(this.refl);
+			//#ENDIF
 
 			this.scope = {...vParent.scope};
 		}
-		//this.scope3 = scope;
-
 
 		if (tokens) {
 			// remove enclosing ${ }
@@ -147,10 +149,10 @@ export default class VExpression {
 
 			// Find the watchPathTokens before we call fromTokens() on child elements.
 			// That way we don't descend too deep.
-			let watchPathTokens = Parse.varExpressions_(tokens, scope);
+			let watchPathTokens = Parse.varExpressions_(tokens, scopeVars);
 
 			// Find loopItem props if this is a loop.
-			let [loopParamNames, loopBody] = Parse.simpleMapExpression_(tokens, scope);
+			let [loopParamNames, loopBody] = Parse.simpleMapExpression_(tokens, scopeVars);
 
 			// Get the createFunction() from the class if it's already been instantiated.  Else use Refract's temporary createfunction().
 			// This lets us use other variabls defiend in the same scope as the class that extends Refract.
@@ -161,27 +163,27 @@ export default class VExpression {
 				this.loopParamNames = loopParamNames;
 
 				for (let p of loopParamNames)
-					scope.push(p);
+					scopeVars.push(p);
 
-				this.exec = this.refl.constructor.createFunction(...scope, 'return ' + watchPathTokens[0].join(''));
+				this.exec = this.refl.constructor.createFunction(...scopeVars, 'return ' + watchPathTokens[0].join(''));
 
 				// If the loop body is a single `template` string:
 				// TODO Why is this special path necessary, instead of always just using the else path?
 				let loopBodyTrimmed = loopBody.filter(token => token.type !== 'whitespace' && token.type !== 'ln');
 				if (loopBodyTrimmed.length === 1 && loopBodyTrimmed[0].type === 'template') {
 					// Remove beginning and end string delimiters, parse items.
-					this.loopItemEls = VElement.fromTokens(loopBodyTrimmed[0].tokens.slice(1, -1), scope, vParent, this.refl);
+					this.loopItemEls = VElement.fromTokens(loopBodyTrimmed[0].tokens.slice(1, -1), scopeVars, vParent, this.refl);
 				}
 
 				// The loop body is more complex javascript code:
 				else {
 					// TODO: No tests hit htis path.
-					this.loopItemEls = [new VExpression(loopBody, this, scope)];
+					this.loopItemEls = [new VExpression(loopBody, this, scopeVars)];
 				}
 			} else {
 
 				// TODO: This duplicates code executed in Parse.varExpressions_ above?
-				if (Parse.createVarExpression_(scope)(tokens) !== tokens.length) {
+				if (Parse.createVarExpression_(scopeVars)(tokens) !== tokens.length) {
 					// This will find things like this.values[this.index].name
 					if (Parse.isLValue(tokens) === tokens.length)
 						this.type = 'simple';
@@ -208,7 +210,7 @@ export default class VExpression {
 				let body = tokens.map(t => t.text).join('');
 				if (tokens[0].text != '{')
 					body = 'return (' + body.trim() + ')';
-				this.exec = this.refl.constructor.createFunction(...scope, body);
+				this.exec = this.refl.constructor.createFunction(...scopeVars, body);
 			}
 
 			// Get just the identifier names between the dots.
