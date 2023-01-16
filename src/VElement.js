@@ -23,7 +23,7 @@ export default class VElement {
 
 
 	/** @type {Refract} */
-	refl = null;
+	refr = null;
 
 	/** @type {HTMLElement|HTMLInputElement} */
 	el = null;
@@ -67,17 +67,17 @@ export default class VElement {
 	constructor(tokens=null, parent=null, scopeVars=null) {
 
 		if (parent instanceof HTMLElement)
-			this.refl = parent
+			this.refr = parent
 		else if (parent) {
 			this.vParent = parent;
-			this.refl = parent.refl;
+			this.refr = parent.refr;
 			this.scope = {...parent.scope};
 			this.scope3 = parent.scope3.clone();
 		}
 
 		//#IFDEV
 		if (parent)
-			assert(this.refl);
+			assert(this.refr);
 		//#ENDIF
 
 		if (tokens) {
@@ -157,7 +157,7 @@ export default class VElement {
 			// Because then the slot will be added to the slot, recursively forever.
 			// So we only allow setting content that doesn't have slot tags.
 			if (!el.querySelector('slot'))
-				this.refl.slotHtml = el.innerHTML; // At this point none of the children will be upgraded to web components?
+				this.refr.slotHtml = el.innerHTML; // At this point none of the children will be upgraded to web components?
 			el.innerHTML = '';
 		}
 		// 1B. Create Element
@@ -223,7 +223,7 @@ export default class VElement {
 					let p2 = parent.shadowRoot || parent;
 
 					// Insert into slot if it has one.  TODO: How to handle named slots here?
-					if (p2 !== this.refl && p2.tagName && p2.tagName.includes('-') && newEl.tagName !== 'SLOT')
+					if (p2 !== this.refr && p2.tagName && p2.tagName.includes('-') && newEl.tagName !== 'SLOT')
 						p2 = p2.querySelector('slot') || p2;
 					p2.insertBefore(newEl, p2.childNodes[this.startIndex]);
 				}
@@ -248,7 +248,7 @@ export default class VElement {
 		// 3. Slot content
 		let count = 0;
 		if (tagName === 'slot') {
-			let slotChildren = VElement.fromHtml(this.refl.slotHtml, Object.keys(this.scope), this, this.refl);
+			let slotChildren = VElement.fromHtml(this.refr.slotHtml, Object.keys(this.scope), this, this.refr);
 			for (let vChild of slotChildren) {
 				vChild.scope = {...this.scope}
 				vChild.scope3 = this.scope3.clone();
@@ -265,7 +265,7 @@ export default class VElement {
 
 			vChild.scope = {...this.scope} // copy
 			vChild.scope3 = this.scope3.clone();
-			vChild.refl = this.refl;
+			vChild.refr = this.refr;
 			vChild.startIndex = count;
 			count += vChild.apply_(this.el);
 		}
@@ -281,24 +281,24 @@ export default class VElement {
 					expr.scope3 = this.scope3.clone();
 					expr.watch(() => {
 						if (name === 'value')
-							setInputValue(this.refl, this.el, value, this.scope);
+							setInputValue(this.refr, this.el, value, this.scope);
 
 						else {
-							let value2 = VElement.evalVAttributeAsString(this.refl, value, this.scope);
+							let value2 = VElement.evalVAttributeAsString(this.refr, value, this.scope);
 							this.el.setAttribute(name, value2);
 						}
 					});
 				}
 
 			// TODO: This happens again for inputs in step 5 below:
-			let value2 = VElement.evalVAttributeAsString(this.refl, value, this.scope);
+			let value2 = VElement.evalVAttributeAsString(this.refr, value, this.scope);
 			this.el.setAttribute(name, value2);
 
 
 			// Id
 			if (name === 'id' || name === 'data-id') {
 				let path = this.el.getAttribute(name).split('.');
-				delve(this.refl, path, this.el);
+				delve(this.refr, path, this.el);
 			}
 
 			// Events
@@ -306,13 +306,13 @@ export default class VElement {
 
 				// Get the createFunction() from the class if it's already been instantiated.  Else use Refract's temporary createfunction().
 				// This lets us use other variabls defiend in the same scope as the class that extends Refract.
-				let createFunction = ((this.refl && this.refl.constructor) || window.RefractCurrentClass).createFunction;
+				let createFunction = ((this.refr && this.refr.constructor) || window.RefractCurrentClass).createFunction;
 
 				let code = this.el.getAttribute(name);
 				this.el.removeAttribute(name); // Prevent original attribute being executed, without `this` and `el` in scope.
 				this.el[name] = event => { // e.g. el.onclick = ...
 					let args = ['event', 'el', ...Object.keys(this.scope)];
-					let func = createFunction(...args, code).bind(this.refl); // Create in same scope as parent class.
+					let func = createFunction(...args, code).bind(this.refr); // Create in same scope as parent class.
 					func(event, this.el, ...Object.values(this.scope));
 				}
 			}
@@ -338,8 +338,8 @@ export default class VElement {
 
 			// Don't grab value from input if we can't reverse the expression.
 			if (isSimpleExpr) {
-				let createFunction = ((this.refl && this.refl.constructor) || window.RefractCurrentClass).createFunction;
-				let assignFunc = createFunction(...Object.keys(this.scope), 'val', valueExprs[0].code + '=val;').bind(this.refl);
+				let createFunction = ((this.refr && this.refr.constructor) || window.RefractCurrentClass).createFunction;
+				let assignFunc = createFunction(...Object.keys(this.scope), 'val', valueExprs[0].code + '=val;').bind(this.refr);
 
 				// Update the value when the input changes:
 				Utils.watchInput_(this.el, (val, e) => {
@@ -357,8 +357,8 @@ export default class VElement {
 		if ('data-value-expr' in this.attributes) {
 
 			let expr = this.attributes['data-value-expr'][0];
-			let createFunction = ((this.refl && this.refl.constructor) || window.RefractCurrentClass).createFunction;
-			let assignFunc = createFunction(...Object.keys(this.scope), 'val', expr + '=val;').bind(this.refl);
+			let createFunction = ((this.refr && this.refr.constructor) || window.RefractCurrentClass).createFunction;
+			let assignFunc = createFunction(...Object.keys(this.scope), 'val', expr + '=val;').bind(this.refr);
 
 			Utils.watchInput(this.el, (val, e) => {
 				Refract.currentEvent = e;
@@ -375,7 +375,7 @@ export default class VElement {
 		// https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#input_types
 		if (hasValue) // This should happen after the children are added, e.g. for select <options>
 			// TODO: Do we only need to do this for select boxes b/c we're waiting for their children?  Other input types are handled above in step 2.
-			setInputValue(this.refl, this.el, this.attributes.value, this.scope);
+			setInputValue(this.refr, this.el, this.attributes.value, this.scope);
 
 
 		if (tagName === 'svg')
@@ -386,29 +386,29 @@ export default class VElement {
 
 
 	/**
-	 * @param refl {Refract}
+	 * @param refr {Refract}
 	 * @param vParent {null|VElement|VExpression}
 	 * @return {VElement} */
-	clone(refl, vParent=null) {
+	clone(refr, vParent=null) {
 		let result = new VElement();
 		result.tagName = this.tagName;
-		result.refl = refl || this.refl;
+		result.refr = refr || this.refr;
 		result.vParent = vParent;
 
 		for (let attrName in this.attributes) {
 			result.attributes[attrName] = [];
 			for (let piece of this.attributes[attrName]) {
 				if (piece instanceof VExpression)
-					result.attributes[attrName].push(piece.clone(result.refl, this))
+					result.attributes[attrName].push(piece.clone(result.refr, this))
 				else
 					result.attributes[attrName].push(piece);
 			}
 		}
 		for (let expr of this.attributeExpressions) // Expresions that create one or more attributes.
-			result.attributeExpressions.push(expr.clone(result.refl, this));
+			result.attributeExpressions.push(expr.clone(result.refr, this));
 
 		for (let child of this.vChildren)
-			result.vChildren.push(child.clone(result.refl, result)); // string for text node.
+			result.vChildren.push(child.clone(result.refr, result)); // string for text node.
 
 		return result;
 	}
@@ -427,14 +427,14 @@ export default class VElement {
 
 		// A solitary VExpression.
 		if (val && val.length === 1 && val[0] instanceof VExpression)
-			return val[0].exec.apply(this.refl, Object.values(this.scope));
+			return val[0].exec.apply(this.refr, Object.values(this.scope));
 
 		// Attribute with no value.
 		if (Array.isArray(val) && !val.length)
 			return true;
 
 		// Else evaluate as JSON, or as a string.
-		let result = VElement.evalVAttributeAsString(this.refl, (val || []), this.scope);
+		let result = VElement.evalVAttributeAsString(this.refr, (val || []), this.scope);
 		try {
 			result = JSON.parse(result);
 		} catch (e) {
@@ -538,12 +538,12 @@ export default class VElement {
 	 * @param tokens {Token[]}
 	 * @param scopeVars {string[]}
 	 * @param vParent {VElement|VExpression?}
-	 * @param refl
+	 * @param refr {Refract}
 	 * @param limit {int|boolean=} Find no more than this many nodes in the result.
 	 * @param index {int=} used internally.
 	 * @return {(VElement|VExpression|string)[]}
 	 *     Array with a .index property added, to keep track of what token we're on. */
-	static fromTokens(tokens, scopeVars=[], vParent=null, refl, limit=false, index=0) {
+	static fromTokens(tokens, scopeVars=[], vParent=null, refr, limit=false, index=0) {
 		if (!tokens.length)
 			return [];
 
@@ -553,7 +553,7 @@ export default class VElement {
 
 			// Text node
 			if (token.type === 'text')
-				result.push(new VText(token.text, vParent?.refl));
+				result.push(new VText(token.text, vParent?.refr));
 
 			// Expression child
 			else if (token.type === 'expr')
@@ -561,7 +561,7 @@ export default class VElement {
 
 			// Collect tagName and attributes from open tag.
 			else if (token.type === 'openTag') {
-				let vel = new VElement(token.tokens, vParent||refl, scopeVars);
+				let vel = new VElement(token.tokens, vParent||refr, scopeVars);
 
 				result.push(vel);
 
@@ -572,7 +572,7 @@ export default class VElement {
 					index++
 
 					// New path:
-					vel.vChildren = VElement.fromTokens(tokens, scopeVars, vel, refl, false, index);
+					vel.vChildren = VElement.fromTokens(tokens, scopeVars, vel, refr, false, index);
 					index = vel.vChildren.index; // What is this?
 				}
 			}
