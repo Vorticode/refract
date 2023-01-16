@@ -127,7 +127,7 @@ export default class Refract extends HTMLElement {
 						throw new Error(`Class is missing an html function with a template value.`);
 				}
 
-				this.constructor.virtualElement = VElement.fromTokens(this.constructor.htmlTokens, [], null, this, 1)[0];
+				this.constructor.virtualElement = VElement.fromTokens_(this.constructor.htmlTokens, [], null, this, 1)[0];
 				this.constructor.htmlTokens = null; // We don't need them any more.
 			}
 
@@ -200,7 +200,7 @@ export default class Refract extends HTMLElement {
 	static getInitArgs() {
 		if (!this.initArgs && this.prototype.init) {
 			let pf = new ParsedFunction(this.prototype.init, false);
-			this.initArgs = [...pf.getArgNames()];
+			this.initArgs = [...pf.getArgNames_()];
 		}
 		return this.initArgs || [];
 	}

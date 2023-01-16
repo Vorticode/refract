@@ -114,8 +114,8 @@ Testimony.test('ParseFunction.construct.arrowParam', () => {
 	let pf = new ParsedFunction(code);
 
 	assert.eq(pf.name, undefined);
-	assert.eq(toText(pf.argTokens), ['a']);
-	assert.eq(toText(pf.bodyTokens), ['a', '+', '1', ';']);
+	assert.eq(toText(pf.argTokens_), ['a']);
+	assert.eq(toText(pf.bodyTokens_), ['a', '+', '1', ';']);
 });
 
 Testimony.test('ParseFunction.construct.arrowParams', () => {
@@ -124,8 +124,8 @@ Testimony.test('ParseFunction.construct.arrowParams', () => {
 	let pf = new ParsedFunction(code);
 
 	assert.eq(pf.name, undefined);
-	assert.eq(toText(pf.argTokens).join(''), 'a, b=()=>{}');
-	assert.eq(toText(pf.bodyTokens), ['a', '+', '1', ';']);
+	assert.eq(toText(pf.argTokens_).join(''), 'a, b=()=>{}');
+	assert.eq(toText(pf.bodyTokens_), ['a', '+', '1', ';']);
 });
 
 
@@ -136,8 +136,8 @@ Testimony.test('ParseFunction.construct.arrowParamsEmpty', () => {
 	let pf = new ParsedFunction(code);
 
 	assert.eq(pf.name, undefined);
-	assert.eq(pf.argTokens, []);
-	assert.eq(toText(pf.bodyTokens), ['2', '+', '1']);
+	assert.eq(pf.argTokens_, []);
+	assert.eq(toText(pf.bodyTokens_), ['2', '+', '1']);
 });
 
 Testimony.test('ParseFunction.construct.arrowParamBrace', () => {
@@ -146,8 +146,8 @@ Testimony.test('ParseFunction.construct.arrowParamBrace', () => {
 	let pf = new ParsedFunction(code);
 
 	assert.eq(pf.name, undefined);
-	assert.eq(toText(pf.argTokens), ['a']);
-	assert.eq(toText(pf.bodyTokens), ['{', 'return', ' ', 'a', '+', '1', '}']);
+	assert.eq(toText(pf.argTokens_), ['a']);
+	assert.eq(toText(pf.bodyTokens_), ['{', 'return', ' ', 'a', '+', '1', '}']);
 
 });
 
@@ -156,8 +156,8 @@ Testimony.test('ParseFunction.construct.arrowParamsBrace', () => {
 	let pf = new ParsedFunction(code);
 
 	assert.eq(pf.name, undefined);
-	assert.eq(toText(pf.argTokens).join(''), 'a, b=()=>{}, c');
-	assert.eq(toText(pf.bodyTokens), ['{', 'return', ' ', 'a', '+', '1', ';', '}']);
+	assert.eq(toText(pf.argTokens_).join(''), 'a, b=()=>{}, c');
+	assert.eq(toText(pf.bodyTokens_), ['{', 'return', ' ', 'a', '+', '1', ';', '}']);
 });
 
 Testimony.test('ParseFunction.construct.arrowParamsEmptyBrace', () => {
@@ -165,8 +165,8 @@ Testimony.test('ParseFunction.construct.arrowParamsEmptyBrace', () => {
 	let pf = new ParsedFunction(code);
 
 	assert.eq(pf.name, undefined);
-	assert.eq(pf.argTokens, []);
-	assert.eq(toText(pf.bodyTokens), ['{', 'return', ' ', '2', '+', '1', ';', '}']);
+	assert.eq(pf.argTokens_, []);
+	assert.eq(toText(pf.bodyTokens_), ['{', 'return', ' ', '2', '+', '1', ';', '}']);
 });
 
 
@@ -176,8 +176,8 @@ Testimony.test('ParseFunction.construct.function', () => {
 	let pf = new ParsedFunction(code);
 
 	assert.eq(pf.name, undefined);
-	assert.eq(toText(pf.argTokens).join(''), 'a, b=()=>{}');
-	assert.eq(toText(pf.bodyTokens), ['{', 'return', ' ', 'a', '+', '1', ';', '}']);
+	assert.eq(toText(pf.argTokens_).join(''), 'a, b=()=>{}');
+	assert.eq(toText(pf.bodyTokens_), ['{', 'return', ' ', 'a', '+', '1', ';', '}']);
 });
 
 
@@ -186,8 +186,8 @@ Testimony.test('ParseFunction.construct.functionName', () => {
 	let pf = new ParsedFunction(code);
 
 	assert.eq(pf.name, 'test');
-	assert.eq(toText(pf.argTokens).join(''), 'a, b=()=>{}');
-	assert.eq(toText(pf.bodyTokens), ['{', 'return', ' ', 'a', '+', '1', ';', '}']);
+	assert.eq(toText(pf.argTokens_).join(''), 'a, b=()=>{}');
+	assert.eq(toText(pf.bodyTokens_), ['{', 'return', ' ', 'a', '+', '1', ';', '}']);
 });
 
 Testimony.test('ParseFunction.construct.functionNamedArgs', () => {
@@ -195,8 +195,8 @@ Testimony.test('ParseFunction.construct.functionNamedArgs', () => {
 	let pf = new ParsedFunction(code);
 
 	assert.eq(pf.name, 'test');
-	assert.eq(toText(pf.argTokens).join(''), '{a, b=()=>{}}, c');
-	assert.eq(toText(pf.bodyTokens), ['{', 'return', ' ', 'a', '+', '1', ';', '}']);
+	assert.eq(toText(pf.argTokens_).join(''), '{a, b=()=>{}}, c');
+	assert.eq(toText(pf.bodyTokens_), ['{', 'return', ' ', 'a', '+', '1', ';', '}']);
 });
 
 Testimony.test('ParseFunction.construct.functionParamsEmpty', () => {
@@ -204,8 +204,8 @@ Testimony.test('ParseFunction.construct.functionParamsEmpty', () => {
 	let pf = new ParsedFunction(code);
 
 	assert.eq(pf.name, 'test');
-	assert.eq(pf.argTokens, []);
-	assert.eq(toText(pf.bodyTokens), ['{', 'return', ' ', '2', '+', '1', ';', '}']);
+	assert.eq(pf.argTokens_, []);
+	assert.eq(toText(pf.bodyTokens_), ['{', 'return', ' ', '2', '+', '1', ';', '}']);
 });
 
 
@@ -214,15 +214,15 @@ Testimony.test('ParseFunction.construct.method', () => {
 	let pf = new ParsedFunction(f);
 
 	assert.eq(pf.name, 'test');
-	assert.eq(toText(pf.argTokens).join(''), 'a, b=()=>{}');
-	assert.eq(toText(pf.bodyTokens), ['{', 'return', ' ', 'a', '+', '1', ';', '}']);
+	assert.eq(toText(pf.argTokens_).join(''), 'a, b=()=>{}');
+	assert.eq(toText(pf.bodyTokens_), ['{', 'return', ' ', 'a', '+', '1', ';', '}']);
 });
 
 
 
 Testimony.test('ParseFunction.getArgNames.basic', () => {
 	let f = function(a, b=window) { return a+1 };
-	let args = [...new ParsedFunction(f).getArgNames()];
+	let args = [...new ParsedFunction(f).getArgNames_()];
 	assert.eq(args, ['a', 'b']);
 });
 
@@ -231,7 +231,7 @@ Testimony.test('ParseFunction.getArgNames.basic', () => {
 
 Testimony.test('ParseFunction.getArgNames.named', () => {
 	let f = function({a, b}={}, c) { return a+1 };
-	let args = [...new ParsedFunction(f).getArgNames()];
+	let args = [...new ParsedFunction(f).getArgNames_()];
 	assert.eq(args, [{a:undefined, b:undefined}, 'c']);
 });
 
@@ -239,7 +239,7 @@ Testimony.test('ParseFunction.getArgNames.named', () => {
 Testimony.test('ParseFunction.getArgNames.named2', () => {
 	let f = function({a, b: {c:d}}, e={f:2}, g=function() { return {window, document} }, h) { return a+1 };
 
-	let args = [...new ParsedFunction(f).getArgNames()];
+	let args = [...new ParsedFunction(f).getArgNames_()];
 
 	assert.eq(args, [{a: undefined, b: {c: undefined}}, 'e', 'g', 'h']);
 });

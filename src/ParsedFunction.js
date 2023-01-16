@@ -14,17 +14,17 @@ export class ParsedFunction {
 	/**
 	 * @type {int} index of first token that's an identifier among the function arguments.
 	 * If no arguments will point to the index of ')' */
-	argsStartIndex;
+	argsStartIndex_;
 
 	/** @type {Token[]} Does not include open and close parentheses. */
-	argTokens;
+	argTokens_;
 
 	/**
 	 * @type {int} Opening brace or first real token after the => in an arrow function. */
-	bodyStartIndex;
+	bodyStartIndex_;
 
 	/** @type {Token[]} Includes start and end brace if present. */
-	bodyTokens;
+	bodyTokens_;
 
 	constructor(tokens, parseBody = true, onError = null) {
 		if (typeof tokens === 'function')
@@ -63,7 +63,7 @@ export class ParsedFunction {
 			if (groupEndIndex === null)
 				return -1;
 
-			this.argTokens = tokens.slice(start + 1, groupEndIndex - 1);
+			this.argTokens_ = tokens.slice(start + 1, groupEndIndex - 1);
 			return groupEndIndex - 1;
 		}
 
@@ -81,7 +81,7 @@ export class ParsedFunction {
 			let argStartIndex = tokens.slice(index + 1).findIndex(token => token.text === '(');
 			if (argStartIndex === -1)
 				return onError('Cannot find opening ( for function arguments.');
-			this.argsStartIndex = index + 1 + argStartIndex + 1;
+			this.argsStartIndex_ = index + 1 + argStartIndex + 1;
 		}
 
 		// Method
@@ -90,22 +90,22 @@ export class ParsedFunction {
 			if (nextOpIndex !== -1 && tokens[nextOpIndex]?.text === '(') {
 				this.type = 'method';
 				this.name = tokens[0].text;
-				this.argsStartIndex = nextOpIndex + 1;
+				this.argsStartIndex_ = nextOpIndex + 1;
 			}
 		}
 
 		// Find args and body start
 		if (['function', 'method'].includes(this.type)) {
-			let argEndIndex = parseArgTokens(tokens, this.argsStartIndex - 1);
+			let argEndIndex = parseArgTokens(tokens, this.argsStartIndex_ - 1);
 			if (argEndIndex === -1)
 				return onError('Cannot find closing ) and end of arguments list.');
 
 			if (parseBody) {
 				let bodyStartIndex = tokens.slice(argEndIndex).findIndex(token => token.text === '{')
-				if (this.bodyStartIndex === -1)
+				if (this.bodyStartIndex_ === -1)
 					return onError('Cannot find start of function body.');
 
-				this.bodyStartIndex = argEndIndex + bodyStartIndex;
+				this.bodyStartIndex_ = argEndIndex + bodyStartIndex;
 			}
 		}
 
@@ -116,7 +116,7 @@ export class ParsedFunction {
 			// Arrow function with multiple params
 			let type, argEndIndex;
 			if (tokens[0].text === '(') {
-				this.argsStartIndex = 1;
+				this.argsStartIndex_ = 1;
 				argEndIndex = parseArgTokens(tokens, 0);
 				if (argEndIndex === -1)
 					return onError('Cannot find ) and end of arguments list.');
@@ -127,7 +127,7 @@ export class ParsedFunction {
 			else {
 				argEndIndex = 1;
 				type = 'Param';
-				this.argTokens = [tokens[0]];
+				this.argTokens_ = [tokens[0]];
 			}
 
 			if (parseBody) {
@@ -141,8 +141,8 @@ export class ParsedFunction {
 				let bodyStartIndex = tokens.slice(argEndIndex + arrowIndex + 1).findIndex(token => !['whitespace', 'ln', 'comment'].includes(token.type))
 				if (bodyStartIndex === -1)
 					return onError('Cannot find function body.');
-				this.bodyStartIndex = argEndIndex + arrowIndex + 1 + bodyStartIndex;
-				if (tokens[this.bodyStartIndex]?.text === '{')
+				this.bodyStartIndex_ = argEndIndex + arrowIndex + 1 + bodyStartIndex;
+				if (tokens[this.bodyStartIndex_]?.text === '{')
 					this.type = `arrow${type}Brace`;
 				else
 					this.type = `arrow${type}`;
@@ -162,7 +162,7 @@ export class ParsedFunction {
 				const close = ['}', ')', ']'];
 				const terminators = [';', ',', ...close];
 				let hanging = false;
-				for (let i=this.bodyStartIndex, token; token=tokens[i]; i++) {
+				for (let i=this.bodyStartIndex_, token; token=tokens[i]; i++) {
 					if (['whitespace', 'comment'].includes(token.type))
 						continue;
 
@@ -191,7 +191,7 @@ export class ParsedFunction {
 				}
 			}
 			else
-				bodyEnd = Parse.findGroupEnd_(tokens, this.bodyStartIndex);
+				bodyEnd = Parse.findGroupEnd_(tokens, this.bodyStartIndex_);
 
 
 			if (bodyEnd === null)
@@ -200,7 +200,7 @@ export class ParsedFunction {
 			if (isBracelessArrow && tokens[bodyEnd]?.text === ';')
 				bodyEnd++;
 
-			this.bodyTokens = tokens.slice(this.bodyStartIndex, bodyEnd);
+			this.bodyTokens_ = tokens.slice(this.bodyStartIndex_, bodyEnd);
 		}
 	}
 
@@ -220,8 +220,8 @@ export class ParsedFunction {
 	 * the next non-nested comma when it encounters an '=' ?
 	 *
 	 * @return {Generator<object|string>} */
-	*getArgNames() {
-		let tokens = this.argTokens;
+	*getArgNames_() {
+		let tokens = this.argTokens_;
 
 		if (this.type === 'arrowParam')
 			yield tokens[0].text;

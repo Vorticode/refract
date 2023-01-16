@@ -19,7 +19,7 @@ export default class VElement {
 	attributes = {};
 
 	/** @type {VExpression[]} Expressions that create whole attribute name/value pairs. */
-	attributeExpressions = [];
+	attributeExpressions_ = [];
 
 
 	/** @type {Refract} */
@@ -58,7 +58,7 @@ export default class VElement {
 	scope3 = new Scope();
 
 	/** @type {int} DOM index of the first DOM child created by this VExpression within parent. */
-	startIndex = 0;
+	startIndex_ = 0;
 
 	/**
 	 * @param tokens {?Token[]}
@@ -120,7 +120,7 @@ export default class VElement {
 				else if (token.type === 'expr') {
 					let expr = new VExpression(token.tokens, this, scopeVars);
 					expr.attributes = []; // Marks it as being an attribute expression.
-					this.attributeExpressions.push(expr);
+					this.attributeExpressions_.push(expr);
 				}
 				else if (token.text === '>' || token.text === '/>')
 					break;
@@ -225,7 +225,7 @@ export default class VElement {
 					// Insert into slot if it has one.  TODO: How to handle named slots here?
 					if (p2 !== this.refr && p2.tagName && p2.tagName.includes('-') && newEl.tagName !== 'SLOT')
 						p2 = p2.querySelector('slot') || p2;
-					p2.insertBefore(newEl, p2.childNodes[this.startIndex]);
+					p2.insertBefore(newEl, p2.childNodes[this.startIndex_]);
 				}
 			}
 
@@ -248,11 +248,11 @@ export default class VElement {
 		// 3. Slot content
 		let count = 0;
 		if (tagName === 'slot') {
-			let slotChildren = VElement.fromHtml(this.refr.slotHtml, Object.keys(this.scope), this, this.refr);
+			let slotChildren = VElement.fromHtml_(this.refr.slotHtml, Object.keys(this.scope), this, this.refr);
 			for (let vChild of slotChildren) {
 				vChild.scope = {...this.scope}
 				vChild.scope3 = this.scope3.clone();
-				vChild.startIndex = count;
+				vChild.startIndex_ = count;
 				count += vChild.apply_(this.el);
 			}
 		}
@@ -266,7 +266,7 @@ export default class VElement {
 			vChild.scope = {...this.scope} // copy
 			vChild.scope3 = this.scope3.clone();
 			vChild.refr = this.refr;
-			vChild.startIndex = count;
+			vChild.startIndex_ = count;
 			count += vChild.apply_(this.el);
 		}
 
@@ -279,19 +279,19 @@ export default class VElement {
 					expr.parent = this.el;
 					expr.scope = this.scope; // Share scope with attributes.
 					expr.scope3 = this.scope3.clone();
-					expr.watch(() => {
+					expr.watch_(() => {
 						if (name === 'value')
-							setInputValue(this.refr, this.el, value, this.scope);
+							setInputValue_(this.refr, this.el, value, this.scope);
 
 						else {
-							let value2 = VElement.evalVAttributeAsString(this.refr, value, this.scope);
+							let value2 = VElement.evalVAttributeAsString_(this.refr, value, this.scope);
 							this.el.setAttribute(name, value2);
 						}
 					});
 				}
 
 			// TODO: This happens again for inputs in step 5 below:
-			let value2 = VElement.evalVAttributeAsString(this.refr, value, this.scope);
+			let value2 = VElement.evalVAttributeAsString_(this.refr, value, this.scope);
 			this.el.setAttribute(name, value2);
 
 
@@ -319,11 +319,11 @@ export default class VElement {
 		}
 
 		// Attribute expressions
-		for (let expr of this.attributeExpressions) {
+		for (let expr of this.attributeExpressions_) {
 			expr.scope = this.scope;
 			expr.scope3 = this.scope3.clone();
 			expr.apply_(this.el)
-			expr.watch(() => {
+			expr.watch_(() => {
 				expr.apply_(this.el);
 			});
 		}
@@ -375,7 +375,7 @@ export default class VElement {
 		// https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#input_types
 		if (hasValue) // This should happen after the children are added, e.g. for select <options>
 			// TODO: Do we only need to do this for select boxes b/c we're waiting for their children?  Other input types are handled above in step 2.
-			setInputValue(this.refr, this.el, this.attributes.value, this.scope);
+			setInputValue_(this.refr, this.el, this.attributes.value, this.scope);
 
 
 		if (tagName === 'svg')
@@ -404,8 +404,8 @@ export default class VElement {
 					result.attributes[attrName].push(piece);
 			}
 		}
-		for (let expr of this.attributeExpressions) // Expresions that create one or more attributes.
-			result.attributeExpressions.push(expr.clone(result.refr, this));
+		for (let expr of this.attributeExpressions_) // Expresions that create one or more attributes.
+			result.attributeExpressions_.push(expr.clone(result.refr, this));
 
 		for (let child of this.vChildren)
 			result.vChildren.push(child.clone(result.refr, result)); // string for text node.
@@ -434,7 +434,7 @@ export default class VElement {
 			return true;
 
 		// Else evaluate as JSON, or as a string.
-		let result = VElement.evalVAttributeAsString(this.refr, (val || []), this.scope);
+		let result = VElement.evalVAttributeAsString_(this.refr, (val || []), this.scope);
 		try {
 			result = JSON.parse(result);
 		} catch (e) {
@@ -483,7 +483,7 @@ export default class VElement {
 	 * @param attrParts {(VExpression|string)[]}
 	 * @param scope {object}
 	 * @return {*|string} */
-	static evalVAttribute(refr, attrParts, scope={}) {
+	static evalVAttribute_(refr, attrParts, scope={}) {
 		let result = attrParts.map(expr =>
 			expr instanceof VExpression ? expr.exec.apply(refr, Object.values(scope)) : expr
 		);
@@ -500,7 +500,7 @@ export default class VElement {
 	 * @param attrParts {(VExpression|string)[]}
 	 * @param scope {object}
 	 * @return {string} */
-	static evalVAttributeAsString(refr, attrParts, scope={}) {
+	static evalVAttributeAsString_(refr, attrParts, scope={}) {
 		let result = [];
 		for (let attrPart of attrParts) {
 			if (attrPart instanceof VExpression) {
@@ -528,9 +528,9 @@ export default class VElement {
 	 * @param vParent {VElement|VExpression}
 	 * @param Class
 	 * @return {(VElement|VExpression|string)[]} */
-	static fromHtml(html, scopeVars=[], vParent=null, Class) {
+	static fromHtml_(html, scopeVars=[], vParent=null, Class) {
 		let tokens = lex(htmljs, [html].flat().join(''), 'template');
-		return VElement.fromTokens(tokens, scopeVars, vParent, Class);
+		return VElement.fromTokens_(tokens, scopeVars, vParent, Class);
 	}
 
 	/**
@@ -543,7 +543,7 @@ export default class VElement {
 	 * @param index {int=} used internally.
 	 * @return {(VElement|VExpression|string)[]}
 	 *     Array with a .index property added, to keep track of what token we're on. */
-	static fromTokens(tokens, scopeVars=[], vParent=null, refr, limit=false, index=0) {
+	static fromTokens_(tokens, scopeVars=[], vParent=null, refr, limit=false, index=0) {
 		if (!tokens.length)
 			return [];
 
@@ -565,14 +565,14 @@ export default class VElement {
 
 				result.push(vel);
 
-				let isSelfClosing = token.tokens[token.tokens.length-1].text == '/>' || vel.tagName.toLowerCase() in selfClosingTags;
+				let isSelfClosing = token.tokens[token.tokens.length-1].text == '/>' || vel.tagName.toLowerCase() in selfClosingTags_;
 
 				// Process children if not a self-closing tag.
 				if (!isSelfClosing) {
 					index++
 
 					// New path:
-					vel.vChildren = VElement.fromTokens(tokens, scopeVars, vel, refr, false, index);
+					vel.vChildren = VElement.fromTokens_(tokens, scopeVars, vel, refr, false, index);
 					index = vel.vChildren.index; // What is this?
 				}
 			}
@@ -616,7 +616,7 @@ export default class VElement {
 }
 
 // TODO: What svg elements are self-closing?
-var selfClosingTags = {'area':1, 'base':1, 'br':1, 'col':1, 'embed':1, 'hr':1, 'img':1, 'input':1, 'link':1, 'meta':1, 'param':1, 'source':1,
+var selfClosingTags_ = {'area':1, 'base':1, 'br':1, 'col':1, 'embed':1, 'hr':1, 'img':1, 'input':1, 'link':1, 'meta':1, 'param':1, 'source':1,
 	'track':1, 'wbr':1, 'command':1, 'keygen':1, 'menuitem':1}
 
 
@@ -628,7 +628,7 @@ var inSvg = false;
 
 
 // TODO: Pair this with Utils.watchInput() ?
-function setInputValue(ref, el, value, scope) {
+function setInputValue_(ref, el, value, scope) {
 
 	// Don't update input elements if they triggered the event.
 	if (Refract.currentEvent && el === Refract.currentEvent.target)
@@ -640,7 +640,7 @@ function setInputValue(ref, el, value, scope) {
 
 	if (isText || el.tagName === 'INPUT') {
 
-		let val = VElement.evalVAttributeAsString(ref, value, scope);
+		let val = VElement.evalVAttributeAsString_(ref, value, scope);
 		if (isText) {
 			//if (el.innerHTML !== val) // Is this needed? Replacing a value can reset the cursor position.
 				el.innerHTML = val;
@@ -651,7 +651,7 @@ function setInputValue(ref, el, value, scope) {
 			el.value = val;
 	}
 	else {
-		let values = VElement.evalVAttribute(ref, value, scope);
+		let values = VElement.evalVAttribute_(ref, value, scope);
 		if (el.tagName === 'SELECT')
 			for (let opt of el.children)
 				opt.selected = Array.isArray(values) ? values.includes(opt.value) : values === opt.value;

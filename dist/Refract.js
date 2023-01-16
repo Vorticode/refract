@@ -2026,17 +2026,17 @@ class ParsedFunction {
 	/**
 	 * @type {int} index of first token that's an identifier among the function arguments.
 	 * If no arguments will point to the index of ')' */
-	argsStartIndex;
+	argsStartIndex_;
 
 	/** @type {Token[]} Does not include open and close parentheses. */
-	argTokens;
+	argTokens_;
 
 	/**
 	 * @type {int} Opening brace or first real token after the => in an arrow function. */
-	bodyStartIndex;
+	bodyStartIndex_;
 
 	/** @type {Token[]} Includes start and end brace if present. */
-	bodyTokens;
+	bodyTokens_;
 
 	constructor(tokens, parseBody = true, onError = null) {
 		if (typeof tokens === 'function')
@@ -2075,7 +2075,7 @@ class ParsedFunction {
 			if (groupEndIndex === null)
 				return -1;
 
-			this.argTokens = tokens.slice(start + 1, groupEndIndex - 1);
+			this.argTokens_ = tokens.slice(start + 1, groupEndIndex - 1);
 			return groupEndIndex - 1;
 		};
 
@@ -2093,7 +2093,7 @@ class ParsedFunction {
 			let argStartIndex = tokens.slice(index + 1).findIndex(token => token.text === '(');
 			if (argStartIndex === -1)
 				return onError('Cannot find opening ( for function arguments.');
-			this.argsStartIndex = index + 1 + argStartIndex + 1;
+			this.argsStartIndex_ = index + 1 + argStartIndex + 1;
 		}
 
 		// Method
@@ -2102,22 +2102,22 @@ class ParsedFunction {
 			if (nextOpIndex !== -1 && tokens[nextOpIndex]?.text === '(') {
 				this.type = 'method';
 				this.name = tokens[0].text;
-				this.argsStartIndex = nextOpIndex + 1;
+				this.argsStartIndex_ = nextOpIndex + 1;
 			}
 		}
 
 		// Find args and body start
 		if (['function', 'method'].includes(this.type)) {
-			let argEndIndex = parseArgTokens(tokens, this.argsStartIndex - 1);
+			let argEndIndex = parseArgTokens(tokens, this.argsStartIndex_ - 1);
 			if (argEndIndex === -1)
 				return onError('Cannot find closing ) and end of arguments list.');
 
 			if (parseBody) {
 				let bodyStartIndex = tokens.slice(argEndIndex).findIndex(token => token.text === '{');
-				if (this.bodyStartIndex === -1)
+				if (this.bodyStartIndex_ === -1)
 					return onError('Cannot find start of function body.');
 
-				this.bodyStartIndex = argEndIndex + bodyStartIndex;
+				this.bodyStartIndex_ = argEndIndex + bodyStartIndex;
 			}
 		}
 
@@ -2128,7 +2128,7 @@ class ParsedFunction {
 			// Arrow function with multiple params
 			let type, argEndIndex;
 			if (tokens[0].text === '(') {
-				this.argsStartIndex = 1;
+				this.argsStartIndex_ = 1;
 				argEndIndex = parseArgTokens(tokens, 0);
 				if (argEndIndex === -1)
 					return onError('Cannot find ) and end of arguments list.');
@@ -2139,7 +2139,7 @@ class ParsedFunction {
 			else {
 				argEndIndex = 1;
 				type = 'Param';
-				this.argTokens = [tokens[0]];
+				this.argTokens_ = [tokens[0]];
 			}
 
 			if (parseBody) {
@@ -2153,8 +2153,8 @@ class ParsedFunction {
 				let bodyStartIndex = tokens.slice(argEndIndex + arrowIndex + 1).findIndex(token => !['whitespace', 'ln', 'comment'].includes(token.type));
 				if (bodyStartIndex === -1)
 					return onError('Cannot find function body.');
-				this.bodyStartIndex = argEndIndex + arrowIndex + 1 + bodyStartIndex;
-				if (tokens[this.bodyStartIndex]?.text === '{')
+				this.bodyStartIndex_ = argEndIndex + arrowIndex + 1 + bodyStartIndex;
+				if (tokens[this.bodyStartIndex_]?.text === '{')
 					this.type = `arrow${type}Brace`;
 				else
 					this.type = `arrow${type}`;
@@ -2174,7 +2174,7 @@ class ParsedFunction {
 				const close = ['}', ')', ']'];
 				const terminators = [';', ',', ...close];
 				let hanging = false;
-				for (let i=this.bodyStartIndex, token; token=tokens[i]; i++) {
+				for (let i=this.bodyStartIndex_, token; token=tokens[i]; i++) {
 					if (['whitespace', 'comment'].includes(token.type))
 						continue;
 
@@ -2203,7 +2203,7 @@ class ParsedFunction {
 				}
 			}
 			else
-				bodyEnd = Parse.findGroupEnd_(tokens, this.bodyStartIndex);
+				bodyEnd = Parse.findGroupEnd_(tokens, this.bodyStartIndex_);
 
 
 			if (bodyEnd === null)
@@ -2212,7 +2212,7 @@ class ParsedFunction {
 			if (isBracelessArrow && tokens[bodyEnd]?.text === ';')
 				bodyEnd++;
 
-			this.bodyTokens = tokens.slice(this.bodyStartIndex, bodyEnd);
+			this.bodyTokens_ = tokens.slice(this.bodyStartIndex_, bodyEnd);
 		}
 	}
 
@@ -2232,8 +2232,8 @@ class ParsedFunction {
 	 * the next non-nested comma when it encounters an '=' ?
 	 *
 	 * @return {Generator<object|string>} */
-	*getArgNames() {
-		let tokens = this.argTokens;
+	*getArgNames_() {
+		let tokens = this.argTokens_;
 
 		if (this.type === 'arrowParam')
 			yield tokens[0].text;
@@ -2410,7 +2410,7 @@ var Parse = {
 			// Skip function bodies.
 			if (i===fstart) {
 				let pf = new ParsedFunction(result.slice(fstart));
-				i = fstart + pf.bodyStartIndex +pf.bodyTokens.length + 1;
+				i = fstart + pf.bodyStartIndex_ +pf.bodyTokens_.length + 1;
 				fstart = this.findFunctionStart_(result, i);
 			}
 
@@ -2552,11 +2552,11 @@ var Parse = {
 
 		// Fail if there's more code after the end of the map expression
 		let mapEnd = fregex([Parse.ws, ')', Parse.ws, fregex.zeroOrOne(';'), Parse.ws, fregex.end]);
-		let funcEndIndex = mapExpr.length + func.bodyStartIndex + func.bodyTokens.length;
+		let funcEndIndex = mapExpr.length + func.bodyStartIndex_ + func.bodyTokens_.length;
 		if (!(mapEnd(tokens.slice(funcEndIndex))))
 			return [null, null];
 
-		return [[...func.getArgNames()], func.bodyTokens];
+		return [[...func.getArgNames_()], func.bodyTokens_];
 	},
 
 	/**
@@ -2713,7 +2713,7 @@ class VText {
 	/** @type {Refract} */
 	refr = null;
 
-	startIndex = 0;
+	startIndex_ = 0;
 
 	constructor(text='', refr=null) {
 		this.refr = refr;
@@ -2755,7 +2755,7 @@ class VText {
 			} else {
 				this.el = parent.ownerDocument.createTextNode(text);
 				parent = parent.shadowRoot || parent;
-				parent.insertBefore(this.el, parent.childNodes[this.startIndex]);
+				parent.insertBefore(this.el, parent.childNodes[this.startIndex_]);
 			}
 
 			if (Refract.elsCreated)
@@ -2922,7 +2922,7 @@ class VExpression {
 	scope3 = new Scope();
 
 	/** @type {int} DOM index of the first DOM child created by this VExpression within parent. */
-	startIndex = 0;
+	startIndex_ = 0;
 
 	/** @type {int} the number of DOM children created by this VExpression within parent. */
 	childCount = 0;
@@ -3000,7 +3000,7 @@ class VExpression {
 				let loopBodyTrimmed = loopBody.filter(token => token.type !== 'whitespace' && token.type !== 'ln');
 				if (loopBodyTrimmed.length === 1 && loopBodyTrimmed[0].type === 'template') {
 					// Remove beginning and end string delimiters, parse items.
-					this.loopItemEls = VElement.fromTokens(loopBodyTrimmed[0].tokens.slice(1, -1), scopeVars, vParent, this.refr);
+					this.loopItemEls = VElement.fromTokens_(loopBodyTrimmed[0].tokens.slice(1, -1), scopeVars, vParent, this.refr);
 				}
 
 				// The loop body is more complex javascript code:
@@ -3082,7 +3082,7 @@ class VExpression {
 				parent.removeAttribute(attr);
 			this.attributes = [];
 
-			let text = this.evaluate();
+			let text = this.evaluate_();
 			if (text) {
 				let tokens = lex(lexHtmlJs, text, 'tag');
 				let lastName = null;
@@ -3118,11 +3118,11 @@ class VExpression {
 						vChild.remove();
 
 			// Create new children.
-			this.vChildren = this.evaluateToVElements();
+			this.vChildren = this.evaluateToVElements_();
 
 			// Add children to parent.
 			let count = 0;
-			let startIndex = this.startIndex;
+			let startIndex = this.startIndex_;
 			for (let item of this.vChildren) {
 				if (item instanceof HTMLElement) {
 					this.parent.insertBefore(item, this.parent.childNodes[startIndex]);
@@ -3130,7 +3130,7 @@ class VExpression {
 				}
 				else
 					for (let vChild of item) {
-						vChild.startIndex = startIndex;
+						vChild.startIndex_ = startIndex;
 						let num = vChild.apply_(this.parent, null);
 						startIndex += num;
 						count += num;
@@ -3164,7 +3164,7 @@ class VExpression {
 		result.parent = parent || this.parent;
 		result.vParent = vParent || this.vParent;
 
-		result.startIndex = this.startIndex;
+		result.startIndex_ = this.startIndex_;
 		result.childCount = this.childCount;
 
 		result.scope = {...this.scope};
@@ -3179,7 +3179,7 @@ class VExpression {
 
 	/**
 	 * @return {string|string[]} */
-	evaluate() {
+	evaluate_() {
 		return this.exec.apply(this.refr, Object.values(this.scope));
 	}
 
@@ -3188,7 +3188,7 @@ class VExpression {
 	 * Non-recursively resolve this and all child VExpressions, returning a tree of VElement and VText.
 	 * Does not modify the actual DOM.
 	 * @return {(VElement|VText|VExpression|HTMLElement)[][]} */
-	evaluateToVElements() {
+	evaluateToVElements_() {
 
 		// Remove previous watches.
 		// TODO: Only do this if the watches are changing.
@@ -3200,7 +3200,7 @@ class VExpression {
 		// Add new watches
 		if (!this.receiveNotificationBindThis)
 			this.receiveNotificationBindThis = this.receiveNotification_.bind(this);
-		this.watch(this.receiveNotificationBindThis);
+		this.watch_(this.receiveNotificationBindThis);
 
 
 		let result = [];
@@ -3210,7 +3210,7 @@ class VExpression {
 				throw new Error();
 			//#ENDIF
 
-			let htmls = [this.evaluate()]
+			let htmls = [this.evaluate_()]
 				.flat().map(h=>h===undefined?'':h); // undefined becomes empty string
 
 			if (this.isHash) // #{...} template
@@ -3224,7 +3224,7 @@ class VExpression {
 					else {
 						html += ''; // can be a number.
 						if (html.length) {
-							let vels = VElement.fromHtml(html, scopeVarNames, this, this.refr).flat();
+							let vels = VElement.fromHtml_(html, scopeVarNames, this, this.refr).flat();
 							result.push(vels);
 						}
 					}
@@ -3232,7 +3232,7 @@ class VExpression {
 			}
 
 		} else { // loop
-			let array = this.evaluate();
+			let array = this.evaluate_();
 			if (!array)
 				throw new Error(`${this.watchPaths[0].join('.')} is not iterable in ${this.code}`);
 
@@ -3243,7 +3243,7 @@ class VExpression {
 
 				for (let template of this.loopItemEls) {
 					let vel = template.clone(this.refr, this);
-					this.setScope(vel, params, i);
+					this.setScope_(vel, params, i);
 					group.push(vel);
 				}
 
@@ -3261,7 +3261,7 @@ class VExpression {
 	 * @param params {*[]} Values of the parameters given to this VExpression's map() function.
 	 * @param index {int}
 	 */
-	setScope(vel, params, index) {
+	setScope_(vel, params, index) {
 		vel.scope = {...this.scope};
 		vel.scope3 = this.scope3.clone();
 
@@ -3272,7 +3272,7 @@ class VExpression {
 
 			// Path to the loop param variable:
 			let path = [...this.watchPaths[0], index + '']; // VExpression loops always have one watchPath.
-			let fullPath = this.getFullPath(path);
+			let fullPath = this.getFullPath_(path);
 			vel.scope3.set(this.loopParamNames[j], new ScopeItem(fullPath, [params[j]])); // scope3[name] = [path, value]
 		}
 	}
@@ -3281,7 +3281,7 @@ class VExpression {
 	 * Convert a local variable path to a path from the root Reflect element.
 	 * @param path {string[]}
 	 * @returns {string[]} */
-	getFullPath(path) {
+	getFullPath_(path) {
 		if (path[0] === 'this')
 			return path;
 
@@ -3324,7 +3324,7 @@ class VExpression {
 			return;
 		}
 
-		this.childCount = this.getAllChildrenLength();
+		this.childCount = this.getAllChildrenLength_();
 
 		// Path 2:  If inserting, removing, or replacing a whole item within an array that matches certain criteria.
 		if (this.type !== 'complex' && path[path.length - 1].match(/^\d+$/)) {
@@ -3367,10 +3367,10 @@ class VExpression {
 					let startIndex = this.arrayToChildIndex_(index); // TODO: Could it be faster to get the index from an existing vchild here?
 					let params = [array[index], index, array];
 					for (let newItem of this.vChildren[index]) {
-						newItem.startIndex = startIndex + i;
+						newItem.startIndex_ = startIndex + i;
 						newItem.parent = this.parent;
 
-						this.setScope(newItem, params, i+index);
+						this.setScope_(newItem, params, i+index);
 						newItem.apply_(this.parent, null);
 						i++;
 					}
@@ -3459,7 +3459,7 @@ class VExpression {
 
 	/**
 	 * @return {int} */
-	getAllChildrenLength() {
+	getAllChildrenLength_() {
 		let result = 0;
 		for (let group of this.vChildren) {
 			if (group instanceof HTMLElement)
@@ -3467,7 +3467,7 @@ class VExpression {
 			else
 				for (let vChild of group) {
 					if (vChild.receiveNotification_) // Faster than (vChild instanceof VExpression)
-						result += vChild.getAllChildrenLength();
+						result += vChild.getAllChildrenLength_();
 					else
 						result++;
 				}
@@ -3482,13 +3482,13 @@ class VExpression {
 	 * @param index {int} */
 	arrayToChildIndex_(index) {
 
-		let result = this.startIndex;
+		let result = this.startIndex_;
 
 		// Get this VExpression's children before index.
 		for (let group of this.vChildren.slice(0, index)) {
 			for (let vel of group) {
 				if (vel instanceof VExpression)
-					result += vel.getAllChildrenLength();
+					result += vel.getAllChildrenLength_();
 				else
 					result++;
 			}
@@ -3523,13 +3523,13 @@ class VExpression {
 	}
 
 	updateSubsequentIndices_() {
-		let newLength = this.getAllChildrenLength();
+		let newLength = this.getAllChildrenLength_();
 		let diff = newLength - this.childCount;
 
 		// Stop if going into a different parent
 		let next = this;
 		while (next = next.getNextVExpression_()) {
-			next.startIndex += diff;
+			next.startIndex_ += diff;
 		}
 	}
 
@@ -3540,7 +3540,7 @@ class VExpression {
 	/**
 	 * All calls to Watch.add() (i.e. all watches) used by Refract come through this function.
 	 * @param callback {function} */
-	watch(callback) {
+	watch_(callback) {
 
 		//if (window.debug)
 
@@ -3599,7 +3599,7 @@ class VElement {
 	attributes = {};
 
 	/** @type {VExpression[]} Expressions that create whole attribute name/value pairs. */
-	attributeExpressions = [];
+	attributeExpressions_ = [];
 
 
 	/** @type {Refract} */
@@ -3638,7 +3638,7 @@ class VElement {
 	scope3 = new Scope();
 
 	/** @type {int} DOM index of the first DOM child created by this VExpression within parent. */
-	startIndex = 0;
+	startIndex_ = 0;
 
 	/**
 	 * @param tokens {?Token[]}
@@ -3700,7 +3700,7 @@ class VElement {
 				else if (token.type === 'expr') {
 					let expr = new VExpression(token.tokens, this, scopeVars);
 					expr.attributes = []; // Marks it as being an attribute expression.
-					this.attributeExpressions.push(expr);
+					this.attributeExpressions_.push(expr);
 				}
 				else if (token.text === '>' || token.text === '/>')
 					break;
@@ -3805,7 +3805,7 @@ class VElement {
 					// Insert into slot if it has one.  TODO: How to handle named slots here?
 					if (p2 !== this.refr && p2.tagName && p2.tagName.includes('-') && newEl.tagName !== 'SLOT')
 						p2 = p2.querySelector('slot') || p2;
-					p2.insertBefore(newEl, p2.childNodes[this.startIndex]);
+					p2.insertBefore(newEl, p2.childNodes[this.startIndex_]);
 				}
 			}
 
@@ -3828,11 +3828,11 @@ class VElement {
 		// 3. Slot content
 		let count = 0;
 		if (tagName === 'slot') {
-			let slotChildren = VElement.fromHtml(this.refr.slotHtml, Object.keys(this.scope), this, this.refr);
+			let slotChildren = VElement.fromHtml_(this.refr.slotHtml, Object.keys(this.scope), this, this.refr);
 			for (let vChild of slotChildren) {
 				vChild.scope = {...this.scope};
 				vChild.scope3 = this.scope3.clone();
-				vChild.startIndex = count;
+				vChild.startIndex_ = count;
 				count += vChild.apply_(this.el);
 			}
 		}
@@ -3846,7 +3846,7 @@ class VElement {
 			vChild.scope = {...this.scope}; // copy
 			vChild.scope3 = this.scope3.clone();
 			vChild.refr = this.refr;
-			vChild.startIndex = count;
+			vChild.startIndex_ = count;
 			count += vChild.apply_(this.el);
 		}
 
@@ -3859,19 +3859,19 @@ class VElement {
 					expr.parent = this.el;
 					expr.scope = this.scope; // Share scope with attributes.
 					expr.scope3 = this.scope3.clone();
-					expr.watch(() => {
+					expr.watch_(() => {
 						if (name === 'value')
-							setInputValue(this.refr, this.el, value, this.scope);
+							setInputValue_(this.refr, this.el, value, this.scope);
 
 						else {
-							let value2 = VElement.evalVAttributeAsString(this.refr, value, this.scope);
+							let value2 = VElement.evalVAttributeAsString_(this.refr, value, this.scope);
 							this.el.setAttribute(name, value2);
 						}
 					});
 				}
 
 			// TODO: This happens again for inputs in step 5 below:
-			let value2 = VElement.evalVAttributeAsString(this.refr, value, this.scope);
+			let value2 = VElement.evalVAttributeAsString_(this.refr, value, this.scope);
 			this.el.setAttribute(name, value2);
 
 
@@ -3899,11 +3899,11 @@ class VElement {
 		}
 
 		// Attribute expressions
-		for (let expr of this.attributeExpressions) {
+		for (let expr of this.attributeExpressions_) {
 			expr.scope = this.scope;
 			expr.scope3 = this.scope3.clone();
 			expr.apply_(this.el);
-			expr.watch(() => {
+			expr.watch_(() => {
 				expr.apply_(this.el);
 			});
 		}
@@ -3955,7 +3955,7 @@ class VElement {
 		// https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#input_types
 		if (hasValue) // This should happen after the children are added, e.g. for select <options>
 			// TODO: Do we only need to do this for select boxes b/c we're waiting for their children?  Other input types are handled above in step 2.
-			setInputValue(this.refr, this.el, this.attributes.value, this.scope);
+			setInputValue_(this.refr, this.el, this.attributes.value, this.scope);
 
 
 		if (tagName === 'svg')
@@ -3984,8 +3984,8 @@ class VElement {
 					result.attributes[attrName].push(piece);
 			}
 		}
-		for (let expr of this.attributeExpressions) // Expresions that create one or more attributes.
-			result.attributeExpressions.push(expr.clone(result.refr, this));
+		for (let expr of this.attributeExpressions_) // Expresions that create one or more attributes.
+			result.attributeExpressions_.push(expr.clone(result.refr, this));
 
 		for (let child of this.vChildren)
 			result.vChildren.push(child.clone(result.refr, result)); // string for text node.
@@ -4014,7 +4014,7 @@ class VElement {
 			return true;
 
 		// Else evaluate as JSON, or as a string.
-		let result = VElement.evalVAttributeAsString(this.refr, (val || []), this.scope);
+		let result = VElement.evalVAttributeAsString_(this.refr, (val || []), this.scope);
 		try {
 			result = JSON.parse(result);
 		} catch (e) {
@@ -4063,7 +4063,7 @@ class VElement {
 	 * @param attrParts {(VExpression|string)[]}
 	 * @param scope {object}
 	 * @return {*|string} */
-	static evalVAttribute(refr, attrParts, scope={}) {
+	static evalVAttribute_(refr, attrParts, scope={}) {
 		let result = attrParts.map(expr =>
 			expr instanceof VExpression ? expr.exec.apply(refr, Object.values(scope)) : expr
 		);
@@ -4080,7 +4080,7 @@ class VElement {
 	 * @param attrParts {(VExpression|string)[]}
 	 * @param scope {object}
 	 * @return {string} */
-	static evalVAttributeAsString(refr, attrParts, scope={}) {
+	static evalVAttributeAsString_(refr, attrParts, scope={}) {
 		let result = [];
 		for (let attrPart of attrParts) {
 			if (attrPart instanceof VExpression) {
@@ -4108,9 +4108,9 @@ class VElement {
 	 * @param vParent {VElement|VExpression}
 	 * @param Class
 	 * @return {(VElement|VExpression|string)[]} */
-	static fromHtml(html, scopeVars=[], vParent=null, Class) {
+	static fromHtml_(html, scopeVars=[], vParent=null, Class) {
 		let tokens = lex(lexHtmlJs, [html].flat().join(''), 'template');
-		return VElement.fromTokens(tokens, scopeVars, vParent, Class);
+		return VElement.fromTokens_(tokens, scopeVars, vParent, Class);
 	}
 
 	/**
@@ -4123,7 +4123,7 @@ class VElement {
 	 * @param index {int=} used internally.
 	 * @return {(VElement|VExpression|string)[]}
 	 *     Array with a .index property added, to keep track of what token we're on. */
-	static fromTokens(tokens, scopeVars=[], vParent=null, refr, limit=false, index=0) {
+	static fromTokens_(tokens, scopeVars=[], vParent=null, refr, limit=false, index=0) {
 		if (!tokens.length)
 			return [];
 
@@ -4145,14 +4145,14 @@ class VElement {
 
 				result.push(vel);
 
-				let isSelfClosing = token.tokens[token.tokens.length-1].text == '/>' || vel.tagName.toLowerCase() in selfClosingTags;
+				let isSelfClosing = token.tokens[token.tokens.length-1].text == '/>' || vel.tagName.toLowerCase() in selfClosingTags_;
 
 				// Process children if not a self-closing tag.
 				if (!isSelfClosing) {
 					index++;
 
 					// New path:
-					vel.vChildren = VElement.fromTokens(tokens, scopeVars, vel, refr, false, index);
+					vel.vChildren = VElement.fromTokens_(tokens, scopeVars, vel, refr, false, index);
 					index = vel.vChildren.index; // What is this?
 				}
 			}
@@ -4196,7 +4196,7 @@ class VElement {
 }
 
 // TODO: What svg elements are self-closing?
-var selfClosingTags = {'area':1, 'base':1, 'br':1, 'col':1, 'embed':1, 'hr':1, 'img':1, 'input':1, 'link':1, 'meta':1, 'param':1, 'source':1,
+var selfClosingTags_ = {'area':1, 'base':1, 'br':1, 'col':1, 'embed':1, 'hr':1, 'img':1, 'input':1, 'link':1, 'meta':1, 'param':1, 'source':1,
 	'track':1, 'wbr':1, 'command':1, 'keygen':1, 'menuitem':1};
 
 
@@ -4208,7 +4208,7 @@ var inSvg = false;
 
 
 // TODO: Pair this with Utils.watchInput() ?
-function setInputValue(ref, el, value, scope) {
+function setInputValue_(ref, el, value, scope) {
 
 	// Don't update input elements if they triggered the event.
 	if (Refract.currentEvent && el === Refract.currentEvent.target)
@@ -4220,7 +4220,7 @@ function setInputValue(ref, el, value, scope) {
 
 	if (isText || el.tagName === 'INPUT') {
 
-		let val = VElement.evalVAttributeAsString(ref, value, scope);
+		let val = VElement.evalVAttributeAsString_(ref, value, scope);
 		if (isText) {
 			//if (el.innerHTML !== val) // Is this needed? Replacing a value can reset the cursor position.
 				el.innerHTML = val;
@@ -4231,7 +4231,7 @@ function setInputValue(ref, el, value, scope) {
 			el.value = val;
 	}
 	else {
-		let values = VElement.evalVAttribute(ref, value, scope);
+		let values = VElement.evalVAttribute_(ref, value, scope);
 		if (el.tagName === 'SELECT')
 			for (let opt of el.children)
 				opt.selected = Array.isArray(values) ? values.includes(opt.value) : values === opt.value;
@@ -4366,7 +4366,7 @@ class Compiler {
 				return `
 					<div style="color: #08f">	
 						<div style="background: #222">				
-							<span style="color: #8888" title="startIndex">[${vexpr.startIndex}]</span>
+							<span style="color: #8888" title="startIndex">[${vexpr.startIndex_}]</span>
 							${renderPaths(vexpr.watchPaths)}.map(${vexpr.loopParamName} => 
 							
 							<span style="color: #8888" title="watchPaths">
@@ -4383,7 +4383,7 @@ class Compiler {
 
 			return `
 				<div style="background: #222">
-					<span style="color: #8888" title="startIndex">[${vexpr.startIndex}]</span>
+					<span style="color: #8888" title="startIndex">[${vexpr.startIndex_}]</span>
 					<span style="color: #60f" title="VExpression">${vexpr.code}</span>
 					<span style="color: #8888" title="watchPaths">
 						[${renderPaths(vexpr.watchPaths)}]
@@ -4878,7 +4878,7 @@ class Refract extends HTMLElement {
 						throw new Error(`Class is missing an html function with a template value.`);
 				}
 
-				this.constructor.virtualElement = VElement.fromTokens(this.constructor.htmlTokens, [], null, this, 1)[0];
+				this.constructor.virtualElement = VElement.fromTokens_(this.constructor.htmlTokens, [], null, this, 1)[0];
 				this.constructor.htmlTokens = null; // We don't need them any more.
 			}
 
@@ -4951,7 +4951,7 @@ class Refract extends HTMLElement {
 	static getInitArgs() {
 		if (!this.initArgs && this.prototype.init) {
 			let pf = new ParsedFunction(this.prototype.init, false);
-			this.initArgs = [...pf.getArgNames()];
+			this.initArgs = [...pf.getArgNames_()];
 		}
 		return this.initArgs || [];
 	}

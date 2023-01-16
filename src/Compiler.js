@@ -80,7 +80,7 @@ export class Compiler {
 				return `
 					<div style="color: #08f">	
 						<div style="background: #222">				
-							<span style="color: #8888" title="startIndex">[${vexpr.startIndex}]</span>
+							<span style="color: #8888" title="startIndex">[${vexpr.startIndex_}]</span>
 							${renderPaths(vexpr.watchPaths)}.map(${vexpr.loopParamName} => 
 							
 							<span style="color: #8888" title="watchPaths">
@@ -97,7 +97,7 @@ export class Compiler {
 
 			return `
 				<div style="background: #222">
-					<span style="color: #8888" title="startIndex">[${vexpr.startIndex}]</span>
+					<span style="color: #8888" title="startIndex">[${vexpr.startIndex_}]</span>
 					<span style="color: #60f" title="VExpression">${vexpr.code}</span>
 					<span style="color: #8888" title="watchPaths">
 						[${renderPaths(vexpr.watchPaths)}]

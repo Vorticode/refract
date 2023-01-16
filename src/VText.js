@@ -12,7 +12,7 @@ export default class VText {
 	/** @type {Refract} */
 	refr = null;
 
-	startIndex = 0;
+	startIndex_ = 0;
 
 	constructor(text='', refr=null) {
 		this.refr = refr;
@@ -54,7 +54,7 @@ export default class VText {
 			} else {
 				this.el = parent.ownerDocument.createTextNode(text);
 				parent = parent.shadowRoot || parent;
-				parent.insertBefore(this.el, parent.childNodes[this.startIndex]);
+				parent.insertBefore(this.el, parent.childNodes[this.startIndex_]);
 			}
 
 			if (Refract.elsCreated)

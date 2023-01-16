@@ -121,7 +121,7 @@ var Parse = {
 			// Skip function bodies.
 			if (i===fstart) {
 				let pf = new ParsedFunction(result.slice(fstart));
-				i = fstart + pf.bodyStartIndex +pf.bodyTokens.length + 1;
+				i = fstart + pf.bodyStartIndex_ +pf.bodyTokens_.length + 1;
 				fstart = this.findFunctionStart_(result, i);
 			}
 
@@ -263,11 +263,11 @@ var Parse = {
 
 		// Fail if there's more code after the end of the map expression
 		let mapEnd = fregex([Parse.ws, ')', Parse.ws, fregex.zeroOrOne(';'), Parse.ws, fregex.end]);
-		let funcEndIndex = mapExpr.length + func.bodyStartIndex + func.bodyTokens.length;
+		let funcEndIndex = mapExpr.length + func.bodyStartIndex_ + func.bodyTokens_.length;
 		if (!(mapEnd(tokens.slice(funcEndIndex))))
 			return [null, null];
 
-		return [[...func.getArgNames()], func.bodyTokens];
+		return [[...func.getArgNames_()], func.bodyTokens_];
 	},
 
 	/**
