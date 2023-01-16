@@ -8,6 +8,9 @@ import VText from "./VText.js";
 import lex from "./lex.js";
 import lexHtmljs from "./lex-htmljs.js";
 import Refract from "./Refract.js";
+import Scope from "./Scope.js";
+
+
 
 /**
  * A parsed ${} or #{} expression embedded in an html template ``  */
@@ -92,6 +95,8 @@ export default class VExpression {
 	 * @type {Object<varName:string, [value:*, path:string[]]>} */
 	scope2 = {};
 
+	scope3 = new Scope();
+
 	/** @type {int} DOM index of the first DOM child created by this VExpression within parent. */
 	startIndex = 0;
 
@@ -111,9 +116,106 @@ export default class VExpression {
 
 	// Evaluate and loopItem functions update both this.children and the real DOM elements.
 
-	constructor(parent, scope2) {
-		if (parent)
-			this.refl = parent.refl;
+	/**
+	 * Take an array of javascript tokens and build a VExpression from them.
+	 * @param tokens {Token[]} May or may not include surrounding ${ ... } tokens.
+	 * @param scope {string[]} Variables created by parent loops.  This lets us build watchPaths only of variables
+	 *     that trace back to a this.property in the parent Refract, instead of from any variable or js identifier.
+	 * @param vParent {VElement|VExpression}
+	 * @param attrName {string?} If set, this VExpression is part of an attribute, otherwise it creates html child nodes.
+	 * @return {VExpression} */
+	constructor(tokens=null, vParent=null, scope=null, attrName=null) {
+		this.vParent = vParent;
+		if (vParent) {
+			this.refl = vParent.refl;
+
+			this.scope = {...vParent.scope};
+		}
+		//this.scope3 = scope;
+
+
+		if (tokens) {
+			// remove enclosing ${ }
+			let isHash = tokens[0].text == '#{';
+			if ((tokens[0].text == '${' || isHash) && tokens[tokens.length - 1].text == '}') {
+				this.isHash = isHash;
+				tokens = tokens.slice(1, -1); // Remove ${ and }
+			}
+
+			this.code = tokens.map(t => t.text).join('').trim(); // So we can quickly see what a VExpression is in the debugger.
+
+
+			// Find the watchPathTokens before we call fromTokens() on child elements.
+			// That way we don't descend too deep.
+			let watchPathTokens = Parse.varExpressions_(tokens, scope);
+
+			// Find loopItem props if this is a loop.
+			let [loopParamNames, loopBody] = Parse.simpleMapExpression_(tokens, scope);
+
+			// Get the createFunction() from the class if it's already been instantiated.  Else use Refract's temporary createfunction().
+			// This lets us use other variabls defiend in the same scope as the class that extends Refract.
+			if (loopBody) {
+				this.type = 'loop';
+
+				// When type==='loop', the .exec() function returns the array used by the loop.
+				this.loopParamNames = loopParamNames;
+
+				for (let p of loopParamNames)
+					scope.push(p);
+
+				this.exec = this.refl.constructor.createFunction(...scope, 'return ' + watchPathTokens[0].join(''));
+
+				// If the loop body is a single `template` string:
+				// TODO Why is this special path necessary, instead of always just using the else path?
+				let loopBodyTrimmed = loopBody.filter(token => token.type !== 'whitespace' && token.type !== 'ln');
+				if (loopBodyTrimmed.length === 1 && loopBodyTrimmed[0].type === 'template') {
+					// Remove beginning and end string delimiters, parse items.
+					this.loopItemEls = VElement.fromTokens(loopBodyTrimmed[0].tokens.slice(1, -1), scope, vParent, this.refl);
+				}
+
+				// The loop body is more complex javascript code:
+				else {
+					// TODO: No tests hit htis path.
+					this.loopItemEls = [new VExpression(loopBody, this, scope)];
+				}
+			} else {
+
+				// TODO: This duplicates code executed in Parse.varExpressions_ above?
+				if (Parse.createVarExpression_(scope)(tokens) !== tokens.length) {
+					// This will find things like this.values[this.index].name
+					if (Parse.isLValue(tokens) === tokens.length)
+						this.type = 'simple';
+					else
+						this.type = 'complex';
+				}
+
+				// Build function to evaluate expression.
+				// Later, scope object will be matched with param names to call this function.
+				// We call replacehashExpr() b/c we're valuating a whole string of code all at once, and the nested #{} aren't
+				// understood by the vanilla JavaScript that executes the template string.
+				tokens = Parse.replaceHashExpr_(tokens, null, this.refl.constructor.name);
+
+				/**
+				 * We want sub-templates within the expression to be parsed to find their own variables,
+				 * so we escape them, so they're not evaluated as part of the outer template.
+				 * Unless we do this, their own variables will be evaluated immediately, instead of parsed and watched. */
+				// console.log(tokens.join(''));
+
+				tokens = Parse.escape$_(tokens);
+				//console.log(tokens.join(''));
+
+				// Trim required.  B/c if there's a line return after return, the function will return undefined!
+				let body = tokens.map(t => t.text).join('');
+				if (tokens[0].text != '{')
+					body = 'return (' + body.trim() + ')';
+				this.exec = this.refl.constructor.createFunction(...scope, body);
+			}
+
+			// Get just the identifier names between the dots.
+			// ['this', '.', 'fruits', '[', '0', ']'] becomes ['this', 'fruits', '0']
+			for (let watchPath of watchPathTokens)
+				this.watchPaths.push(Parse.varExpressionToPath_(watchPath));
+		}
 	}
 
 	/**
@@ -236,6 +338,8 @@ export default class VExpression {
 		result.childCount = this.childCount;
 		result.scope = {...this.scope};
 		result.scope2 = {...this.scope2};
+
+		result.scope3 = this.scope3.clone();
 
 		result.isHash = this.isHash;
 
@@ -646,114 +750,5 @@ export default class VExpression {
 				}
 			}
 		}
-	}
-
-	/**
-	 * Take an array of javascript tokens and build a VExpression from them.
-	 * @param tokens {Token[]} May or may not include surrounding ${ ... } tokens.
-	 * @param scope {string[]} Variables created by parent loops.  This lets us build watchPaths only of variables
-	 *     that trace back to a this.property in the parent Refract, instead of from any variable or js identifier.
-	 * @param vParent {VElement|VExpression}
-	 * @param refl
-	 * @param attrName {string?} If set, this VExpression is part of an attribute, otherwise it creates html child nodes.
-	 * @return {VExpression} */
-	static fromTokens(tokens, scope, vParent, refl, attrName) {
-		let result = new VExpression();
-		result.vParent = vParent;
-
-		if (vParent) {
-			result.refl = vParent.refl;
-			result.scope = {...vParent.scope};
-			result.scope2 = {...vParent.scope2};
-		}
-
-		result.attrName = attrName;
-		scope = (scope || []).slice(); // copy
-
-		// remove enclosing ${ }
-		let isHash = tokens[0].text == '#{';
-		if ((tokens[0].text == '${' || isHash) && tokens[tokens.length-1].text == '}') {
-			result.isHash = isHash;
-			tokens = tokens.slice(1, -1); // Remove ${ and }
-		}
-
-		result.code = tokens.map(t=>t.text).join('').trim(); // So we can quickly see what a VExpression is in the debugger.
-
-
-		// Find the watchPathTokens before we call fromTokens() on child elements.
-		// That way we don't descend too deep.
-		let watchPathTokens = Parse.varExpressions_(tokens, scope);
-
-		// Find loopItem props if this is a loop.
-		let [loopParamNames, loopBody] = Parse.simpleMapExpression_(tokens, scope);
-
-		// Get the createFunction() from the class if it's already been instantiated.  Else use Refract's temporary createfunction().
-		// This lets us use other variabls defiend in the same scope as the class that extends Refract.
-		if (loopBody) {
-			result.type = 'loop';
-
-			// When type==='loop', the .exec() function returns the array used by the loop.
-			result.loopParamNames = loopParamNames;
-
-			for (let p of loopParamNames)
-				scope.push(p);
-
-			result.exec = refl.constructor.createFunction(...scope, 'return ' + watchPathTokens[0].join(''));
-
-			// If the loop body is a single `template` string:
-			// TODO Why is this special path necessary, instead of always just using the else path?
-			let loopBodyTrimmed = loopBody.filter(token => token.type !== 'whitespace' && token.type !== 'ln');
-			if (loopBodyTrimmed.length === 1 && loopBodyTrimmed[0].type === 'template') {
-				// Remove beginning and end string delimiters, parse items.
-				result.loopItemEls = VElement.fromTokens(loopBodyTrimmed[0].tokens.slice(1, -1), scope, vParent, refl);
-			}
-
-			// The loop body is more complex javascript code:
-			else
-				result.loopItemEls = [VExpression.fromTokens(loopBody, scope, vParent, refl)];
-		}
-
-		else {
-
-			// TODO: This duplicates code executed in Parse.varExpressions_ above?
-			if (Parse.createVarExpression_(scope)(tokens) !== tokens.length) {
-				// This will find things like this.values[this.index].name
-				if (Parse.isLValue(tokens) === tokens.length)
-					result.type = 'simple';
-				else
-					result.type = 'complex';
-			}
-
-			// Build function to evaluate expression.
-			// Later, scope object will be matched with param names to call this function.
-			// We call replacehashExpr() b/c we're valuating a whole string of code all at once, and the nested #{} aren't
-			// understood by the vanilla JavaScript that executes the template string.
-			tokens = Parse.replaceHashExpr_(tokens, null, refl.constructor.name);
-
-			/**
-			 * We want sub-templates within the expression to be parsed to find their own variables,
-			 * so we escape them, so they're not evaluated as part of the outer template.
-			 * Unless we do this, their own variables will be evaluated immediately, instead of parsed and watched. */
-			// console.log(tokens.join(''));
-
-			tokens = Parse.escape$_(tokens);
-			//console.log(tokens.join(''));
-
-			// Trim required.  B/c if there's a line return after return, the function will return undefined!
-			let body = tokens.map(t=>t.text).join('');
-			if (tokens[0].text != '{')
-				body = 'return (' + body.trim() + ')';
-			result.exec = refl.constructor.createFunction(...scope, body);
-		}
-
-		// Get just the identifier names between the dots.
-		// ['this', '.', 'fruits', '[', '0', ']'] becomes ['this', 'fruits', '0']
-		for (let watchPath of watchPathTokens)
-			result.watchPaths.push(Parse.varExpressionToPath_(watchPath));
-
-		//console.log(result.watchPathTokens);
-
-
-		return result;
 	}
 }

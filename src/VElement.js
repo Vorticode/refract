@@ -7,6 +7,7 @@ htmljs.allowHashTemplates = true;
 import Html, {div} from "./Html.js";
 import Utils from "./utils.js";
 import delve from "./delve.js";
+import Scope from "./Scope.js";
 
 /**
  * A virtual representation of an Element.
@@ -55,16 +56,32 @@ export default class VElement {
 	 * @type {Object<varName:string, [value:*, path:string[]]>} */
 	scope2 = {};
 
+	scope3 = new Scope();
+
 	/** @type {int} DOM index of the first DOM child created by this VExpression within parent. */
 	startIndex = 0;
 
 	/**
 	 * @param tagName {?string}
+	 * @param parent {VElement|VExpression|Refract}
+	 * @param scope {?Scope}
 	 * @param attributes {?Object<string, string[]>} */
-	constructor(tagName=null, attributes=null) {
+	constructor(tagName=null, attributes=null, parent=null, scope=null) {
 		this.tagName = tagName || '';
 		this.attributes = attributes || {};
+
+
+		if (parent instanceof HTMLElement)
+			this.refl = parent
+		else if (parent) {
+			this.vParent = parent;
+			this.refl = parent.refl;
+		}
+
+		this.scope3 = scope;
 	}
+
+
 
 	/**
 	 * Add or update the HTMLElement linked to this VElement.
@@ -486,7 +503,7 @@ export default class VElement {
 
 			// Expression child
 			else if (token.type === 'expr')
-				result.push(VExpression.fromTokens(token.tokens, scopeVars, vParent, refl));
+				result.push(new VExpression(token.tokens, vParent, scopeVars));
 
 			// Collect tagName and attributes from open tag.
 			else if (token.type === 'openTag') {
@@ -515,12 +532,12 @@ export default class VElement {
 						if (tagToken.type === 'string')
 							for (let exprToken of tagToken.tokens.slice(1, -1)) { // slice to remove surrounding quotes.
 								if (exprToken.type === 'expr')
-									attrValues.push(VExpression.fromTokens(exprToken.tokens, scopeVars, vParent, refl, attrName));
+									attrValues.push(new VExpression(exprToken.tokens, vel, scopeVars, attrName));
 								else // string:
 									attrValues.push(exprToken.text);
 							}
 						else if (tagToken.type === 'expr') // expr not in string.
-							attrValues.push(VExpression.fromTokens(tagToken.tokens, scopeVars, vParent, refl, attrName));
+							attrValues.push(new VExpression(tagToken.tokens, vel, scopeVars, attrName));
 						//#IFDEV
 						else
 							throw new Error(); // Shouldn't happen.
@@ -532,7 +549,7 @@ export default class VElement {
 
 					// Expression that creates attribute(s)
 					else if (tagToken.type === 'expr') {
-						let expr = VExpression.fromTokens(tagToken.tokens, scopeVars, vParent, refl);
+						let expr = new VExpression(tagToken.tokens, vel, scopeVars);
 						expr.attributes = []; // Marks it as being an attribute expression.
 						vel.attributeExpressions.push(expr);
 					}
