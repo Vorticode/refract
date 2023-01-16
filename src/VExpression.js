@@ -379,7 +379,7 @@ export default class VExpression {
 
 
 		let result = [];
-		if (this.type !== 'loop') { // simple or complex
+		if (this.type !== 'loop') {
 			//#IFDEV
 			if (!this.refl)
 				throw new Error();
@@ -411,30 +411,14 @@ export default class VExpression {
 			if (!array)
 				throw new Error(`${this.watchPaths[0].join('.')} is not iterable in ${this.code}`);
 
-
 			let i = 0;
 			for (let item of array) {
 				let group = [];
 				let params = [array[i], i, array];
 
-				// TODO: This path duplicates some code from evaluateToVElements()
 				for (let template of this.loopItemEls) {
 					let vel = template.clone(this.refl, this);
-					vel.scope = {...this.scope}
-					vel.scope3 = this.scope3.clone();
-
-					// Assign values to the parameters of the function given to .map() that's used to loop.
-					let len2 = this.loopParamNames.length;
-					for (let j=0; j<len2; j++) { // Benchmarking shows this loop is about 2% faster than for...in.
-						vel.scope[this.loopParamNames[j]] = params[j];
-
-
-						// Path to the loop param variable:
-						let path = [...this.watchPaths[0], i+'']; // VExpression loops always have one watchPath.
-						let fullPath = this.getFullPath(path);
-						vel.scope3.set(this.loopParamNames[j], new ScopeItem(fullPath, [params[j]])); // scope3[name] = [path, value]
-					}
-
+					this.setScope(vel, params, i);
 					group.push(vel);
 				}
 
@@ -444,6 +428,28 @@ export default class VExpression {
 		}
 
 		return result;
+	}
+
+	/**
+	 * Populate the scope property of the virtual element that's a child of this VExpression.
+	 * @param vel {VElement|VExpression}
+	 * @param params {*[]} Values of the parameters given to this VExpression's map() function.
+	 * @param index {int}
+	 */
+	setScope(vel, params, index) {
+		// TODO: This path duplicates some code from receiveNotifications()
+		vel.scope = {...this.scope}
+		vel.scope3 = this.scope3.clone();
+
+		// Assign values to the parameters of the function given to .map() that's used to loop.
+		for (let j in this.loopParamNames) {  // Benchmarking shows this loop is about 2% faster than for...in.
+			vel.scope[this.loopParamNames[j]] = params[j];
+
+			// Path to the loop param variable:
+			let path = [...this.watchPaths[0], index + '']; // VExpression loops always have one watchPath.
+			let fullPath = this.getFullPath(path);
+			vel.scope3.set(this.loopParamNames[j], new ScopeItem(fullPath, [params[j]])); // scope3[name] = [path, value]
+		}
 	}
 
 	/**
@@ -525,8 +531,8 @@ export default class VExpression {
 					if (action === 'insert')
 						this.vChildren.splice(index, 0, []);
 
-					if (this.type === 'simple') // A simple expression ${this.var} always just prints the value.  TODO: Does this html-escape?
-						this.vChildren[index] = [new VText(array[index], this.refl)]
+					if (this.type === 'simple') // A simple expression ${this.var} always just prints the value.
+						this.vChildren[index] = [new VText(array[index], this.refl)] // TODO: What about html-escape?
 					else { // loop
 						this.vChildren[index] = this.loopItemEls.map(vel => vel.clone(this.refl, this));
 
@@ -535,24 +541,12 @@ export default class VExpression {
 					// 3. Add/update those new elements in the real DOM.
 					let i = 0;
 					let startIndex = this.arrayToChildIndex_(index); // TODO: Could it be faster to get the index from an existing vchild here?
+					let params = [array[index], index, array];
 					for (let newItem of this.vChildren[index]) {
 						newItem.startIndex = startIndex + i;
-						newItem.scope = {...this.scope};
-						newItem.scope3 = this.scope3.clone();
 						newItem.parent = this.parent;
 
-
-						// TODO: This code is mostly duplicated in evalToVElements()
-						let params = [array[index], index, array];
-						for (let j in this.loopParamNames) {
-							newItem.scope[this.loopParamNames[j]] = params[j];
-
-							// New:
-							let path = [...this.watchPaths[0], (i+index)+''];
-							let fullPath = this.getFullPath(path);
-							newItem.scope3.set(this.loopParamNames[j], new ScopeItem(fullPath, [params[j]])); // scope3[name] = [path, value]
-						}
-
+						this.setScope(newItem, params, i+index);
 						newItem.apply_(this.parent, null);
 						i++;
 					}
