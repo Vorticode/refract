@@ -157,7 +157,7 @@ export default class VElement {
 			// Because then the slot will be added to the slot, recursively forever.
 			// So we only allow setting content that doesn't have slot tags.
 			if (!el.querySelector('slot'))
-				this.refr_.slotHtml_ = el.innerHTML; // At this point none of the children will be upgraded to web components?
+				this.refr_.slotHtml = el.innerHTML; // At this point none of the children will be upgraded to web components?
 			el.innerHTML = '';
 		}
 		// 1B. Create Element
@@ -250,7 +250,7 @@ export default class VElement {
 		// 3. Slot content
 		let count = 0;
 		if (tagName === 'slot') {
-			let slotChildren = VElement.fromHtml_(this.refr_.slotHtml_, Object.keys(this.scope_), this, this.refr_);
+			let slotChildren = VElement.fromHtml_(this.refr_.slotHtml, Object.keys(this.scope_), this, this.refr_);
 			for (let vChild of slotChildren) {
 				vChild.scope_ = {...this.scope_}
 				vChild.scope3_ = this.scope3_.clone_();

@@ -1,4 +1,4 @@
-import Utils, {removeProxies, isObj} from './utils.js';
+import Utils, {isObj} from './utils.js';
 
 /**
  * @property object.$isProxy
@@ -116,7 +116,7 @@ import Utils, {removeProxies, isObj} from './utils.js';
 			// This removes them recursively in case of something like newVal=[Proxy(obj)].
 			let oldVal = obj[field];
 
-			newVal = removeProxies(newVal);
+			newVal = Utils.removeProxies(newVal);
 
 			// New:
 			if (oldVal === newVal)

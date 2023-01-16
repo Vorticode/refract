@@ -1,4 +1,4 @@
-import Utils, {assert, csv, removeProxy} from './utils.js';
+import Utils, {assert, csv} from './utils.js';
 import watchProxy, {WatchUtil} from './watchProxy.js';
 import delve from './delve.js';
 import utils from "./utils.js";
@@ -257,7 +257,7 @@ var Watch = {
 	 * @param callback {function(action:string, path:string[], value:string?)} */
 	add(obj, path, callback) {
 		assert(path.length);
-		obj = removeProxy(obj);
+		obj = utils.removeProxy(obj);
 
 		// Keep only one WatchProperties per watched object.
 		var wp = Watch.objects.get(obj);
@@ -273,7 +273,7 @@ var Watch = {
 	 * @param path {string|string[]}
 	 * @param callback {function=} If not specified, all callbacks will be unsubscribed. */
 	remove(obj, path, callback) {
-		obj = removeProxy(obj);
+		obj = utils.removeProxy(obj);
 		var wp = Watch.objects.get(obj);
 
 		if (wp) {

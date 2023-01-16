@@ -215,7 +215,7 @@ import utils from './utils.js';
 				let matches = code.match(regex);
 				if (matches) {
 					let result = matches[0];
-					result = utils.unescapeTemplate(result);
+					result = utils.unescapeTemplate_(result);
 					//result = Object.assign(result, {originalLength: matches[0].length});
 					// if (result.length !== matches[0].length)
 					// 	debugger;
@@ -241,7 +241,7 @@ import utils from './utils.js';
 				let matches = code.match(/^( |\r|\n|\t|\v|\f|\xa0|\\r|\\n|\\t|\\v|\\f|\\xa0)+/);
 				if (matches) {
 					let result = matches[0];
-					result = utils.unescapeTemplate(result);
+					result = utils.unescapeTemplate_(result);
 					//result = Object.assign(result, {originalLength: matches[0].length});
 					return [result, undefined, matches[0].length];
 				}

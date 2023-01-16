@@ -41,17 +41,13 @@ export default class Refract extends HTMLElement {
 	static virtualElement;
 
 	/**
+	 * @deprecated
 	 * @type {string[]} Names of the constructor's arguments. */
 	static constructorArgs = null;
 
-	static initArgs = null;
-
-
 	/**
-	 * Whenever an element is created, it's added here to this global map, pointing back to its velement.
-	 * TODO: This currently isn't used.
-	 * @type {WeakMap<HTMLElement, VElement|VText>} */
-	//static virtualElements = new WeakMap();
+	 * @type {?string[]} Cached names of the arguments to the init function. */
+	static initArgs = null;
 
 	/**
 	 * Change this from false to an empty array [] to keep a list of every element created by ever class that inherits
@@ -64,13 +60,11 @@ export default class Refract extends HTMLElement {
 	 * This will fix some of the event unit tests where events are added from ${} in odd ways.
 	 * @param event {Event}
 	 * @param el {HTMLElement} I probably don't need this, since i can get it from event.currentTarget */
-	// static refractEvent(event, el) {
-	//
-	// }
+	// static refractEvent(event, el) {}
 
 
 	/** @type {string} */
-	slotHtml_ = '';
+	slotHtml = '';
 
 	/** If true, call render() before the constructor, and every time after a property is changed */
 	__autoRender = true;

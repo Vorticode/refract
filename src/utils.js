@@ -1,10 +1,6 @@
-
 import Watch from "./Watch.js";
 
-
-/** @deprecated */
-var removeProxy = obj => (obj && obj.$removeProxy) || obj;
-
+//#IFDEV
 var assert = expr => {
 	if (!expr) {
 		debugger;
@@ -12,6 +8,8 @@ var assert = expr => {
 	}
 };
 export {assert};
+//#ENDIF
+
 
 export default {
 
@@ -37,6 +35,55 @@ export default {
 
 	removeProxy(obj) {
 		return (obj && obj.$removeProxy) || obj;
+	},
+
+
+
+	/**
+	 * Operates recursively to remove all proxies.
+	 * TODO: This is used by watchproxy and should be moved there?
+	 * @param obj {*}
+	 * @param visited {WeakSet=} Used internally.
+	 * @return {*} */
+	removeProxies(obj, visited) {
+		if (obj === null || obj === undefined)
+			return obj;
+
+		if (obj.$isProxy) {
+			obj = obj.$removeProxy;
+
+			//#IFDEV
+			if (obj.$isProxy) // If still a proxy.  There should never be more than 1 level deep of proxies.
+				throw new Error("Double wrapped proxy found.");
+			//#ENDIF
+		}
+
+		if (typeof obj === 'object') {
+			if (!visited)
+				visited = new WeakSet();
+			else if (visited.has(obj))
+				return obj; // visited this object before in a cyclic data structure.
+			visited.add(obj);
+
+			// Recursively remove proxies from every property of obj:
+			for (let name in Object.keys(obj)) { // Don't mess with inherited properties.  E.g. defining a new outerHTML.
+				let t = obj[name];
+				let v = this.removeProxies(t, visited);
+
+				// If a proxy was removed from something created with Object.defineOwnProperty()
+				if (v !== t) {
+					if (Object.getOwnPropertyDescriptor(obj, name).writable) // we never set writable=true when we defineProperty.
+						obj[name] = v;
+					else {
+						// It's a defined property.  Set it on the underlying object.
+						let wp = Watch.objects.get(obj);
+						let node = wp ? wp.fields_ : obj;
+						node[name] = v
+					}
+				}
+			}
+		}
+		return obj;
 	},
 
 	arrayEq(a, b) {
@@ -74,7 +121,7 @@ export default {
 		return val+'';
 	},
 
-	unescapeTemplate(text) {
+	unescapeTemplate_(text) {
 		return text.replace(/\\r/g, '\r').replace(/\\n/g, '\n').replace(/\\t/g, '\t');
 	},
 
@@ -144,53 +191,4 @@ var csv = array => JSON.stringify(array).slice(1, -1); // slice() to remove star
 var isObj = obj => obj && typeof obj === 'object'; // Make sure it's not null, since typof null === 'object'.
 
 
-/**
- * Operates recursively to remove all proxies.
- * TODO: This is used by watchproxy and should be moved there?
- * @param obj {*}
- * @param visited {WeakSet=} Used internally.
- * @return {*} */
-var removeProxies = (obj, visited) => {
-	if (obj === null || obj === undefined)
-		return obj;
-
-	if (obj.$isProxy) {
-		obj = obj.$removeProxy;
-
-		//#IFDEV
-		if (obj.$isProxy) // If still a proxy.  There should never be more than 1 level deep of proxies.
-			throw new Error("Double wrapped proxy found.");
-		//#ENDIF
-	}
-
-	if (typeof obj === 'object') {
-		if (!visited)
-			visited = new WeakSet();
-		else if (visited.has(obj))
-			return obj; // visited this object before in a cyclic data structure.
-		visited.add(obj);
-
-		// Recursively remove proxies from every property of obj:
-		for (let name in Object.keys(obj)) { // Don't mess with inherited properties.  E.g. defining a new outerHTML.
-			let t = obj[name];
-			let v = removeProxies(t, visited);
-
-			// If a proxy was removed from something created with Object.defineOwnProperty()
-			if (v !== t) {
-				if (Object.getOwnPropertyDescriptor(obj, name).writable) // we never set writable=true when we defineProperty.
-					obj[name] = v;
-				else {
-					// It's a defined property.  Set it on the underlying object.
-					let wp = Watch.objects.get(obj);
-					let node = wp ? wp.fields_ : obj;
-					node[name] = v
-				}
-			}
-		}
-	}
-	return obj;
-};
-
 export { csv, isObj };
-
-export { removeProxy, removeProxies };

@@ -14,16 +14,16 @@ var Parse = {
 	 * @return {function(*): (boolean|number)} */
 	createVarExpression_(vars=[]) {
 		let key = vars.join(','); // Benchmarking shows this cache does speed things up a little.
-		let result = varExpressionCache_[key];
+		let result = varExprCache[key];
 		if (result)
 			return result;
 
-		return varExpressionCache_[key] = fregex(
+		return varExprCache[key] = fregex(
 			fregex.or(
-				fregex('this', Parse.ws, fregex.oneOrMore(property_)),  // this.prop
-				...vars.map(v => fregex(v, fregex.zeroOrMore(property_)))    // item.prop
+				fregex('this', Parse.ws, fregex.oneOrMore(property)),  // this.prop
+				...vars.map(v => fregex(v, fregex.zeroOrMore(property)))    // item.prop
 			),
-			terminator_
+			terminator
 		);
 	},
 
@@ -318,7 +318,7 @@ var Parse = {
 
 
 
-let varExpressionCache_ = {};
+let varExprCache = {};
 
 
 // Whitespace
@@ -326,7 +326,7 @@ Parse.ws = fregex.zeroOrMore(fregex.or(
 	{type: 'whitespace'}, {type: 'ln'}
 ));
 
-let indexType_ = [
+let indexType = [
 	{type: 'number'},
 	{type: 'hex'},
 	{type: 'string'},
@@ -340,19 +340,21 @@ Parse.isLValue_ = fregex.oneOrMore(
 	)
 );
 
-let terminator_ = fregex.lookAhead([
+let terminator = fregex.lookAhead([
 	fregex.or(
 		fregex.end, // no more tokens
 		fregex.not(Parse.ws, '(')
 	)
 ]);
-let property_ = fregex(
+let property = fregex(
 	fregex.or(
 		fregex(Parse.ws, fregex.or('.', '?.') , Parse.ws, {type: 'identifier'}), //.item
-		fregex(Parse.ws, fregex.zeroOrOne('?.'), '[',  Parse.ws, fregex.or(...indexType_), Parse.ws, ']') // ['item']
+		fregex(Parse.ws, fregex.zeroOrOne('?.'), '[',  Parse.ws, fregex.or(...indexType), Parse.ws, ']') // ['item']
 	),
-	terminator_ // TODO: Why is the terminator here?
+	terminator // TODO: Why is the terminator here?
 );
+
+
 
 
 

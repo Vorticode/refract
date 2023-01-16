@@ -1,7 +1,7 @@
 import {assert, assertEquals, Testimony} from './Testimony.js';
 Testimony.enableJsDom();
 
-import ArrayDiff from './../src/ArrayDiff.js';
+import ArrayDiff from '../src/unused/ArrayDiff.js';
 
 Testimony.test('ArrayDiff.removeEnd', () => {
 	let array1 = [{name: 'A'}, {name: 'B'}, {name: 'C'}];

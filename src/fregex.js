@@ -88,8 +88,6 @@ fregex.nor = (...rules) => {
 		result.debug = 'nor(' + rules.map(r => r.debug || r).join(', ') + ')';
 	//#ENDIF
 	return result;
-
-
 }
 
 

@@ -696,10 +696,6 @@ export default class VExpression {
 	/**
 	 * All calls to Watch.add() (i.e. all watches) used by Refract come through this function.
 	 * @param callback {function} */
-
-	/**
-	 * All calls to Watch.add() (i.e. all watches) used by Refract come through this function.
-	 * @param callback {function} */
 	watch_(callback) {
 
 		//if (window.debug)

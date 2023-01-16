@@ -1,12 +1,13 @@
 import VExpression from "./VExpression.js";
 import VElement from "./VElement.js";
-import createEl from "./createEl.js";
 import Parse from "./Parse.js";
 import lex from "./lex.js";
 import htmljs from "./lex-htmljs.js";
 import fregex from "./fregex.js";
 import utils from "./utils.js";
 import Refract from "./Refract.js";
+
+
 
 /**
  * Utility functions used internally by Refract for setting up a Refract class. */
@@ -377,7 +378,7 @@ export class Compiler {
 					innerTokens = lex(htmljs, code, 'template');
 				}
 
-				if (innerTokens[0].type === 'text' && !utils.unescapeTemplate(innerTokens[0].text).trim().length)
+				if (innerTokens[0].type === 'text' && !utils.unescapeTemplate_(innerTokens[0].text).trim().length)
 					innerTokens = innerTokens.slice(1); // Skip initial whitespace.
 
 				result.htmlTokens = innerTokens;

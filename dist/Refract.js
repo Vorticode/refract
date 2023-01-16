@@ -148,7 +148,7 @@ var ascendIf = regex => code => {
 			// This removes them recursively in case of something like newVal=[Proxy(obj)].
 			let oldVal = obj[field];
 
-			newVal = removeProxies(newVal);
+			newVal = utils.removeProxies(newVal);
 
 			// New:
 			if (oldVal === newVal)
@@ -877,7 +877,7 @@ var Watch = {
 	 * @param callback {function(action:string, path:string[], value:string?)} */
 	add(obj, path, callback) {
 		assert(path.length);
-		obj = removeProxy(obj);
+		obj = utils.removeProxy(obj);
 
 		// Keep only one WatchProperties per watched object.
 		var wp = Watch.objects.get(obj);
@@ -893,7 +893,7 @@ var Watch = {
 	 * @param path {string|string[]}
 	 * @param callback {function=} If not specified, all callbacks will be unsubscribed. */
 	remove(obj, path, callback) {
-		obj = removeProxy(obj);
+		obj = utils.removeProxy(obj);
 		var wp = Watch.objects.get(obj);
 
 		if (wp) {
@@ -915,15 +915,15 @@ var Watch = {
 
 };
 
-/** @deprecated */
-var removeProxy = obj => (obj && obj.$removeProxy) || obj;
-
+//#IFDEV
 var assert = expr => {
 	if (!expr) {
 		debugger;
 		throw new Error('Assertion failed');
 	}
 };
+//#ENDIF
+
 
 var utils = {
 
@@ -949,6 +949,55 @@ var utils = {
 
 	removeProxy(obj) {
 		return (obj && obj.$removeProxy) || obj;
+	},
+
+
+
+	/**
+	 * Operates recursively to remove all proxies.
+	 * TODO: This is used by watchproxy and should be moved there?
+	 * @param obj {*}
+	 * @param visited {WeakSet=} Used internally.
+	 * @return {*} */
+	removeProxies(obj, visited) {
+		if (obj === null || obj === undefined)
+			return obj;
+
+		if (obj.$isProxy) {
+			obj = obj.$removeProxy;
+
+			//#IFDEV
+			if (obj.$isProxy) // If still a proxy.  There should never be more than 1 level deep of proxies.
+				throw new Error("Double wrapped proxy found.");
+			//#ENDIF
+		}
+
+		if (typeof obj === 'object') {
+			if (!visited)
+				visited = new WeakSet();
+			else if (visited.has(obj))
+				return obj; // visited this object before in a cyclic data structure.
+			visited.add(obj);
+
+			// Recursively remove proxies from every property of obj:
+			for (let name in Object.keys(obj)) { // Don't mess with inherited properties.  E.g. defining a new outerHTML.
+				let t = obj[name];
+				let v = this.removeProxies(t, visited);
+
+				// If a proxy was removed from something created with Object.defineOwnProperty()
+				if (v !== t) {
+					if (Object.getOwnPropertyDescriptor(obj, name).writable) // we never set writable=true when we defineProperty.
+						obj[name] = v;
+					else {
+						// It's a defined property.  Set it on the underlying object.
+						let wp = Watch.objects.get(obj);
+						let node = wp ? wp.fields_ : obj;
+						node[name] = v;
+					}
+				}
+			}
+		}
+		return obj;
 	},
 
 	arrayEq(a, b) {
@@ -986,7 +1035,7 @@ var utils = {
 		return val+'';
 	},
 
-	unescapeTemplate(text) {
+	unescapeTemplate_(text) {
 		return text.replace(/\\r/g, '\r').replace(/\\n/g, '\n').replace(/\\t/g, '\t');
 	},
 
@@ -1054,54 +1103,6 @@ var csv = array => JSON.stringify(array).slice(1, -1); // slice() to remove star
  * @param obj {*}
  * @return {boolean} */
 var isObj = obj => obj && typeof obj === 'object'; // Make sure it's not null, since typof null === 'object'.
-
-
-/**
- * Operates recursively to remove all proxies.
- * TODO: This is used by watchproxy and should be moved there?
- * @param obj {*}
- * @param visited {WeakSet=} Used internally.
- * @return {*} */
-var removeProxies = (obj, visited) => {
-	if (obj === null || obj === undefined)
-		return obj;
-
-	if (obj.$isProxy) {
-		obj = obj.$removeProxy;
-
-		//#IFDEV
-		if (obj.$isProxy) // If still a proxy.  There should never be more than 1 level deep of proxies.
-			throw new Error("Double wrapped proxy found.");
-		//#ENDIF
-	}
-
-	if (typeof obj === 'object') {
-		if (!visited)
-			visited = new WeakSet();
-		else if (visited.has(obj))
-			return obj; // visited this object before in a cyclic data structure.
-		visited.add(obj);
-
-		// Recursively remove proxies from every property of obj:
-		for (let name in Object.keys(obj)) { // Don't mess with inherited properties.  E.g. defining a new outerHTML.
-			let t = obj[name];
-			let v = removeProxies(t, visited);
-
-			// If a proxy was removed from something created with Object.defineOwnProperty()
-			if (v !== t) {
-				if (Object.getOwnPropertyDescriptor(obj, name).writable) // we never set writable=true when we defineProperty.
-					obj[name] = v;
-				else {
-					// It's a defined property.  Set it on the underlying object.
-					let wp = Watch.objects.get(obj);
-					let node = wp ? wp.fields_ : obj;
-					node[name] = v;
-				}
-			}
-		}
-	}
-	return obj;
-};
 
 /**
  * Grammar for html/js code, including js templates.
@@ -1318,7 +1319,7 @@ var removeProxies = (obj, visited) => {
 				let matches = code.match(regex);
 				if (matches) {
 					let result = matches[0];
-					result = utils.unescapeTemplate(result);
+					result = utils.unescapeTemplate_(result);
 					//result = Object.assign(result, {originalLength: matches[0].length});
 					// if (result.length !== matches[0].length)
 					// 	debugger;
@@ -1344,7 +1345,7 @@ var removeProxies = (obj, visited) => {
 				let matches = code.match(/^( |\r|\n|\t|\v|\f|\xa0|\\r|\\n|\\t|\\v|\\f|\\xa0)+/);
 				if (matches) {
 					let result = matches[0];
-					result = utils.unescapeTemplate(result);
+					result = utils.unescapeTemplate_(result);
 					//result = Object.assign(result, {originalLength: matches[0].length});
 					return [result, undefined, matches[0].length];
 				}
@@ -1613,8 +1614,6 @@ fregex.nor = (...rules) => {
 		result.debug = 'nor(' + rules.map(r => r.debug || r).join(', ') + ')';
 	//#ENDIF
 	return result;
-
-
 };
 
 
@@ -2303,16 +2302,16 @@ var Parse = {
 	 * @return {function(*): (boolean|number)} */
 	createVarExpression_(vars=[]) {
 		let key = vars.join(','); // Benchmarking shows this cache does speed things up a little.
-		let result = varExpressionCache_[key];
+		let result = varExprCache[key];
 		if (result)
 			return result;
 
-		return varExpressionCache_[key] = fregex(
+		return varExprCache[key] = fregex(
 			fregex.or(
-				fregex('this', Parse.ws, fregex.oneOrMore(property_)),  // this.prop
-				...vars.map(v => fregex(v, fregex.zeroOrMore(property_)))    // item.prop
+				fregex('this', Parse.ws, fregex.oneOrMore(property)),  // this.prop
+				...vars.map(v => fregex(v, fregex.zeroOrMore(property)))    // item.prop
 			),
-			terminator_
+			terminator
 		);
 	},
 
@@ -2607,7 +2606,7 @@ var Parse = {
 
 
 
-let varExpressionCache_ = {};
+let varExprCache = {};
 
 
 // Whitespace
@@ -2615,7 +2614,7 @@ Parse.ws = fregex.zeroOrMore(fregex.or(
 	{type: 'whitespace'}, {type: 'ln'}
 ));
 
-let indexType_ = [
+let indexType = [
 	{type: 'number'},
 	{type: 'hex'},
 	{type: 'string'},
@@ -2629,18 +2628,18 @@ Parse.isLValue_ = fregex.oneOrMore(
 	)
 );
 
-let terminator_ = fregex.lookAhead([
+let terminator = fregex.lookAhead([
 	fregex.or(
 		fregex.end, // no more tokens
 		fregex.not(Parse.ws, '(')
 	)
 ]);
-let property_ = fregex(
+let property = fregex(
 	fregex.or(
 		fregex(Parse.ws, fregex.or('.', '?.') , Parse.ws, {type: 'identifier'}), //.item
-		fregex(Parse.ws, fregex.zeroOrOne('?.'), '[',  Parse.ws, fregex.or(...indexType_), Parse.ws, ']') // ['item']
+		fregex(Parse.ws, fregex.zeroOrOne('?.'), '[',  Parse.ws, fregex.or(...indexType), Parse.ws, ']') // ['item']
 	),
-	terminator_ // TODO: Why is the terminator here?
+	terminator // TODO: Why is the terminator here?
 );
 
 var div = document.createElement('div');
@@ -3500,10 +3499,6 @@ class VExpression {
 	/**
 	 * All calls to Watch.add() (i.e. all watches) used by Refract come through this function.
 	 * @param callback {function} */
-
-	/**
-	 * All calls to Watch.add() (i.e. all watches) used by Refract come through this function.
-	 * @param callback {function} */
 	watch_(callback) {
 
 		//if (window.debug)
@@ -3701,7 +3696,7 @@ class VElement {
 			// Because then the slot will be added to the slot, recursively forever.
 			// So we only allow setting content that doesn't have slot tags.
 			if (!el.querySelector('slot'))
-				this.refr_.slotHtml_ = el.innerHTML; // At this point none of the children will be upgraded to web components?
+				this.refr_.slotHtml = el.innerHTML; // At this point none of the children will be upgraded to web components?
 			el.innerHTML = '';
 		}
 		// 1B. Create Element
@@ -3794,7 +3789,7 @@ class VElement {
 		// 3. Slot content
 		let count = 0;
 		if (tagName === 'slot') {
-			let slotChildren = VElement.fromHtml_(this.refr_.slotHtml_, Object.keys(this.scope_), this, this.refr_);
+			let slotChildren = VElement.fromHtml_(this.refr_.slotHtml, Object.keys(this.scope_), this, this.refr_);
 			for (let vChild of slotChildren) {
 				vChild.scope_ = {...this.scope_};
 				vChild.scope3_ = this.scope3_.clone_();
@@ -4206,60 +4201,6 @@ function setInputValue_(ref, el, value, scope) {
 	}
 }
 
-// TODO: Move this into Html.js?
-let cache_ = new Map(); // We use a map so we can cache properties like 'constructor' // TODO: Cache should exist per-document?
-let divCache_ = new WeakMap();
-let templateCache_ = new WeakMap();
-
-// let div = document.createElement('div');
-// let template = document.createElement('template');
-
-/**
- * Create a single html element, node, or comment from the html string.
- * The string will be trimmed so that an element with space before it doesn't create a text node with spaces.
- * @param html {string}
- * @param trim {boolean=}
- * @param doc {Document|HTMLDocument}
- * @return {HTMLElement|Node} */
-function createEl(html, trim=true, doc=document) {
-
-	// Get from cache
-	if (trim)
-		html = html.trim();
-
-	// If creating a web component, don't use a template because it prevents the constructor from being called.
-	// And don't use an item from the cache with cloneNode() because that will call the constructor more than once!
-	if (html.match(/^<\S+-\S+/)) {
-
-		let div = divCache_.get(doc);
-		if (!div)
-			divCache_.set(doc, div = doc.createElement('div'));
-		div.innerHTML = html;
-		return div.removeChild(div.firstChild)
-	}
-
-	let existing = cache_.get(html);
-	if (existing)
-		return existing.cloneNode(true);
-
-
-	let template = templateCache_.get(doc);
-	if (!template)
-		templateCache_.set(doc, template = doc.createElement('template'));
-
-	// Create
-	template.innerHTML = html;
-
-	// Cache
-	// We only cache the html if there are no slots.
-	// Because if we use cloneNode with a custom element that has slots, it will take all of the regular, non-slot
-	// children of the element and insert them into the slot.
-	if (!template.content.querySelector('slot'))
-		cache_.set(html, template.content.firstChild.cloneNode(true));
-
-	return template.content.removeChild(template.content.firstChild);
-}
-
 /**
  * Utility functions used internally by Refract for setting up a Refract class. */
 class Compiler {
@@ -4629,7 +4570,7 @@ class Compiler {
 					innerTokens = lex(lexHtmlJs, code, 'template');
 				}
 
-				if (innerTokens[0].type === 'text' && !utils.unescapeTemplate(innerTokens[0].text).trim().length)
+				if (innerTokens[0].type === 'text' && !utils.unescapeTemplate_(innerTokens[0].text).trim().length)
 					innerTokens = innerTokens.slice(1); // Skip initial whitespace.
 
 				result.htmlTokens = innerTokens;
@@ -4760,17 +4701,13 @@ class Refract extends HTMLElement {
 	static virtualElement;
 
 	/**
+	 * @deprecated
 	 * @type {string[]} Names of the constructor's arguments. */
 	static constructorArgs = null;
 
-	static initArgs = null;
-
-
 	/**
-	 * Whenever an element is created, it's added here to this global map, pointing back to its velement.
-	 * TODO: This currently isn't used.
-	 * @type {WeakMap<HTMLElement, VElement|VText>} */
-	//static virtualElements = new WeakMap();
+	 * @type {?string[]} Cached names of the arguments to the init function. */
+	static initArgs = null;
 
 	/**
 	 * Change this from false to an empty array [] to keep a list of every element created by ever class that inherits
@@ -4783,13 +4720,11 @@ class Refract extends HTMLElement {
 	 * This will fix some of the event unit tests where events are added from ${} in odd ways.
 	 * @param event {Event}
 	 * @param el {HTMLElement} I probably don't need this, since i can get it from event.currentTarget */
-	// static refractEvent(event, el) {
-	//
-	// }
+	// static refractEvent(event, el) {}
 
 
 	/** @type {string} */
-	slotHtml_ = '';
+	slotHtml = '';
 
 	/** If true, call render() before the constructor, and every time after a property is changed */
 	__autoRender = true;

@@ -4,7 +4,7 @@
  * So it's best to parse the php sections, splice together the remaining "nonphp" sections, and lex them with the lex-htmljs grammar.
  */
 
-import {descendIf, ascendIf} from "./lex-tools.js";
+import {descendIf, ascendIf} from "../lex-tools.js";
 
 var lexPhp = {
 
