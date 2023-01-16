@@ -7,6 +7,20 @@ import {Compiler} from "./Compiler.js";
 
 htmljs.allowHashTemplates = true;
 
+var Globals = {
+	currentEvent_: null,
+	currentVElement_: null,
+
+
+	/**
+	 * Keep track of which Refract elements are currently being constructed.  Indexed by tagname.
+	 * This prevents us from creating another instance of an element when it's in the middle of being upgraded,
+	 * which browsers don't like.
+	 * @type {Object<string, boolean>} */
+	constructing_: {},
+}
+export {Globals};
+
 
 /**
  * @property createFunction {function} Created temporarily during compilation.
@@ -18,12 +32,6 @@ export default class Refract extends HTMLElement {
 	/** @type {string} */
 	static tagName;
 
-	/**
-	 * Keep track of which Refract elements are currently being constructed.  Indexed by tagname.
-	 * This prevents us from creating another instance of an element when it's in the middle of being upgraded,
-	 * which browsers don't like.
-	 * @type {Object<string, boolean>} */
-	static constructing_ = {};
 
 	static htmlTokens = null;
 
@@ -31,9 +39,6 @@ export default class Refract extends HTMLElement {
 	 * A parsed representation of this class's html.
 	 * @type VElement */
 	static virtualElement;
-
-
-	static currentVElement_ = null;
 
 	/**
 	 * @type {string[]} Names of the constructor's arguments. */
@@ -46,17 +51,13 @@ export default class Refract extends HTMLElement {
 	 * Whenever an element is created, it's added here to this global map, pointing back to its velement.
 	 * TODO: This currently isn't used.
 	 * @type {WeakMap<HTMLElement, VElement|VText>} */
-	static virtualElements = new WeakMap();
+	//static virtualElements = new WeakMap();
 
 	/**
 	 * Change this from false to an empty array [] to keep a list of every element created by ever class that inherits
 	 * from Refract.  Useful for debugging / seeing how many elements were recreated for a given operation.
 	 * @type {boolean|(Node|HTMLElement)[]} */
 	static elsCreated = false;
-
-	/**
-	 * @type {Event} If within an event, this is the  */
-	static currentEvent_;
 
 	/**
 	 * TODO: Every event attribute should call this function.
@@ -131,12 +132,12 @@ export default class Refract extends HTMLElement {
 				this.constructor.htmlTokens = null; // We don't need them any more.
 			}
 
-			Refract.constructing_[this.tagName] = true;
+			Globals.constructing_[this.tagName] = true;
 
 			this.virtualElement = this.constructor.virtualElement.clone_(this);
 			this.virtualElement.apply_(null, this);
 
-			delete Refract.constructing_[this.tagName];
+			delete Globals.constructing_[this.tagName];
 		}
 
 		// Render items from the queue.
@@ -326,8 +327,6 @@ export default class Refract extends HTMLElement {
 		`;
 	}
 }
-
-Refract.constructing_ = {};
 
 Refract.htmlDecode = Html.decode;
 Refract.htmlEncode = Html.encode;

@@ -1,6 +1,6 @@
 import VExpression from './VExpression.js';
 import VText from './VText.js';
-import Refract from './Refract.js';
+import Refract, {Globals} from './Refract.js';
 import lex from "./lex.js";
 import htmljs from "./lex-htmljs.js";
 htmljs.allowHashTemplates = true;
@@ -163,7 +163,7 @@ export default class VElement {
 		// 1B. Create Element
 		else {
 			var newEl;
-			Refract.currentVElement_ = this;
+			Globals.currentVElement_ = this;
 
 			// Special path, because we can't use document.createElement() to create an element whose constructor
 			//     adds attributes and child nodes.
@@ -188,7 +188,7 @@ export default class VElement {
 				// See the Refract.nested.recursive test.
 				let i = 2;
 				let tagName2 = tagName;
-				while (tagName2.toUpperCase() in Refract.constructing_) {
+				while (tagName2.toUpperCase() in Globals.constructing_) {
 					tagName2 = tagName + '_' + i
 					var Class2 = customElements.get(tagName2);
 					if (Class2) {
@@ -232,11 +232,11 @@ export default class VElement {
 			}
 
 
-			Refract.virtualElements.set(newEl, this);
+			//Refract.virtualElements.set(newEl, this);
 			this.el = newEl;
 
 
-			Refract.currentVElement_ = null;
+			Globals.currentVElement_ = null;
 
 			if (Refract.elsCreated)
 				Refract.elsCreated.push('<'+tagName + '>');
@@ -345,9 +345,9 @@ export default class VElement {
 
 				// Update the value when the input changes:
 				Utils.watchInput_(this.el, (val, e) => {
-					Refract.currentEvent_ = e;
+					Globals.currentEvent_ = e;
 					assignFunc(...Object.values(this.scope_), val);
-					Refract.currentEvent_ = null;
+					Globals.currentEvent_ = null;
 				});
 			}
 		}
@@ -363,9 +363,9 @@ export default class VElement {
 			let assignFunc = createFunction(...Object.keys(this.scope), 'val', expr + '=val;').bind(this.refr);
 
 			Utils.watchInput(this.el, (val, e) => {
-				Refract.currentEvent = e;
+				Globals.currentEvent_ = e;
 				assignFunc(...Object.values(this.scope), val);
-				Refract.currentEvent = null;
+				Globals.currentEvent_ = null;
 			});
 
 		}
@@ -633,7 +633,7 @@ var inSvg = false;
 function setInputValue_(ref, el, value, scope) {
 
 	// Don't update input elements if they triggered the event.
-	if (Refract.currentEvent_ && el === Refract.currentEvent_.target)
+	if (Globals.currentEvent_ && el === Globals.currentEvent_.target)
 		return;
 
 

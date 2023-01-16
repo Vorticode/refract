@@ -3272,7 +3272,7 @@ class VExpression {
 		if (!this.vParent_)
 			return;
 
-		Refract.currentVElement_ = this;
+		Globals.currentVElement_ = this;
 
 		// Path 1:  If modifying a property on a single array item.
 		// -2 because we're modifying not a loop item child, but a property of it.
@@ -3349,7 +3349,7 @@ class VExpression {
 		this.apply_();
 		this.updateSubsequentIndices_();
 
-		Refract.currentVElement_ = null;
+		Globals.currentVElement_ = null;
 
 
 		// TODO: Should we have a path that generates the new children and compares them with the existing children and only change what's changed?
@@ -3707,7 +3707,7 @@ class VElement {
 		// 1B. Create Element
 		else {
 			var newEl;
-			Refract.currentVElement_ = this;
+			Globals.currentVElement_ = this;
 
 			// Special path, because we can't use document.createElement() to create an element whose constructor
 			//     adds attributes and child nodes.
@@ -3732,7 +3732,7 @@ class VElement {
 				// See the Refract.nested.recursive test.
 				let i = 2;
 				let tagName2 = tagName;
-				while (tagName2.toUpperCase() in Refract.constructing_) {
+				while (tagName2.toUpperCase() in Globals.constructing_) {
 					tagName2 = tagName + '_' + i;
 					var Class2 = customElements.get(tagName2);
 					if (Class2) {
@@ -3776,11 +3776,11 @@ class VElement {
 			}
 
 
-			Refract.virtualElements.set(newEl, this);
+			//Refract.virtualElements.set(newEl, this);
 			this.el = newEl;
 
 
-			Refract.currentVElement_ = null;
+			Globals.currentVElement_ = null;
 
 			if (Refract.elsCreated)
 				Refract.elsCreated.push('<'+tagName + '>');
@@ -3889,9 +3889,9 @@ class VElement {
 
 				// Update the value when the input changes:
 				utils.watchInput_(this.el, (val, e) => {
-					Refract.currentEvent_ = e;
+					Globals.currentEvent_ = e;
 					assignFunc(...Object.values(this.scope_), val);
-					Refract.currentEvent_ = null;
+					Globals.currentEvent_ = null;
 				});
 			}
 		}
@@ -3907,9 +3907,9 @@ class VElement {
 			let assignFunc = createFunction(...Object.keys(this.scope), 'val', expr + '=val;').bind(this.refr);
 
 			Utils.watchInput(this.el, (val, e) => {
-				Refract.currentEvent = e;
+				Globals.currentEvent_ = e;
 				assignFunc(...Object.values(this.scope), val);
-				Refract.currentEvent = null;
+				Globals.currentEvent_ = null;
 			});
 
 		}
@@ -4177,7 +4177,7 @@ var inSvg = false;
 function setInputValue_(ref, el, value, scope) {
 
 	// Don't update input elements if they triggered the event.
-	if (Refract.currentEvent_ && el === Refract.currentEvent_.target)
+	if (Globals.currentEvent_ && el === Globals.currentEvent_.target)
 		return;
 
 
@@ -4727,6 +4727,19 @@ class Compiler {
 
 lexHtmlJs.allowHashTemplates = true;
 
+var Globals = {
+	currentEvent_: null,
+	currentVElement_: null,
+
+
+	/**
+	 * Keep track of which Refract elements are currently being constructed.  Indexed by tagname.
+	 * This prevents us from creating another instance of an element when it's in the middle of being upgraded,
+	 * which browsers don't like.
+	 * @type {Object<string, boolean>} */
+	constructing_: {},
+};
+
 
 /**
  * @property createFunction {function} Created temporarily during compilation.
@@ -4738,12 +4751,6 @@ class Refract extends HTMLElement {
 	/** @type {string} */
 	static tagName;
 
-	/**
-	 * Keep track of which Refract elements are currently being constructed.  Indexed by tagname.
-	 * This prevents us from creating another instance of an element when it's in the middle of being upgraded,
-	 * which browsers don't like.
-	 * @type {Object<string, boolean>} */
-	static constructing_ = {};
 
 	static htmlTokens = null;
 
@@ -4751,9 +4758,6 @@ class Refract extends HTMLElement {
 	 * A parsed representation of this class's html.
 	 * @type VElement */
 	static virtualElement;
-
-
-	static currentVElement_ = null;
 
 	/**
 	 * @type {string[]} Names of the constructor's arguments. */
@@ -4766,17 +4770,13 @@ class Refract extends HTMLElement {
 	 * Whenever an element is created, it's added here to this global map, pointing back to its velement.
 	 * TODO: This currently isn't used.
 	 * @type {WeakMap<HTMLElement, VElement|VText>} */
-	static virtualElements = new WeakMap();
+	//static virtualElements = new WeakMap();
 
 	/**
 	 * Change this from false to an empty array [] to keep a list of every element created by ever class that inherits
 	 * from Refract.  Useful for debugging / seeing how many elements were recreated for a given operation.
 	 * @type {boolean|(Node|HTMLElement)[]} */
 	static elsCreated = false;
-
-	/**
-	 * @type {Event} If within an event, this is the  */
-	static currentEvent_;
 
 	/**
 	 * TODO: Every event attribute should call this function.
@@ -4851,12 +4851,12 @@ class Refract extends HTMLElement {
 				this.constructor.htmlTokens = null; // We don't need them any more.
 			}
 
-			Refract.constructing_[this.tagName] = true;
+			Globals.constructing_[this.tagName] = true;
 
 			this.virtualElement = this.constructor.virtualElement.clone_(this);
 			this.virtualElement.apply_(null, this);
 
-			delete Refract.constructing_[this.tagName];
+			delete Globals.constructing_[this.tagName];
 		}
 
 		// Render items from the queue.
@@ -5047,12 +5047,10 @@ class Refract extends HTMLElement {
 	}
 }
 
-Refract.constructing_ = {};
-
 Refract.htmlDecode = Html.decode;
 Refract.htmlEncode = Html.encode;
 
 var h = (text, quotes=`"'`) => Html.encode(text, quotes);
 
 export default Refract;
-export { utils as Utils, Watch, delve, fregex, h, lex, lexHtmlJs };
+export { Globals, utils as Utils, Watch, delve, fregex, h, lex, lexHtmlJs };

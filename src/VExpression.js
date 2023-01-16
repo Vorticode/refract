@@ -7,7 +7,7 @@ import VElement from './VElement.js';
 import VText from "./VText.js";
 import lex from "./lex.js";
 import lexHtmljs from "./lex-htmljs.js";
-import Refract from "./Refract.js";
+import Refract, {Globals} from "./Refract.js";
 import Scope, {ScopeItem} from "./Scope.js";
 
 
@@ -468,7 +468,7 @@ export default class VExpression {
 		if (!this.vParent_)
 			return;
 
-		Refract.currentVElement_ = this;
+		Globals.currentVElement_ = this;
 
 		// Path 1:  If modifying a property on a single array item.
 		// -2 because we're modifying not a loop item child, but a property of it.
@@ -545,7 +545,7 @@ export default class VExpression {
 		this.apply_();
 		this.updateSubsequentIndices_();
 
-		Refract.currentVElement_ = null;
+		Globals.currentVElement_ = null;
 
 
 		// TODO: Should we have a path that generates the new children and compares them with the existing children and only change what's changed?
