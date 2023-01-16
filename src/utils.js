@@ -4,7 +4,7 @@ import Watch from "./Watch.js";
 var assert = expr => {
 	if (!expr) {
 		debugger;
-		throw new Error('Assertion failed');
+		throw new Error('Assert failed');
 	}
 };
 export {assert};
@@ -86,7 +86,7 @@ export default {
 		return obj;
 	},
 
-	arrayEq(a, b) {
+	arrayEq_(a, b) {
 		if (a.length !== b.length)
 			return false;
 		for (let i = 0; i < a.length; i++)
@@ -129,12 +129,11 @@ export default {
 	/**
 	 * When the input's value changes, call the callback with the new, typed value.
 	 * @param el {HTMLInputElement|HTMLElement}
-	 * @param callback {function(val:*, event)}	 */
+	 * @param callback {function(val:*, Event)}	 */
 	watchInput_(el, callback) {
 		let tagName = el.tagName;
 		let isContentEditable = el.hasAttribute('contenteditable') && el.getAttribute('contenteditable') !== 'false';
 		let isTextArea = tagName==='TEXTAREA';
-
 
 		let useInputEvent = isTextArea || isContentEditable || (
 			tagName === 'INPUT' &&

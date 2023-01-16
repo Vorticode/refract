@@ -256,7 +256,9 @@ var Watch = {
 	 * @param path {string|string[]}
 	 * @param callback {function(action:string, path:string[], value:string?)} */
 	add(obj, path, callback) {
+		//#IFDEV
 		assert(path.length);
+		//#ENDIF
 		obj = utils.removeProxy(obj);
 
 		// Keep only one WatchProperties per watched object.
@@ -289,9 +291,11 @@ var Watch = {
 		}
 	},
 
+	//#IFDEV
 	cleanup() {
 		Watch.objects = new WeakMap();
 	}
+	//#ENDIF
 
 };
 

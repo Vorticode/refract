@@ -58,7 +58,9 @@ export class ParsedFunction {
 		 * @param start {int} Index of the first token after an optional open parenthesis.
 		 * @return {int} Index of token after the last arg token. */
 		const parseArgTokens = (tokens, start = 0) => {
+			//#IFDEV
 			assert(tokens[start].text === '(');
+			//#ENDIF
 			let groupEndIndex = Parse.findGroupEnd_(tokens, start);
 			if (groupEndIndex === null)
 				return -1;

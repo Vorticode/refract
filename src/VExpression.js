@@ -495,7 +495,7 @@ export default class VExpression {
 
 			// If the array is one of our watched paths:
 			// TODO: watchPaths besides 0?  Or only go this way if there's only one watchPath?
-			if (Array.isArray(array) && Utils.arrayEq(this.watchPaths_[0].slice(1), arrayPath)) {
+			if (Array.isArray(array) && Utils.arrayEq_(this.watchPaths_[0].slice(1), arrayPath)) {
 
 				let index = parseInt(path[path.length - 1]);
 				if (action === 'remove') { // TODO: Combine with remove step below used for set.

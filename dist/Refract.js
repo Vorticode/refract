@@ -876,7 +876,9 @@ var Watch = {
 	 * @param path {string|string[]}
 	 * @param callback {function(action:string, path:string[], value:string?)} */
 	add(obj, path, callback) {
+		//#IFDEV
 		assert(path.length);
+		//#ENDIF
 		obj = utils.removeProxy(obj);
 
 		// Keep only one WatchProperties per watched object.
@@ -909,9 +911,11 @@ var Watch = {
 		}
 	},
 
+	//#IFDEV
 	cleanup() {
 		Watch.objects = new WeakMap();
 	}
+	//#ENDIF
 
 };
 
@@ -919,7 +923,7 @@ var Watch = {
 var assert = expr => {
 	if (!expr) {
 		debugger;
-		throw new Error('Assertion failed');
+		throw new Error('Assert failed');
 	}
 };
 //#ENDIF
@@ -1000,7 +1004,7 @@ var utils = {
 		return obj;
 	},
 
-	arrayEq(a, b) {
+	arrayEq_(a, b) {
 		if (a.length !== b.length)
 			return false;
 		for (let i = 0; i < a.length; i++)
@@ -1043,12 +1047,11 @@ var utils = {
 	/**
 	 * When the input's value changes, call the callback with the new, typed value.
 	 * @param el {HTMLInputElement|HTMLElement}
-	 * @param callback {function(val:*, event)}	 */
+	 * @param callback {function(val:*, Event)}	 */
 	watchInput_(el, callback) {
 		let tagName = el.tagName;
 		let isContentEditable = el.hasAttribute('contenteditable') && el.getAttribute('contenteditable') !== 'false';
 		let isTextArea = tagName==='TEXTAREA';
-
 
 		let useInputEvent = isTextArea || isContentEditable || (
 			tagName === 'INPUT' &&
@@ -2069,7 +2072,9 @@ class ParsedFunction {
 		 * @param start {int} Index of the first token after an optional open parenthesis.
 		 * @return {int} Index of token after the last arg token. */
 		const parseArgTokens = (tokens, start = 0) => {
+			//#IFDEV
 			assert(tokens[start].text === '(');
+			//#ENDIF
 			let groupEndIndex = Parse.findGroupEnd_(tokens, start);
 			if (groupEndIndex === null)
 				return -1;
@@ -3298,7 +3303,7 @@ class VExpression {
 
 			// If the array is one of our watched paths:
 			// TODO: watchPaths besides 0?  Or only go this way if there's only one watchPath?
-			if (Array.isArray(array) && utils.arrayEq(this.watchPaths_[0].slice(1), arrayPath)) {
+			if (Array.isArray(array) && utils.arrayEq_(this.watchPaths_[0].slice(1), arrayPath)) {
 
 				let index = parseInt(path[path.length - 1]);
 				if (action === 'remove') { // TODO: Combine with remove step below used for set.
