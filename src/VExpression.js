@@ -27,7 +27,7 @@ export default class VExpression {
 	attrName_ = null;
 
 	/** @type {string[]|null} If an expression that creates attributes, keep track of them here. */
-	attributes = null;
+	attributes_ = null;
 
 	/**
 	 * @type {string} simple|complex|loop
@@ -49,7 +49,7 @@ export default class VExpression {
 	 * that gives the loop for the array.
 	 * E.g. if we have, this.$items.map(x => x+1), this function returns the array pointed to by this.$items.
 	 * @type {?function} */
-	exec = null;
+	exec_ = null;
 
 	/**
 	 * Names of the parameters accepted by the function given to array.map().
@@ -69,10 +69,10 @@ export default class VExpression {
 	// These are specific to the copy of each VExpression made for each Refract.
 
 	/** @type {Refract} */
-	refr = null;
+	refr_ = null;
 
 	/** @type {HTMLElement} */
-	parent = null;
+	parent_ = null;
 
 	/** @type {VElement|VExpression} */
 	vParent_ = null;
@@ -90,7 +90,7 @@ export default class VExpression {
 	/**
 	 * @deprecated for scope3
 	 * @type {Object<string, *>} */
-	scope = {};
+	scope_ = {};
 
 	/**
 	 * Stores a map from local variable names, to their value and their path from the root Refract object. */
@@ -127,14 +127,14 @@ export default class VExpression {
 	constructor(tokens=null, vParent=null, scopeVars=null, attrName=null) {
 		this.vParent_ = vParent;
 		if (vParent) {
-			this.refr = vParent.refr;
+			this.refr_ = vParent.refr_;
 			//#IFDEV
 			if (parent)
-				assert(this.refr);
+				assert(this.refr_);
 			//#ENDIF
 
 
-			this.scope = {...vParent.scope};
+			this.scope_ = {...vParent.scope_};
 			this.scope3_ = vParent.scope3_.clone();
 			//console.log(this.code, this.scope)
 		}
@@ -168,14 +168,14 @@ export default class VExpression {
 				for (let p of loopParamNames)
 					scopeVars.push(p);
 
-				this.exec = this.refr.constructor.createFunction(...scopeVars, 'return ' + watchPathTokens[0].join(''));
+				this.exec_ = this.refr_.constructor.createFunction(...scopeVars, 'return ' + watchPathTokens[0].join(''));
 
 				// If the loop body is a single `template` string:
 				// TODO Why is this special path necessary, instead of always just using the else path?
 				let loopBodyTrimmed = loopBody.filter(token => token.type !== 'whitespace' && token.type !== 'ln');
 				if (loopBodyTrimmed.length === 1 && loopBodyTrimmed[0].type === 'template') {
 					// Remove beginning and end string delimiters, parse items.
-					this.loopItemEls_ = VElement.fromTokens_(loopBodyTrimmed[0].tokens.slice(1, -1), scopeVars, vParent, this.refr);
+					this.loopItemEls_ = VElement.fromTokens_(loopBodyTrimmed[0].tokens.slice(1, -1), scopeVars, vParent, this.refr_);
 				}
 
 				// The loop body is more complex javascript code:
@@ -198,7 +198,7 @@ export default class VExpression {
 				// Later, scope object will be matched with param names to call this function.
 				// We call replacehashExpr() b/c we're valuating a whole string of code all at once, and the nested #{} aren't
 				// understood by the vanilla JavaScript that executes the template string.
-				tokens = Parse.replaceHashExpr_(tokens, null, this.refr.constructor.name);
+				tokens = Parse.replaceHashExpr_(tokens, null, this.refr_.constructor.name);
 
 				/**
 				 * We want sub-templates within the expression to be parsed to find their own variables,
@@ -213,7 +213,7 @@ export default class VExpression {
 				let body = tokens.map(t => t.text).join('');
 				if (tokens[0].text != '{')
 					body = 'return (' + body.trim() + ')';
-				this.exec = this.refr.constructor.createFunction(...scopeVars, body);
+				this.exec_ = this.refr_.constructor.createFunction(...scopeVars, body);
 			}
 
 			// Get just the identifier names between the dots.
@@ -229,7 +229,7 @@ export default class VExpression {
 	 * @param el {HTMLElement} Unused.  Only here to match
 	 * @return {int} Number of elements created. d*/
 	apply_(parent=null, el=null) {
-		this.parent = parent || this.parent;
+		this.parent_ = parent || this.parent_;
 
 		// if (window.debug)
 		// 	debugger;
@@ -237,7 +237,7 @@ export default class VExpression {
 		//#IFDEV
 
 		// See if this ever happens?
-		if (parent && parent !== this.parent)
+		if (parent && parent !== this.parent_)
 			debugger;
 
 
@@ -245,17 +245,17 @@ export default class VExpression {
 			throw new Error("Cannot apply an VExpression that's for an attribute.  Use evalVAttribute() or .exec.apply() instead.");
 
 		// Make sure we're not applying on an element that's been removed.
-		if (!('virtualElement' in this.parent) && !this.parent.parentNode) {
+		if (!('virtualElement' in this.parent_) && !this.parent_.parentNode) {
 			debugger;
 			return 0;
 		}
 		//#ENDIF
 
 		// VExpression creates one or more attributes.
-		if (this.attributes) {
-			for (let attr of this.attributes)
+		if (this.attributes_) {
+			for (let attr of this.attributes_)
 				parent.removeAttribute(attr);
-			this.attributes = [];
+			this.attributes_ = [];
 
 			let text = this.evaluate_();
 			if (text) {
@@ -266,7 +266,7 @@ export default class VExpression {
 						if (lastName)
 							parent.setAttribute(lastName, '');
 						lastName = token;
-						this.attributes.push(lastName);
+						this.attributes_.push(lastName);
 					} else if (token.type === 'string') {
 						// tokens[1] is in between "..."
 						// TODO: Later we should add code to evaluate any vexpressions within it?
@@ -300,13 +300,13 @@ export default class VExpression {
 			let startIndex = this.startIndex_;
 			for (let item of this.vChildren_) {
 				if (item instanceof HTMLElement) {
-					this.parent.insertBefore(item, this.parent.childNodes[startIndex])
+					this.parent_.insertBefore(item, this.parent_.childNodes[startIndex])
 					startIndex ++;
 				}
 				else
 					for (let vChild of item) {
 						vChild.startIndex_ = startIndex;
-						let num = vChild.apply_(this.parent, null);
+						let num = vChild.apply_(this.parent_, null);
 						startIndex += num;
 						count += num;
 					}
@@ -322,27 +322,27 @@ export default class VExpression {
 	 * @param vParent {VElement?}
 	 * @param parent {HTMLElement?}
 	 * @return {VExpression} */
-	clone(refr=null, vParent=null, parent=null) {
+	clone_(refr=null, vParent=null, parent=null) {
 		let result = new VExpression();
 		result.watchPaths_ = this.watchPaths_;
 		result.attrName_ = this.attrName_;
-		result.attributes = this.attributes;
+		result.attributes_ = this.attributes_;
 
 		result.type = this.type;
-		result.exec = this.exec;
+		result.exec_ = this.exec_;
 		result.loopParamNames_ = this.loopParamNames_;
 		result.loopItemEls_ = this.loopItemEls_;
 
 
 		// Properties specific to each instance.
-		result.refr = refr || this.refr;
-		result.parent = parent || this.parent;
+		result.refr_ = refr || this.refr_;
+		result.parent_ = parent || this.parent_;
 		result.vParent_ = vParent || this.vParent_;
 
 		result.startIndex_ = this.startIndex_;
 		result.childCount_ = this.childCount_;
 
-		result.scope = {...this.scope};
+		result.scope_ = {...this.scope_};
 		result.scope3_ = this.scope3_.clone();
 
 		result.isHash = this.isHash;
@@ -355,7 +355,7 @@ export default class VExpression {
 	/**
 	 * @return {string|string[]} */
 	evaluate_() {
-		return this.exec.apply(this.refr, Object.values(this.scope));
+		return this.exec_.apply(this.refr_, Object.values(this.scope_));
 	}
 
 	/**
@@ -381,7 +381,7 @@ export default class VExpression {
 		let result = [];
 		if (this.type !== 'loop') {
 			//#IFDEV
-			if (!this.refr)
+			if (!this.refr_)
 				throw new Error();
 			//#ENDIF
 
@@ -389,9 +389,9 @@ export default class VExpression {
 				.flat().map(h=>h===undefined?'':h); // undefined becomes empty string
 
 			if (this.isHash) // #{...} template
-				result = [htmls.map(html => new VText(html, this.refr))]; // We don't join all the text nodes b/c it creates index issues.
+				result = [htmls.map(html => new VText(html, this.refr_))]; // We don't join all the text nodes b/c it creates index issues.
 			else {
-				let scopeVarNames = Object.keys(this.scope);
+				let scopeVarNames = Object.keys(this.scope_);
 				for (let html of htmls) {
 					if (html instanceof HTMLElement) {
 						result.push(html); // not a VElement[], but a full HTMLElement
@@ -399,7 +399,7 @@ export default class VExpression {
 					else {
 						html += ''; // can be a number.
 						if (html.length) {
-							let vels = VElement.fromHtml_(html, scopeVarNames, this, this.refr).flat();
+							let vels = VElement.fromHtml_(html, scopeVarNames, this, this.refr_).flat();
 							result.push(vels);
 						}
 					}
@@ -417,7 +417,7 @@ export default class VExpression {
 				let params = [array[i], i, array];
 
 				for (let template of this.loopItemEls_) {
-					let vel = template.clone(this.refr, this);
+					let vel = template.clone_(this.refr_, this);
 					this.setScope_(vel, params, i);
 					group.push(vel);
 				}
@@ -437,13 +437,13 @@ export default class VExpression {
 	 * @param index {int}
 	 */
 	setScope_(vel, params, index) {
-		vel.scope = {...this.scope}
+		vel.scope_ = {...this.scope_}
 		vel.scope3_ = this.scope3_.clone();
 
 		// Assign values to the parameters of the function given to .map() that's used to loop.
 		// If this.type !== 'loop', then loopParamNames will be an empty array.
 		for (let j in this.loopParamNames_) {  // Benchmarking shows this loop is about 2% faster than for...in.
-			vel.scope[this.loopParamNames_[j]] = params[j];
+			vel.scope_[this.loopParamNames_[j]] = params[j];
 
 			// Path to the loop param variable:
 			let path = [...this.watchPaths_[0], index + '']; // VExpression loops always have one watchPath.
@@ -494,8 +494,8 @@ export default class VExpression {
 		}
 
 		// If we've had the initial render but autoRender is currently disabled
-		if (!this.refr.__autoRender && this.refr.virtualElement) {
-			this.refr.__toRender.set(this, arguments);
+		if (!this.refr_.__autoRender && this.refr_.virtualElement) {
+			this.refr_.__toRender.set(this, arguments);
 			return;
 		}
 
@@ -531,9 +531,9 @@ export default class VExpression {
 						this.vChildren_.splice(index, 0, []);
 
 					if (this.type === 'simple') // A simple expression ${this.var} always just prints the value.
-						this.vChildren_[index] = [new VText(array[index], this.refr)] // TODO: What about html-escape?
+						this.vChildren_[index] = [new VText(array[index], this.refr_)] // TODO: What about html-escape?
 					else { // loop
-						this.vChildren_[index] = this.loopItemEls_.map(vel => vel.clone(this.refr, this));
+						this.vChildren_[index] = this.loopItemEls_.map(vel => vel.clone_(this.refr_, this));
 
 					}
 
@@ -543,10 +543,10 @@ export default class VExpression {
 					let params = [array[index], index, array];
 					for (let newItem of this.vChildren_[index]) {
 						newItem.startIndex_ = startIndex + i;
-						newItem.parent = this.parent;
+						newItem.parent_ = this.parent_;
 
 						this.setScope_(newItem, params, i+index);
-						newItem.apply_(this.parent, null);
+						newItem.apply_(this.parent_, null);
 						i++;
 					}
 				}
@@ -691,7 +691,7 @@ export default class VExpression {
 				return vSibling;
 
 		// If not, go up a level, if that level has the same parent.
-		if (this.vParent_.parent === this.parent && (this.vParent_ instanceof VExpression))
+		if (this.vParent_.parent_ === this.parent_ && (this.vParent_ instanceof VExpression))
 			return this.vParent_.getNextVExpression_();
 
 		return null;
@@ -720,7 +720,7 @@ export default class VExpression {
 		//if (window.debug)
 
 		for (let path of this.watchPaths_) {
-			let root = this.refr;
+			let root = this.refr_;
 			let scope;
 
 			// slice() to remove the "this" element from the watch path.
@@ -728,10 +728,10 @@ export default class VExpression {
 				path = path.slice(1);
 
 			// Allow paths into the current scope to be watched.
-			else if (path[0] in this.scope && path.length > 1) {
+			else if (path[0] in this.scope_ && path.length > 1) {
 
 				// Resolve root to the path of the scope.
-				root = this.scope[path[0]];
+				root = this.scope_[path[0]];
 				path = path.slice(1);
 			}
 
@@ -743,7 +743,7 @@ export default class VExpression {
 				if (typeof obj !== 'object' && !Array.isArray(obj))
 					continue;
 
-				root = delve(this.refr, scope.path.slice(1, -1));
+				root = delve(this.refr_, scope.path.slice(1, -1));
 				path = scope.path.slice(-1);
 			}
 

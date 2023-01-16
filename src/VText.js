@@ -10,12 +10,12 @@ export default class VText {
 	el = null;
 
 	/** @type {Refract} */
-	refr = null;
+	refr_ = null;
 
 	startIndex_ = 0;
 
 	constructor(text='', refr=null) {
-		this.refr = refr;
+		this.refr_ = refr;
 		if (text === null || text === undefined)
 			text = '';
 		else if (typeof text !== 'string' && !(text instanceof String))
@@ -35,15 +35,15 @@ export default class VText {
 			let text;
 
 			// If text inside a style tag that's not inside our own component's shadow root.
-			if (parent.tagName === 'STYLE' && !this.refr.contains(parent.getRootNode()?.host)) {
-				if (!this.refr.dataset.style) {
-					this.refr.constructor.styleId = (this.refr.constructor.styleId || 0) + 1; // instance count.
-					this.refr.dataset.style = this.refr.constructor.styleId;
+			if (parent.tagName === 'STYLE' && !this.refr_.contains(parent.getRootNode()?.host)) {
+				if (!this.refr_.dataset.style) {
+					this.refr_.constructor.styleId = (this.refr_.constructor.styleId || 0) + 1; // instance count.
+					this.refr_.dataset.style = this.refr_.constructor.styleId;
 				}
 
-				let rTag = this.refr.tagName.toLowerCase();
+				let rTag = this.refr_.tagName.toLowerCase();
 
-				text = VText.styleReplace(this.text, rTag, this.refr.dataset.style);
+				text = VText.styleReplace(this.text, rTag, this.refr_.dataset.style);
 			}
 			else
 				text = this.text;
@@ -64,10 +64,10 @@ export default class VText {
 		return 1;
 	}
 
-	clone() {
+	clone_() {
 		let result = new VText();
 		result.text = this.text;
-		result.refr = this.refr;
+		result.refr_ = this.refr_;
 		return result;
 	}
 

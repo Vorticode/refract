@@ -64,7 +64,7 @@ export class Compiler {
 			`<div style="color: #f40">
 				<div>
 					<span>&lt;${ve.tagName}</span
-					>${omap(ve.attributes, (name, val) => ` <span>${name}="${renderItem(val, true)}"</span>`).join('')}&gt;
+					>${omap(ve.attributes_, (name, val) => ` <span>${name}="${renderItem(val, true)}"</span>`).join('')}&gt;
 				</div>
 				<div style="padding-left: 4ex">
 					${ve.vChildren_.map(renderItem).join('')}
@@ -159,7 +159,7 @@ export class Compiler {
 			`<div style="color: #f40">
 				<div>
 					<span>&lt;${ve.tagName}</span
-					>${omap(ve.attributes, (name, val) => ` <span>${name}="${renderItem(val, true)}"</span>`).join('')}&gt;
+					>${omap(ve.attributes_, (name, val) => ` <span>${name}="${renderItem(val, true)}"</span>`).join('')}&gt;
 				</div>
 				<div style="padding-left: 4ex">
 					${ve.vChildren_.map(renderItem).join('')}		

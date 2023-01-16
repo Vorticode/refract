@@ -133,7 +133,7 @@ export default class Refract extends HTMLElement {
 
 			Refract.constructing[this.tagName] = true;
 
-			this.virtualElement = this.constructor.virtualElement.clone(this);
+			this.virtualElement = this.constructor.virtualElement.clone_(this);
 			this.virtualElement.apply_(null, this);
 
 			delete Refract.constructing[this.tagName];
