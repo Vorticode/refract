@@ -2918,11 +2918,7 @@ class VExpression {
 	scope = {};
 
 	/**
-	 * @deprecated for scope3.
-	 * Stores a map from local variable names, to their value and their path from the root reflection object.
-	 * @type {Object<varName:string, [value:*, path:string[]]>} */
-	scope2 = {};
-
+	 * Stores a map from local variable names, to their value and their path from the root reflection object. */
 	scope3 = new Scope();
 
 	/** @type {int} DOM index of the first DOM child created by this VExpression within parent. */
@@ -3172,7 +3168,6 @@ class VExpression {
 		result.childCount = this.childCount;
 
 		result.scope = {...this.scope};
-		result.scope2 = {...this.scope2};
 		result.scope3 = this.scope3.clone();
 
 		result.isHash = this.isHash;
@@ -3246,10 +3241,11 @@ class VExpression {
 			for (let item of array) {
 				let group = [];
 				let params = [array[i], i, array];
+
+				// TODO: This path duplicates some code from evaluateToVElements()
 				for (let template of this.loopItemEls) {
 					let vel = template.clone(this.refl, this);
 					vel.scope = {...this.scope};
-					vel.scope2 = {...this.scope2};
 					vel.scope3 = this.scope3.clone();
 
 					// Assign values to the parameters of the function given to .map() that's used to loop.
@@ -3261,7 +3257,6 @@ class VExpression {
 						// Path to the loop param variable:
 						let path = [...this.watchPaths[0], i+'']; // VExpression loops always have one watchPath.
 						let fullPath = this.getFullPath(path);
-						vel.scope2[this.loopParamNames[j]] = [params[j], fullPath]; // scope2[name] = [value, path]
 						vel.scope3.set(this.loopParamNames[j], new ScopeItem(fullPath, [params[j]])); // scope3[name] = [path, value]
 					}
 
@@ -3284,8 +3279,8 @@ class VExpression {
 		if (path[0] === 'this')
 			return path;
 
-		while (path[0] in this.scope2) {
-			let parentPath = this.scope2[path[0]][1];
+		while (path[0] in this.scope3) {
+			let parentPath = this.scope3.get(path[0]).path;
 			path = [...parentPath, ...path.slice(1)];
 		}
 		return path;
@@ -3368,7 +3363,6 @@ class VExpression {
 					for (let newItem of this.vChildren[index]) {
 						newItem.startIndex = startIndex + i;
 						newItem.scope = {...this.scope};
-						newItem.scope2 = {...this.scope2};
 						newItem.scope3 = this.scope3.clone();
 						newItem.parent = this.parent;
 
@@ -3381,7 +3375,6 @@ class VExpression {
 							// New:
 							let path = [...this.watchPaths[0], (i+index)+''];
 							let fullPath = this.getFullPath(path);
-							newItem.scope2[this.loopParamNames[j]] = [params[j], fullPath];
 							newItem.scope3.set(this.loopParamNames[j], new ScopeItem(fullPath, [params[j]])); // scope3[name] = [path, value]
 						}
 
@@ -3648,11 +3641,7 @@ class VElement {
 	scope = {};
 
 	/**
-	 * @deprecated for scope3
-	 * Stores a map from local variable names, to their value and their path from the root Refract object.
-	 * @type {Object<varName:string, [value:*, path:string[]]>} */
-	scope2 = {};
-
+	 * Stores a map from local variable names, to their value and their path from the root Refract object. */
 	scope3 = new Scope();
 
 	/** @type {int} DOM index of the first DOM child created by this VExpression within parent. */
@@ -3849,7 +3838,6 @@ class VElement {
 			let slotChildren = VElement.fromHtml(this.refl.slotHtml, Object.keys(this.scope), this, this.refl);
 			for (let vChild of slotChildren) {
 				vChild.scope = {...this.scope};
-				vChild.scope2 = {...this.scope2};
 				vChild.scope3 = this.scope3.clone();
 				vChild.startIndex = count;
 				count += vChild.apply_(this.el);

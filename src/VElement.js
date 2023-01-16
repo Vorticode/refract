@@ -54,11 +54,7 @@ export default class VElement {
 	scope = {};
 
 	/**
-	 * @deprecated for scope3
-	 * Stores a map from local variable names, to their value and their path from the root Refract object.
-	 * @type {Object<varName:string, [value:*, path:string[]]>} */
-	scope2 = {};
-
+	 * Stores a map from local variable names, to their value and their path from the root Refract object. */
 	scope3 = new Scope();
 
 	/** @type {int} DOM index of the first DOM child created by this VExpression within parent. */
@@ -255,7 +251,6 @@ export default class VElement {
 			let slotChildren = VElement.fromHtml(this.refl.slotHtml, Object.keys(this.scope), this, this.refl);
 			for (let vChild of slotChildren) {
 				vChild.scope = {...this.scope}
-				vChild.scope2 = {...this.scope2}
 				vChild.scope3 = this.scope3.clone();
 				vChild.startIndex = count;
 				count += vChild.apply_(this.el);
