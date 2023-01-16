@@ -1048,6 +1048,8 @@ Testimony.test('Refract.loop.MapTwoChilden', () => {
 	a.fruits.pop();
 	assertEquals(a.outerHTML, '<x-320>Hi <b>Apple</b></x-320>');
 
+	window.debug = true;
+
 	a.fruits.unshift('Cherry');
 	assertEquals(a.outerHTML, '<x-320>Hi <b>Cherry</b>Hi <b>Apple</b></x-320>');
 
@@ -1415,26 +1417,26 @@ Testimony.test('Refract.loop.nested3', () => {
 Testimony.test('Refract.loop.grid', () => {
 
 	class A extends Refract {
-		rows = [[0], [0]];
+		rows = [[0]];
 		init() {
 			for (let i in this.rows)
-				this.rows[i][0] = i;
+				this.rows[i][0] = parseInt(i)+2;
 		}
 
 		html() { return `
-			<a-750>${this.rows.map(row => 
+			<a-745>${this.rows.map(row => 
 					row.map(field => field)
-			)}</a-750>`}
+			)}</a-745>`}
 	}
 	eval(A.compile());
 
 	let a = new A();
-	assert.eq(a.outerHTML, `<a-750>01</a-750>`);
+	assert.eq(a.outerHTML, `<a-745>2</a-745>`);
 
 	Refract.elsCreated = [];
 	a.rows[0][0] = 4;
-	assert.eq(a.outerHTML, `<a-750>41</a-750>`);
-	//assert.eq(Refract.elsCreated, ['4']);
+	assert.eq(a.outerHTML, `<a-745>4</a-745>`);
+	assert.eq(Refract.elsCreated, ['4']);
 });
 
 
@@ -1450,9 +1452,7 @@ Testimony.test('Refract.loop.grid2', () => {
 
 			for (let i in data) {
 				if (!this.rows[i]) {
-					window.debug = true;
 					this.rows[i] = [];
-					window.debug = false;
 				}
 
 
@@ -1462,17 +1462,19 @@ Testimony.test('Refract.loop.grid2', () => {
 		}
 
 		html() { return `
-			<import-data>				
-				${this.rows.map(row =>
-					row.map(field => field)
-				)}
-			</import-data>`}
+			<a-750>${this.rows.map(row =>
+				row.map(field => field)
+			)}</a-750>`}
 	}
 	eval(ImportData.compile());
 
 	let a = new ImportData();
-	document.body.append(a);
-	console.log(a.outerHTML)
+	assert.eq(a.outerHTML, '<a-750>12</a-750>');
+
+	Refract.elsCreated = [];
+	a.rows[0][0] = 4;
+	assert.eq(a.outerHTML, `<a-750>42</a-750>`);
+	assert.eq(Refract.elsCreated, ['4']);
 });
 
 
@@ -1499,21 +1501,21 @@ Testimony.test('Refract.loop.Slice', () => {
 	class A extends Refract {
 		items = ['a', 'b'];
 		html() { return `
-			<x-745>${this.items.slice().map(item =>
+			<x-753>${this.items.slice().map(item =>
 				`${item}`
-			)}</x-745>`}
+			)}</x-753>`}
 	}
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-745>ab</x-745>`);
+	assertEquals(a.outerHTML, `<x-753>ab</x-753>`);
 
 	a.items[0] = 'c';
-	assertEquals(a.outerHTML, `<x-745>cb</x-745>`);
+	assertEquals(a.outerHTML, `<x-753>cb</x-753>`);
 
 
 	a.items = ['d', 'e'];
-	assertEquals(a.outerHTML, `<x-745>de</x-745>`);
+	assertEquals(a.outerHTML, `<x-753>de</x-753>`);
 });
 
 Testimony.test('Refract.loop.Expr', () => {
@@ -1521,17 +1523,17 @@ Testimony.test('Refract.loop.Expr', () => {
 	class A extends Refract {
 		fruits = ['Apple'];
 		html() { return `
-			<x-750>${this.fruits.map(fruit =>
+			<x-757>${this.fruits.map(fruit =>
 				fruit + `${fruit}`
-			)}</x-750>`}
+			)}</x-757>`}
 	}
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-750>AppleApple</x-750>`);
+	assertEquals(a.outerHTML, `<x-757>AppleApple</x-757>`);
 
 	a.fruits.push('Banana');
-	assertEquals(a.outerHTML, `<x-750>AppleAppleBananaBanana</x-750>`);
+	assertEquals(a.outerHTML, `<x-757>AppleAppleBananaBanana</x-757>`);
 });
 
 Testimony.test('Refract.loop.Expr2', () => {

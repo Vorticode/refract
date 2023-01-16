@@ -16,7 +16,9 @@ import Scope, {ScopeItem} from "./Scope.js";
  * A parsed ${} or #{} expression embedded in an html template ``  */
 export default class VExpression {
 
-	/** @type {string[][]} Array of watched paths, parsed from the expression. See also this.watches. */
+	/**
+	 * @type {string[][]} Array of watched paths, parsed from the expression.
+	 * Local variables here are not evaluated to their absolute paths.  See also this.watches. */
 	watchPaths = [];
 
 	/**
@@ -482,16 +484,13 @@ export default class VExpression {
 
 		Refract.currentVElement = this;
 
-
+		// Path 1:  If modifying a property on a single array item.
+		// -2 because we're modifying not a loop item child, but a property of it.
 		// Path 1:  If modifying a property on a single array item.
 		if (this.type==='loop' && path.length > 2 && Utils.arrayStartsWith_(path.slice(0, -2), this.watchPaths[0].slice(1))) {
 			// Do nothing, because the watch should trigger on the child VExpression instead of this one.
-			//debugger;
 			return;
 		}
-
-
-
 
 		// If we've had the initial render but autoRender is currently disabled
 		if (!this.refl.__autoRender && this.refl.virtualElement) {
@@ -554,9 +553,9 @@ export default class VExpression {
 						for (let j in this.loopParamNames) {
 							newItem.scope[this.loopParamNames[j]] = params[j];
 
+							// New:
 							let path = [...this.watchPaths[0], (i+index)+''];
 							let fullPath = this.getFullPath(path);
-
 							newItem.scope2[this.loopParamNames[j]] = [params[j], fullPath];
 							newItem.scope3.set(this.loopParamNames[j], new ScopeItem(fullPath, [params[j]])); // scope3[name] = [path, value]
 						}
@@ -726,49 +725,52 @@ export default class VExpression {
 	/**
 	 * All calls to Watch.add() (i.e. all watches) used by Refract come through this function.
 	 * @param callback {function} */
+
+	/**
+	 * All calls to Watch.add() (i.e. all watches) used by Refract come through this function.
+	 * @param callback {function} */
 	watch(callback) {
 
+		//if (window.debug)
 
 		for (let path of this.watchPaths) {
 			let root = this.refl;
-
+			let scope;
 
 			// slice() to remove the "this" element from the watch path.
 			if (path[0] === 'this')
 				path = path.slice(1);
 
 			// Allow paths into the current scope to be watched.
-			else if (path.length && path[0] in this.scope) {
+			else if (path[0] in this.scope && path.length > 1) {
 
-				if (path[0] in this.scope ) {
-
-					if (path.length > 1) {
-						root = this.scope[path[0]]; // Set root to the path of the scope.
-						path = path.slice(1);
-					}
-
-					// Subscribing directly to a loop item instead of a child property of it:
-					else if (path[0] in this.scope2) {
-						let path2 = this.scope2[path[0]][1];
-						root = delve(this.refl, path2.slice(1, -1));
-						path = path2.slice(-1);
-					}
-					// else
-					//
-					// 	debugger;
-				}
-
-
+				// Resolve root to the path of the scope.
+				root = this.scope[path[0]];
+				path = path.slice(1);
 			}
+
+			// The 100k options benchmark is about 30% faster if I replace this brance with a continue statement.
+			else if (scope = this.scope3.get(path[0])) {
+
+				// Only watch this path if it's an array or object, not a primitive.
+				let obj = delve(root, scope.path.slice(1))
+				if (typeof obj !== 'object' && !Array.isArray(obj))
+					continue;
+
+				root = delve(this.refl, scope.path.slice(1, -1));
+				path = scope.path.slice(-1);
+			}
+
+
 
 			// Make sure it's not a primitive b/c we can't subscribe to primitives.
 			// In such cases we should already be subscribed to the parent object/array for changes.
-			if (typeof root === 'object' || Array.isArray(root)) {
-				if (path.length) { // An expression that's just ${this} won't have a length.  E.g. we might have <child-el parent="${this}"></child-el>
+			if (path.length && (typeof root === 'object' || Array.isArray(root))) {
+				// An expression that's just ${this} won't have a length.  E.g. we might have <child-el parent="${this}"></child-el>
 
-					this.watches.push([root, path, callback]);  // Keep track of the subscription so we can remove it when this VExpr is removed.
-					Watch.add(root, path, callback);
-				}
+				this.watches.push([root, path, callback]);  // Keep track of the subscription so we can remove it when this VExpr is removed.
+				Watch.add(root, path, callback);
+
 			}
 		}
 	}
