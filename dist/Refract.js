@@ -2772,7 +2772,7 @@ class VText {
 		return result;
 	}
 
-	remove() {
+	remove_() {
 		this.el.parentNode.removeChild(this.el);
 	}
 
@@ -2814,7 +2814,7 @@ class Scope extends Map {
 
 	/**
 	 * @return {Scope} */
-	clone() {
+	clone_() {
 		let result = new Scope();
 		for (let [name, scopeItem] of this)
 			result.set(name, scopeItem.clone());
@@ -2825,7 +2825,7 @@ class Scope extends Map {
 	 * Convert a local variable path to a path from the root Reflect element.
 	 * @param path {string[]}
 	 * @return {string[]} */
-	getFullPath(path) {
+	getFullPath_(path) {
 		if (path[0] === 'this')
 			return path;
 
@@ -2960,7 +2960,7 @@ class VExpression {
 
 
 			this.scope_ = {...vParent.scope_};
-			this.scope3_ = vParent.scope3_.clone();
+			this.scope3_ = vParent.scope3_.clone_();
 			//console.log(this.code, this.scope)
 		}
 
@@ -3114,8 +3114,8 @@ class VExpression {
 				if (group instanceof HTMLElement)
 					group.parentNode.removeChild(group);
 				else
-					for (let vChild of group.slice()) // Slice because vChild.remove() can alter group, throwing off the index.
-						vChild.remove();
+					for (let vChild of group.slice()) // Slice because vChild.remove_() can alter group, throwing off the index.
+						vChild.remove_();
 
 			// Create new children.
 			this.vChildren_ = this.evaluateToVElements_();
@@ -3168,7 +3168,7 @@ class VExpression {
 		result.childCount_ = this.childCount_;
 
 		result.scope_ = {...this.scope_};
-		result.scope3_ = this.scope3_.clone();
+		result.scope3_ = this.scope3_.clone_();
 
 		result.isHash = this.isHash;
 
@@ -3263,7 +3263,7 @@ class VExpression {
 	 */
 	setScope_(vel, params, index) {
 		vel.scope_ = {...this.scope_};
-		vel.scope3_ = this.scope3_.clone();
+		vel.scope3_ = this.scope3_.clone_();
 
 		// Assign values to the parameters of the function given to .map() that's used to loop.
 		// If this.type !== 'loop', then loopParamNames will be an empty array.
@@ -3272,24 +3272,9 @@ class VExpression {
 
 			// Path to the loop param variable:
 			let path = [...this.watchPaths_[0], index + '']; // VExpression loops always have one watchPath.
-			let fullPath = this.getFullPath_(path);
+			let fullPath = this.scope3_.getFullPath_(path);
 			vel.scope3_.set(this.loopParamNames_[j], new ScopeItem(fullPath, [params[j]])); // scope3[name] = [path, value]
 		}
-	}
-
-	/**
-	 * Convert a local variable path to a path from the root Reflect element.
-	 * @param path {string[]}
-	 * @returns {string[]} */
-	getFullPath_(path) {
-		if (path[0] === 'this')
-			return path;
-
-		while (path[0] in this.scope3_) {
-			let parentPath = this.scope3_.get(path[0]).path;
-			path = [...parentPath, ...path.slice(1)];
-		}
-		return path;
 	}
 
 	/**
@@ -3308,7 +3293,7 @@ class VExpression {
 		if (!this.vParent_)
 			return;
 
-		Refract.currentVElement = this;
+		Refract.currentVElement_ = this;
 
 		// Path 1:  If modifying a property on a single array item.
 		// -2 because we're modifying not a loop item child, but a property of it.
@@ -3340,7 +3325,7 @@ class VExpression {
 				let index = parseInt(path[path.length - 1]);
 				if (action === 'remove') { // TODO: Combine with remove step below used for set.
 					for (let vChild of this.vChildren_[index])
-						vChild.remove();
+						vChild.remove_();
 					this.vChildren_.splice(index, 1);
 				}
 
@@ -3349,7 +3334,7 @@ class VExpression {
 					// 1. Remove old ones from the DOM
 					if (action === 'set' && this.vChildren_[index])
 						for (let vChild of this.vChildren_[index])
-							vChild.remove();
+							vChild.remove_();
 
 					// 2. Create new loop item elements.
 					if (action === 'insert')
@@ -3385,7 +3370,7 @@ class VExpression {
 		this.apply_();
 		this.updateSubsequentIndices_();
 
-		Refract.currentVElement = null;
+		Refract.currentVElement_ = null;
 
 
 		// TODO: Should we have a path that generates the new children and compares them with the existing children and only change what's changed?
@@ -3394,7 +3379,7 @@ class VExpression {
 
 	/**
 	 * Remove this VExpression and its children from the virtual DOM. */
-	remove() {
+	remove_() {
 
 		// 1 Remove watches
 		for (let watch of this.watches_)
@@ -3407,7 +3392,7 @@ class VExpression {
 				group.parentNode.removeChild(group);
 			else
 				for (let vChild of group) // TODO: Should group be .slice() like it is in apply() above?
-					vChild.remove();
+					vChild.remove_();
 
 		// This is necessary because notification callbacks may try to remove a vexpression more than once.
 		// E.g. one will remove its parent vexpression and another will remove this one ourselves.
@@ -3652,7 +3637,7 @@ class VElement {
 			this.vParent_ = parent;
 			this.refr_ = parent.refr_;
 			this.scope_ = {...parent.scope_};
-			this.scope3_ = parent.scope3_.clone();
+			this.scope3_ = parent.scope3_.clone_();
 		}
 
 		//#IFDEV
@@ -3737,13 +3722,13 @@ class VElement {
 			// Because then the slot will be added to the slot, recursively forever.
 			// So we only allow setting content that doesn't have slot tags.
 			if (!el.querySelector('slot'))
-				this.refr_.slotHtml = el.innerHTML; // At this point none of the children will be upgraded to web components?
+				this.refr_.slotHtml_ = el.innerHTML; // At this point none of the children will be upgraded to web components?
 			el.innerHTML = '';
 		}
 		// 1B. Create Element
 		else {
 			var newEl;
-			Refract.currentVElement = this;
+			Refract.currentVElement_ = this;
 
 			// Special path, because we can't use document.createElement() to create an element whose constructor
 			//     adds attributes and child nodes.
@@ -3752,12 +3737,14 @@ class VElement {
 				let Class = customElements.get(tagName);
 
 				let args = [];
-				if (Class.constructorArgs) // old path that uses constructor()
-					args = Class.constructorArgs.map(name => this.getAttrib(name));
-
-				else if (Class.prototype.init) {// new path with init()
+				if (Class.prototype.init) {// new path with init()
 					args = Refract.compiler.populateArgsFromAttribs(this, Class.getInitArgs());
 				}
+				//#IFDEV
+				else if (Class.constructorArgs) // old path that uses constructor()
+					args = Class.constructorArgs.map(name => this.getAttrib_(name));
+				//#ENDIF
+
 
 				// Firefox:  "Cannot instantiate a custom element inside its own constructor during upgrades"
 				// Chrome:  "TypeError: Failed to construct 'HTMLElement': This instance is already constructed"
@@ -3766,7 +3753,7 @@ class VElement {
 				// See the Refract.nested.recursive test.
 				let i = 2;
 				let tagName2 = tagName;
-				while (tagName2.toUpperCase() in Refract.constructing) {
+				while (tagName2.toUpperCase() in Refract.constructing_) {
 					tagName2 = tagName + '_' + i;
 					var Class2 = customElements.get(tagName2);
 					if (Class2) {
@@ -3814,7 +3801,7 @@ class VElement {
 			this.el = newEl;
 
 
-			Refract.currentVElement = null;
+			Refract.currentVElement_ = null;
 
 			if (Refract.elsCreated)
 				Refract.elsCreated.push('<'+tagName + '>');
@@ -3828,10 +3815,10 @@ class VElement {
 		// 3. Slot content
 		let count = 0;
 		if (tagName === 'slot') {
-			let slotChildren = VElement.fromHtml_(this.refr_.slotHtml, Object.keys(this.scope_), this, this.refr_);
+			let slotChildren = VElement.fromHtml_(this.refr_.slotHtml_, Object.keys(this.scope_), this, this.refr_);
 			for (let vChild of slotChildren) {
 				vChild.scope_ = {...this.scope_};
-				vChild.scope3_ = this.scope3_.clone();
+				vChild.scope3_ = this.scope3_.clone_();
 				vChild.startIndex_ = count;
 				count += vChild.apply_(this.el);
 			}
@@ -3844,7 +3831,7 @@ class VElement {
 				throw new Error("textarea and contenteditable can't have templates as children. Use value=${this.variable} instead.");
 
 			vChild.scope_ = {...this.scope_}; // copy
-			vChild.scope3_ = this.scope3_.clone();
+			vChild.scope3_ = this.scope3_.clone_();
 			vChild.refr_ = this.refr_;
 			vChild.startIndex_ = count;
 			count += vChild.apply_(this.el);
@@ -3858,7 +3845,7 @@ class VElement {
 					let expr = attrPart;
 					expr.parent_ = this.el;
 					expr.scope_ = this.scope_; // Share scope with attributes.
-					expr.scope3_ = this.scope3_.clone();
+					expr.scope3_ = this.scope3_.clone_();
 					expr.watch_(() => {
 						if (name === 'value')
 							setInputValue_(this.refr_, this.el, value, this.scope_);
@@ -3901,7 +3888,7 @@ class VElement {
 		// Attribute expressions
 		for (let expr of this.attributeExpressions_) {
 			expr.scope_ = this.scope_;
-			expr.scope3_ = this.scope3_.clone();
+			expr.scope3_ = this.scope3_.clone_();
 			expr.apply_(this.el);
 			expr.watch_(() => {
 				expr.apply_(this.el);
@@ -3923,9 +3910,9 @@ class VElement {
 
 				// Update the value when the input changes:
 				utils.watchInput_(this.el, (val, e) => {
-					Refract.currentEvent = e;
+					Refract.currentEvent_ = e;
 					assignFunc(...Object.values(this.scope_), val);
-					Refract.currentEvent = null;
+					Refract.currentEvent_ = null;
 				});
 			}
 		}
@@ -3999,7 +3986,7 @@ class VElement {
 	 * TODO: Reduce shared logic between this and evalVAttribute()
 	 * @param name {string}
 	 * @return {*} */
-	getAttrib(name) {
+	getAttrib_(name) {
 		let lname = name.toLowerCase();
 		let val = name in this.attributes_ ? this.attributes_[name] : this.attributes_[lname];
 		if (val === undefined || val === null)
@@ -4028,11 +4015,11 @@ class VElement {
 		return result;
 	}
 
-	remove() {
+	remove_() {
 
 		// 1. Remove children, so that their watches are unsubscribed.
 		for (let vChild of this.vChildren_)
-			vChild.remove();
+			vChild.remove_();
 
 		// 2. Remove the associated element.  We call parentNode.removeChild in case remove() is overridden.
 		this.el.parentNode.removeChild(this.el);
@@ -4211,7 +4198,7 @@ var inSvg = false;
 function setInputValue_(ref, el, value, scope) {
 
 	// Don't update input elements if they triggered the event.
-	if (Refract.currentEvent && el === Refract.currentEvent.target)
+	if (Refract.currentEvent_ && el === Refract.currentEvent_.target)
 		return;
 
 
@@ -4535,6 +4522,7 @@ class Compiler {
 		}
 
 		// Old path.  All of this will go away eventually:
+		//#IFDEV
 		else {
 
 			function removeComments(tokens) {
@@ -4687,6 +4675,7 @@ class Compiler {
 
 			result.code = tokens.join('');
 		}
+		//#ENDIF
 
 		return result;
 	}
@@ -4696,7 +4685,7 @@ class Compiler {
 		// 1. Set Properties
 		NewClass.tagName = compiled.tagName;
 
-		// Old path only:
+
 		NewClass.constructorArgs = compiled.constructorArgs;
 		NewClass.htmlTokens = compiled.htmlTokens;
 
@@ -4740,14 +4729,14 @@ class Compiler {
 				if (obj[name])
 					populateObject(obj[name]);
 				else
-					obj[name] = el.getAttrib(name);
+					obj[name] = el.getAttrib_(name);
 			return obj;
 		};
 
 		let result = [];
 		for (let arg of argNames)
 			if (typeof arg === 'string')
-				result.push(el.getAttrib(arg));
+				result.push(el.getAttrib_(arg));
 			else
 				result.push(populateObject(arg));
 
@@ -4774,7 +4763,7 @@ class Refract extends HTMLElement {
 	 * This prevents us from creating another instance of an element when it's in the middle of being upgraded,
 	 * which browsers don't like.
 	 * @type {Object<string, boolean>} */
-	static constructing = {};
+	static constructing_ = {};
 
 	static htmlTokens = null;
 
@@ -4784,7 +4773,7 @@ class Refract extends HTMLElement {
 	static virtualElement;
 
 
-	static currentVElement = null;
+	static currentVElement_ = null;
 
 	/**
 	 * @type {string[]} Names of the constructor's arguments. */
@@ -4807,7 +4796,7 @@ class Refract extends HTMLElement {
 
 	/**
 	 * @type {Event} If within an event, this is the  */
-	static currentEvent;
+	static currentEvent_;
 
 	/**
 	 * TODO: Every event attribute should call this function.
@@ -4820,7 +4809,7 @@ class Refract extends HTMLElement {
 
 
 	/** @type {string} */
-	slotHtml = '';
+	slotHtml_ = '';
 
 	/** If true, call render() before the constructor, and every time after a property is changed */
 	__autoRender = true;
@@ -4850,7 +4839,7 @@ class Refract extends HTMLElement {
 		if (autoRender === false)
 			this.__autoRender = false;
 
-		// Used in old path from before we used init()
+		// Used in old path from before we used init()?
 		this.constructorArgs2 = arguments;
 	}
 
@@ -4882,12 +4871,12 @@ class Refract extends HTMLElement {
 				this.constructor.htmlTokens = null; // We don't need them any more.
 			}
 
-			Refract.constructing[this.tagName] = true;
+			Refract.constructing_[this.tagName] = true;
 
 			this.virtualElement = this.constructor.virtualElement.clone_(this);
 			this.virtualElement.apply_(null, this);
 
-			delete Refract.constructing[this.tagName];
+			delete Refract.constructing_[this.tagName];
 		}
 
 		// Render items from the queue.
@@ -4918,8 +4907,8 @@ class Refract extends HTMLElement {
 	 * @param name {string}
 	 * @param alt {*} Defaults to undefined because that's what we get if the argument isn't specified by the caller.
 	 * @return {*} */
-	getAttrib(name, alt=undefined) {
-		let velement = Refract.currentVElement;
+	getAttrib_(name, alt=undefined) {
+		let velement = Refract.currentVElement_;
 		if (velement) {
 			return velement.getAttrib(name);
 		}
@@ -4956,6 +4945,7 @@ class Refract extends HTMLElement {
 		return this.initArgs || [];
 	}
 
+	//#IFDEV
 	/**
 	 * @deprecated for onConnect()
 	 * Call a function when a node is added to the DOM.
@@ -4999,6 +4989,7 @@ class Refract extends HTMLElement {
 			observer.observe(doc, {childList: true, subtree: true});
 		}
 	}
+	//#ENDIF
 
 
 	onConnect(callback) {
@@ -5076,7 +5067,7 @@ class Refract extends HTMLElement {
 	}
 }
 
-Refract.constructing = {};
+Refract.constructing_ = {};
 
 Refract.htmlDecode = Html.decode;
 Refract.htmlEncode = Html.encode;

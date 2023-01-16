@@ -135,7 +135,7 @@ export default class VExpression {
 
 
 			this.scope_ = {...vParent.scope_};
-			this.scope3_ = vParent.scope3_.clone();
+			this.scope3_ = vParent.scope3_.clone_();
 			//console.log(this.code, this.scope)
 		}
 
@@ -289,8 +289,8 @@ export default class VExpression {
 				if (group instanceof HTMLElement)
 					group.parentNode.removeChild(group);
 				else
-					for (let vChild of group.slice()) // Slice because vChild.remove() can alter group, throwing off the index.
-						vChild.remove();
+					for (let vChild of group.slice()) // Slice because vChild.remove_() can alter group, throwing off the index.
+						vChild.remove_();
 
 			// Create new children.
 			this.vChildren_ = this.evaluateToVElements_();
@@ -343,7 +343,7 @@ export default class VExpression {
 		result.childCount_ = this.childCount_;
 
 		result.scope_ = {...this.scope_};
-		result.scope3_ = this.scope3_.clone();
+		result.scope3_ = this.scope3_.clone_();
 
 		result.isHash = this.isHash;
 
@@ -438,7 +438,7 @@ export default class VExpression {
 	 */
 	setScope_(vel, params, index) {
 		vel.scope_ = {...this.scope_}
-		vel.scope3_ = this.scope3_.clone();
+		vel.scope3_ = this.scope3_.clone_();
 
 		// Assign values to the parameters of the function given to .map() that's used to loop.
 		// If this.type !== 'loop', then loopParamNames will be an empty array.
@@ -447,24 +447,9 @@ export default class VExpression {
 
 			// Path to the loop param variable:
 			let path = [...this.watchPaths_[0], index + '']; // VExpression loops always have one watchPath.
-			let fullPath = this.getFullPath_(path);
+			let fullPath = this.scope3_.getFullPath_(path);
 			vel.scope3_.set(this.loopParamNames_[j], new ScopeItem(fullPath, [params[j]])); // scope3[name] = [path, value]
 		}
-	}
-
-	/**
-	 * Convert a local variable path to a path from the root Reflect element.
-	 * @param path {string[]}
-	 * @returns {string[]} */
-	getFullPath_(path) {
-		if (path[0] === 'this')
-			return path;
-
-		while (path[0] in this.scope3_) {
-			let parentPath = this.scope3_.get(path[0]).path;
-			path = [...parentPath, ...path.slice(1)];
-		}
-		return path;
 	}
 
 	/**
@@ -483,7 +468,7 @@ export default class VExpression {
 		if (!this.vParent_)
 			return;
 
-		Refract.currentVElement = this;
+		Refract.currentVElement_ = this;
 
 		// Path 1:  If modifying a property on a single array item.
 		// -2 because we're modifying not a loop item child, but a property of it.
@@ -515,7 +500,7 @@ export default class VExpression {
 				let index = parseInt(path[path.length - 1]);
 				if (action === 'remove') { // TODO: Combine with remove step below used for set.
 					for (let vChild of this.vChildren_[index])
-						vChild.remove();
+						vChild.remove_();
 					this.vChildren_.splice(index, 1);
 				}
 
@@ -524,7 +509,7 @@ export default class VExpression {
 					// 1. Remove old ones from the DOM
 					if (action === 'set' && this.vChildren_[index])
 						for (let vChild of this.vChildren_[index])
-							vChild.remove();
+							vChild.remove_();
 
 					// 2. Create new loop item elements.
 					if (action === 'insert')
@@ -560,7 +545,7 @@ export default class VExpression {
 		this.apply_();
 		this.updateSubsequentIndices_();
 
-		Refract.currentVElement = null;
+		Refract.currentVElement_ = null;
 
 
 		// TODO: Should we have a path that generates the new children and compares them with the existing children and only change what's changed?
@@ -569,7 +554,7 @@ export default class VExpression {
 
 	/**
 	 * Remove this VExpression and its children from the virtual DOM. */
-	remove() {
+	remove_() {
 
 		// 1 Remove watches
 		for (let watch of this.watches_)
@@ -582,7 +567,7 @@ export default class VExpression {
 				group.parentNode.removeChild(group);
 			else
 				for (let vChild of group) // TODO: Should group be .slice() like it is in apply() above?
-					vChild.remove();
+					vChild.remove_();
 
 		// This is necessary because notification callbacks may try to remove a vexpression more than once.
 		// E.g. one will remove its parent vexpression and another will remove this one ourselves.

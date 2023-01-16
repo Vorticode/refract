@@ -71,7 +71,7 @@ export default class VText {
 		return result;
 	}
 
-	remove() {
+	remove_() {
 		this.el.parentNode.removeChild(this.el);
 	}
 

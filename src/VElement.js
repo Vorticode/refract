@@ -72,7 +72,7 @@ export default class VElement {
 			this.vParent_ = parent;
 			this.refr_ = parent.refr_;
 			this.scope_ = {...parent.scope_};
-			this.scope3_ = parent.scope3_.clone();
+			this.scope3_ = parent.scope3_.clone_();
 		}
 
 		//#IFDEV
@@ -157,13 +157,13 @@ export default class VElement {
 			// Because then the slot will be added to the slot, recursively forever.
 			// So we only allow setting content that doesn't have slot tags.
 			if (!el.querySelector('slot'))
-				this.refr_.slotHtml = el.innerHTML; // At this point none of the children will be upgraded to web components?
+				this.refr_.slotHtml_ = el.innerHTML; // At this point none of the children will be upgraded to web components?
 			el.innerHTML = '';
 		}
 		// 1B. Create Element
 		else {
 			var newEl;
-			Refract.currentVElement = this;
+			Refract.currentVElement_ = this;
 
 			// Special path, because we can't use document.createElement() to create an element whose constructor
 			//     adds attributes and child nodes.
@@ -172,12 +172,14 @@ export default class VElement {
 				let Class = customElements.get(tagName);
 
 				let args = []
-				if (Class.constructorArgs) // old path that uses constructor()
-					args = Class.constructorArgs.map(name => this.getAttrib(name));
-
-				else if (Class.prototype.init) {// new path with init()
+				if (Class.prototype.init) {// new path with init()
 					args = Refract.compiler.populateArgsFromAttribs(this, Class.getInitArgs());
 				}
+				//#IFDEV
+				else if (Class.constructorArgs) // old path that uses constructor()
+					args = Class.constructorArgs.map(name => this.getAttrib_(name));
+				//#ENDIF
+
 
 				// Firefox:  "Cannot instantiate a custom element inside its own constructor during upgrades"
 				// Chrome:  "TypeError: Failed to construct 'HTMLElement': This instance is already constructed"
@@ -186,7 +188,7 @@ export default class VElement {
 				// See the Refract.nested.recursive test.
 				let i = 2;
 				let tagName2 = tagName;
-				while (tagName2.toUpperCase() in Refract.constructing) {
+				while (tagName2.toUpperCase() in Refract.constructing_) {
 					tagName2 = tagName + '_' + i
 					var Class2 = customElements.get(tagName2);
 					if (Class2) {
@@ -234,7 +236,7 @@ export default class VElement {
 			this.el = newEl;
 
 
-			Refract.currentVElement = null;
+			Refract.currentVElement_ = null;
 
 			if (Refract.elsCreated)
 				Refract.elsCreated.push('<'+tagName + '>');
@@ -248,10 +250,10 @@ export default class VElement {
 		// 3. Slot content
 		let count = 0;
 		if (tagName === 'slot') {
-			let slotChildren = VElement.fromHtml_(this.refr_.slotHtml, Object.keys(this.scope_), this, this.refr_);
+			let slotChildren = VElement.fromHtml_(this.refr_.slotHtml_, Object.keys(this.scope_), this, this.refr_);
 			for (let vChild of slotChildren) {
 				vChild.scope_ = {...this.scope_}
-				vChild.scope3_ = this.scope3_.clone();
+				vChild.scope3_ = this.scope3_.clone_();
 				vChild.startIndex_ = count;
 				count += vChild.apply_(this.el);
 			}
@@ -264,7 +266,7 @@ export default class VElement {
 				throw new Error("textarea and contenteditable can't have templates as children. Use value=${this.variable} instead.");
 
 			vChild.scope_ = {...this.scope_} // copy
-			vChild.scope3_ = this.scope3_.clone();
+			vChild.scope3_ = this.scope3_.clone_();
 			vChild.refr_ = this.refr_;
 			vChild.startIndex_ = count;
 			count += vChild.apply_(this.el);
@@ -278,7 +280,7 @@ export default class VElement {
 					let expr = attrPart;
 					expr.parent_ = this.el;
 					expr.scope_ = this.scope_; // Share scope with attributes.
-					expr.scope3_ = this.scope3_.clone();
+					expr.scope3_ = this.scope3_.clone_();
 					expr.watch_(() => {
 						if (name === 'value')
 							setInputValue_(this.refr_, this.el, value, this.scope_);
@@ -321,7 +323,7 @@ export default class VElement {
 		// Attribute expressions
 		for (let expr of this.attributeExpressions_) {
 			expr.scope_ = this.scope_;
-			expr.scope3_ = this.scope3_.clone();
+			expr.scope3_ = this.scope3_.clone_();
 			expr.apply_(this.el)
 			expr.watch_(() => {
 				expr.apply_(this.el);
@@ -343,9 +345,9 @@ export default class VElement {
 
 				// Update the value when the input changes:
 				Utils.watchInput_(this.el, (val, e) => {
-					Refract.currentEvent = e;
+					Refract.currentEvent_ = e;
 					assignFunc(...Object.values(this.scope_), val);
-					Refract.currentEvent = null;
+					Refract.currentEvent_ = null;
 				});
 			}
 		}
@@ -419,7 +421,7 @@ export default class VElement {
 	 * TODO: Reduce shared logic between this and evalVAttribute()
 	 * @param name {string}
 	 * @return {*} */
-	getAttrib(name) {
+	getAttrib_(name) {
 		let lname = name.toLowerCase();
 		let val = name in this.attributes_ ? this.attributes_[name] : this.attributes_[lname];
 		if (val === undefined || val === null)
@@ -448,11 +450,11 @@ export default class VElement {
 		return result;
 	}
 
-	remove() {
+	remove_() {
 
 		// 1. Remove children, so that their watches are unsubscribed.
 		for (let vChild of this.vChildren_)
-			vChild.remove();
+			vChild.remove_();
 
 		// 2. Remove the associated element.  We call parentNode.removeChild in case remove() is overridden.
 		this.el.parentNode.removeChild(this.el);
@@ -631,7 +633,7 @@ var inSvg = false;
 function setInputValue_(ref, el, value, scope) {
 
 	// Don't update input elements if they triggered the event.
-	if (Refract.currentEvent && el === Refract.currentEvent.target)
+	if (Refract.currentEvent_ && el === Refract.currentEvent_.target)
 		return;
 
 

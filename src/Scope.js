@@ -26,7 +26,7 @@ export default class Scope extends Map {
 
 	/**
 	 * @return {Scope} */
-	clone() {
+	clone_() {
 		let result = new Scope();
 		for (let [name, scopeItem] of this)
 			result.set(name, scopeItem.clone());
@@ -37,7 +37,7 @@ export default class Scope extends Map {
 	 * Convert a local variable path to a path from the root Reflect element.
 	 * @param path {string[]}
 	 * @return {string[]} */
-	getFullPath(path) {
+	getFullPath_(path) {
 		if (path[0] === 'this')
 			return path;
 

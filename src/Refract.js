@@ -23,7 +23,7 @@ export default class Refract extends HTMLElement {
 	 * This prevents us from creating another instance of an element when it's in the middle of being upgraded,
 	 * which browsers don't like.
 	 * @type {Object<string, boolean>} */
-	static constructing = {};
+	static constructing_ = {};
 
 	static htmlTokens = null;
 
@@ -33,7 +33,7 @@ export default class Refract extends HTMLElement {
 	static virtualElement;
 
 
-	static currentVElement = null;
+	static currentVElement_ = null;
 
 	/**
 	 * @type {string[]} Names of the constructor's arguments. */
@@ -56,7 +56,7 @@ export default class Refract extends HTMLElement {
 
 	/**
 	 * @type {Event} If within an event, this is the  */
-	static currentEvent;
+	static currentEvent_;
 
 	/**
 	 * TODO: Every event attribute should call this function.
@@ -69,7 +69,7 @@ export default class Refract extends HTMLElement {
 
 
 	/** @type {string} */
-	slotHtml = '';
+	slotHtml_ = '';
 
 	/** If true, call render() before the constructor, and every time after a property is changed */
 	__autoRender = true;
@@ -99,7 +99,7 @@ export default class Refract extends HTMLElement {
 		if (autoRender === false)
 			this.__autoRender = false;
 
-		// Used in old path from before we used init()
+		// Used in old path from before we used init()?
 		this.constructorArgs2 = arguments;
 	}
 
@@ -131,12 +131,12 @@ export default class Refract extends HTMLElement {
 				this.constructor.htmlTokens = null; // We don't need them any more.
 			}
 
-			Refract.constructing[this.tagName] = true;
+			Refract.constructing_[this.tagName] = true;
 
 			this.virtualElement = this.constructor.virtualElement.clone_(this);
 			this.virtualElement.apply_(null, this);
 
-			delete Refract.constructing[this.tagName];
+			delete Refract.constructing_[this.tagName];
 		}
 
 		// Render items from the queue.
@@ -167,8 +167,8 @@ export default class Refract extends HTMLElement {
 	 * @param name {string}
 	 * @param alt {*} Defaults to undefined because that's what we get if the argument isn't specified by the caller.
 	 * @return {*} */
-	getAttrib(name, alt=undefined) {
-		let velement = Refract.currentVElement;
+	getAttrib_(name, alt=undefined) {
+		let velement = Refract.currentVElement_;
 		if (velement) {
 			return velement.getAttrib(name);
 		}
@@ -205,6 +205,7 @@ export default class Refract extends HTMLElement {
 		return this.initArgs || [];
 	}
 
+	//#IFDEV
 	/**
 	 * @deprecated for onConnect()
 	 * Call a function when a node is added to the DOM.
@@ -248,6 +249,7 @@ export default class Refract extends HTMLElement {
 			observer.observe(doc, {childList: true, subtree: true});
 		}
 	}
+	//#ENDIF
 
 
 	onConnect(callback) {
@@ -325,7 +327,7 @@ export default class Refract extends HTMLElement {
 	}
 }
 
-Refract.constructing = {};
+Refract.constructing_ = {};
 
 Refract.htmlDecode = Html.decode;
 Refract.htmlEncode = Html.encode;

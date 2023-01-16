@@ -249,6 +249,7 @@ export class Compiler {
 		}
 
 		// Old path.  All of this will go away eventually:
+		//#IFDEV
 		else {
 
 			function removeComments(tokens) {
@@ -401,6 +402,7 @@ export class Compiler {
 
 			result.code = tokens.join('');
 		}
+		//#ENDIF
 
 		return result;
 	}
@@ -410,7 +412,7 @@ export class Compiler {
 		// 1. Set Properties
 		NewClass.tagName = compiled.tagName;
 
-		// Old path only:
+
 		NewClass.constructorArgs = compiled.constructorArgs;
 		NewClass.htmlTokens = compiled.htmlTokens;
 
@@ -454,14 +456,14 @@ export class Compiler {
 				if (obj[name])
 					populateObject(obj[name]);
 				else
-					obj[name] = el.getAttrib(name);
+					obj[name] = el.getAttrib_(name);
 			return obj;
 		}
 
 		let result = [];
 		for (let arg of argNames)
 			if (typeof arg === 'string')
-				result.push(el.getAttrib(arg));
+				result.push(el.getAttrib_(arg));
 			else
 				result.push(populateObject(arg));
 
