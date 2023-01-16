@@ -437,11 +437,11 @@ export default class VExpression {
 	 * @param index {int}
 	 */
 	setScope(vel, params, index) {
-		// TODO: This path duplicates some code from receiveNotifications()
 		vel.scope = {...this.scope}
 		vel.scope3 = this.scope3.clone();
 
 		// Assign values to the parameters of the function given to .map() that's used to loop.
+		// If this.type !== 'loop', then loopParamNames will be an empty array.
 		for (let j in this.loopParamNames) {  // Benchmarking shows this loop is about 2% faster than for...in.
 			vel.scope[this.loopParamNames[j]] = params[j];
 
@@ -498,7 +498,6 @@ export default class VExpression {
 			this.refl.__toRender.set(this, arguments);
 			return;
 		}
-
 
 		this.childCount = this.getAllChildrenLength();
 

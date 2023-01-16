@@ -3262,11 +3262,11 @@ class VExpression {
 	 * @param index {int}
 	 */
 	setScope(vel, params, index) {
-		// TODO: This path duplicates some code from receiveNotifications()
 		vel.scope = {...this.scope};
 		vel.scope3 = this.scope3.clone();
 
 		// Assign values to the parameters of the function given to .map() that's used to loop.
+		// If this.type !== 'loop', then loopParamNames will be an empty array.
 		for (let j in this.loopParamNames) {  // Benchmarking shows this loop is about 2% faster than for...in.
 			vel.scope[this.loopParamNames[j]] = params[j];
 
@@ -3323,7 +3323,6 @@ class VExpression {
 			this.refl.__toRender.set(this, arguments);
 			return;
 		}
-
 
 		this.childCount = this.getAllChildrenLength();
 
@@ -4060,13 +4059,13 @@ class VElement {
 	 * value="${'one'}" becomes 'one'
 	 * value="${['one', 'two']}" becomes ['one', 'two']
 	 * value="${['one', 'two']}three" becomes ['onetwothree']
-	 * @param ref {Refract}
+	 * @param refr {Refract}
 	 * @param attrParts {(VExpression|string)[]}
 	 * @param scope {object}
 	 * @return {*|string} */
-	static evalVAttribute(ref, attrParts, scope={}) {
+	static evalVAttribute(refr, attrParts, scope={}) {
 		let result = attrParts.map(expr =>
-			expr instanceof VExpression ? expr.exec.apply(ref, Object.values(scope)) : expr
+			expr instanceof VExpression ? expr.exec.apply(refr, Object.values(scope)) : expr
 		);
 
 		// If it's a single value, return that.
@@ -4077,15 +4076,15 @@ class VElement {
 	}
 
 	/**
-	 * @param ref {Refract}
+	 * @param refr {Refract}
 	 * @param attrParts {(VExpression|string)[]}
 	 * @param scope {object}
 	 * @return {string} */
-	static evalVAttributeAsString(ref, attrParts, scope={}) {
+	static evalVAttributeAsString(refr, attrParts, scope={}) {
 		let result = [];
 		for (let attrPart of attrParts) {
 			if (attrPart instanceof VExpression) {
-				let val = attrPart.exec.apply(ref, Object.values(scope));
+				let val = attrPart.exec.apply(refr, Object.values(scope));
 				if (Array.isArray(val) || (val instanceof Set))
 					val = Array.from(val).join(' '); // Useful for classes.
 				else if (val && typeof val === 'object') { // style attribute
