@@ -2844,12 +2844,12 @@ class VExpression {
 	/**
 	 * @type {string[][]} Array of watched paths, parsed from the expression.
 	 * Local variables here are not evaluated to their absolute paths.  See also this.watches. */
-	watchPaths = [];
+	watchPaths_ = [];
 
 	/**
 	 * @type {string|null} Only used when the expression is inside an attribute.
 	 * If it's an empty string, that means it's an attribute expression.  E.g. ${'checked'}*/
-	attrName = null;
+	attrName_ = null;
 
 	/** @type {string[]|null} If an expression that creates attributes, keep track of them here. */
 	attributes = null;
@@ -2880,13 +2880,13 @@ class VExpression {
 	 * Names of the parameters accepted by the function given to array.map().
 	 * E.g. ['item', 'index', 'array'] for array.map((item, index, array) => {...});
 	 * @type {string[]} */
-	loopParamNames = [];
+	loopParamNames_ = [];
 
 	/**
 	 * TODO: Rename to loopTemplates?
 	 * @type {(VElement|VText|VExpression)[]} Used only with type='loop'. The un-evaluated elements that make up one iteration of a loop.
 	 * Together with loopParamNames, this can be used to create a function that returns each loop item.*/
-	loopItemEls = [];
+	loopItemEls_ = [];
 
 
 
@@ -2900,7 +2900,7 @@ class VExpression {
 	parent = null;
 
 	/** @type {VElement|VExpression} */
-	vParent = null;
+	vParent_ = null;
 
 	/**
 	 * Virtual children created after the loopItemEls are evaluated (but not recursively).
@@ -2908,7 +2908,7 @@ class VExpression {
 	 * having all the vChildren created with each loop iteration.
 	 *
 	 * @type {(VElement|VExpression|VText|HTMLElement)[][]} */
-	vChildren = [];
+	vChildren_ = [];
 
 
 
@@ -2919,19 +2919,19 @@ class VExpression {
 
 	/**
 	 * Stores a map from local variable names, to their value and their path from the root Refract object. */
-	scope3 = new Scope();
+	scope3_ = new Scope();
 
 	/** @type {int} DOM index of the first DOM child created by this VExpression within parent. */
 	startIndex_ = 0;
 
 	/** @type {int} the number of DOM children created by this VExpression within parent. */
-	childCount = 0;
+	childCount_ = 0;
 
 	/**
 	 * Arguments passed to Watch.add() for this expression.  We track them here so we can later remove them via Watch.remove().
 	 * See also this.watchPaths.
 	 * @type {[root:Refract|Object, path:string[], callback:function][]} */
-	watches = [];
+	watches_ = [];
 
 	//#IFDEV
 	/** @type {string} For debugging only. */
@@ -2950,7 +2950,7 @@ class VExpression {
 	 * @param attrName {?string} If set, this VExpression is part of an attribute, otherwise it creates html child nodes.
 	 * @return {VExpression} */
 	constructor(tokens=null, vParent=null, scopeVars=null, attrName=null) {
-		this.vParent = vParent;
+		this.vParent_ = vParent;
 		if (vParent) {
 			this.refr = vParent.refr;
 			//#IFDEV
@@ -2960,7 +2960,7 @@ class VExpression {
 
 
 			this.scope = {...vParent.scope};
-			this.scope3 = vParent.scope3.clone();
+			this.scope3_ = vParent.scope3_.clone();
 			//console.log(this.code, this.scope)
 		}
 
@@ -2988,7 +2988,7 @@ class VExpression {
 				this.type = 'loop';
 
 				// When type==='loop', the .exec() function returns the array used by the loop.
-				this.loopParamNames = loopParamNames;
+				this.loopParamNames_ = loopParamNames;
 
 				for (let p of loopParamNames)
 					scopeVars.push(p);
@@ -3000,13 +3000,13 @@ class VExpression {
 				let loopBodyTrimmed = loopBody.filter(token => token.type !== 'whitespace' && token.type !== 'ln');
 				if (loopBodyTrimmed.length === 1 && loopBodyTrimmed[0].type === 'template') {
 					// Remove beginning and end string delimiters, parse items.
-					this.loopItemEls = VElement.fromTokens_(loopBodyTrimmed[0].tokens.slice(1, -1), scopeVars, vParent, this.refr);
+					this.loopItemEls_ = VElement.fromTokens_(loopBodyTrimmed[0].tokens.slice(1, -1), scopeVars, vParent, this.refr);
 				}
 
 				// The loop body is more complex javascript code:
 				else {
 					// TODO: No tests hit htis path.
-					this.loopItemEls = [new VExpression(loopBody, this, scopeVars)];
+					this.loopItemEls_ = [new VExpression(loopBody, this, scopeVars)];
 				}
 			} else {
 
@@ -3044,7 +3044,7 @@ class VExpression {
 			// Get just the identifier names between the dots.
 			// ['this', '.', 'fruits', '[', '0', ']'] becomes ['this', 'fruits', '0']
 			for (let watchPath of watchPathTokens)
-				this.watchPaths.push(Parse.varExpressionToPath_(watchPath));
+				this.watchPaths_.push(Parse.varExpressionToPath_(watchPath));
 		}
 	}
 
@@ -3066,7 +3066,7 @@ class VExpression {
 			debugger;
 
 
-		if (this.attrName)
+		if (this.attrName_)
 			throw new Error("Cannot apply an VExpression that's for an attribute.  Use evalVAttribute() or .exec.apply() instead.");
 
 		// Make sure we're not applying on an element that's been removed.
@@ -3110,7 +3110,7 @@ class VExpression {
 		else {
 
 			// Remove old children.
-			for (let group of this.vChildren)
+			for (let group of this.vChildren_)
 				if (group instanceof HTMLElement)
 					group.parentNode.removeChild(group);
 				else
@@ -3118,12 +3118,12 @@ class VExpression {
 						vChild.remove();
 
 			// Create new children.
-			this.vChildren = this.evaluateToVElements_();
+			this.vChildren_ = this.evaluateToVElements_();
 
 			// Add children to parent.
 			let count = 0;
 			let startIndex = this.startIndex_;
-			for (let item of this.vChildren) {
+			for (let item of this.vChildren_) {
 				if (item instanceof HTMLElement) {
 					this.parent.insertBefore(item, this.parent.childNodes[startIndex]);
 					startIndex ++;
@@ -3149,26 +3149,26 @@ class VExpression {
 	 * @return {VExpression} */
 	clone(refr=null, vParent=null, parent=null) {
 		let result = new VExpression();
-		result.watchPaths = this.watchPaths;
-		result.attrName = this.attrName;
+		result.watchPaths_ = this.watchPaths_;
+		result.attrName_ = this.attrName_;
 		result.attributes = this.attributes;
 
 		result.type = this.type;
 		result.exec = this.exec;
-		result.loopParamNames = this.loopParamNames;
-		result.loopItemEls = this.loopItemEls;
+		result.loopParamNames_ = this.loopParamNames_;
+		result.loopItemEls_ = this.loopItemEls_;
 
 
 		// Properties specific to each instance.
 		result.refr = refr || this.refr;
 		result.parent = parent || this.parent;
-		result.vParent = vParent || this.vParent;
+		result.vParent_ = vParent || this.vParent_;
 
 		result.startIndex_ = this.startIndex_;
-		result.childCount = this.childCount;
+		result.childCount_ = this.childCount_;
 
 		result.scope = {...this.scope};
-		result.scope3 = this.scope3.clone();
+		result.scope3_ = this.scope3_.clone();
 
 		result.isHash = this.isHash;
 
@@ -3193,9 +3193,9 @@ class VExpression {
 		// Remove previous watches.
 		// TODO: Only do this if the watches are changing.
 		// this.watch() should return an array of watch params, so we can compare them.
-		for (let watch of this.watches)
+		for (let watch of this.watches_)
 			Watch.remove(...watch);
-		this.watches = [];
+		this.watches_ = [];
 
 		// Add new watches
 		if (!this.receiveNotificationBindThis)
@@ -3234,14 +3234,14 @@ class VExpression {
 		} else { // loop
 			let array = this.evaluate_();
 			if (!array)
-				throw new Error(`${this.watchPaths[0].join('.')} is not iterable in ${this.code}`);
+				throw new Error(`${this.watchPaths_[0].join('.')} is not iterable in ${this.code}`);
 
 			let i = 0;
 			for (let item of array) {
 				let group = [];
 				let params = [array[i], i, array];
 
-				for (let template of this.loopItemEls) {
+				for (let template of this.loopItemEls_) {
 					let vel = template.clone(this.refr, this);
 					this.setScope_(vel, params, i);
 					group.push(vel);
@@ -3263,17 +3263,17 @@ class VExpression {
 	 */
 	setScope_(vel, params, index) {
 		vel.scope = {...this.scope};
-		vel.scope3 = this.scope3.clone();
+		vel.scope3_ = this.scope3_.clone();
 
 		// Assign values to the parameters of the function given to .map() that's used to loop.
 		// If this.type !== 'loop', then loopParamNames will be an empty array.
-		for (let j in this.loopParamNames) {  // Benchmarking shows this loop is about 2% faster than for...in.
-			vel.scope[this.loopParamNames[j]] = params[j];
+		for (let j in this.loopParamNames_) {  // Benchmarking shows this loop is about 2% faster than for...in.
+			vel.scope[this.loopParamNames_[j]] = params[j];
 
 			// Path to the loop param variable:
-			let path = [...this.watchPaths[0], index + '']; // VExpression loops always have one watchPath.
+			let path = [...this.watchPaths_[0], index + '']; // VExpression loops always have one watchPath.
 			let fullPath = this.getFullPath_(path);
-			vel.scope3.set(this.loopParamNames[j], new ScopeItem(fullPath, [params[j]])); // scope3[name] = [path, value]
+			vel.scope3_.set(this.loopParamNames_[j], new ScopeItem(fullPath, [params[j]])); // scope3[name] = [path, value]
 		}
 	}
 
@@ -3285,8 +3285,8 @@ class VExpression {
 		if (path[0] === 'this')
 			return path;
 
-		while (path[0] in this.scope3) {
-			let parentPath = this.scope3.get(path[0]).path;
+		while (path[0] in this.scope3_) {
+			let parentPath = this.scope3_.get(path[0]).path;
 			path = [...parentPath, ...path.slice(1)];
 		}
 		return path;
@@ -3305,7 +3305,7 @@ class VExpression {
 
 		// VExpression.remove() sets vParent = null.
 		// This check makes sure that this VExpression wasn't already removed by another operation triggered by the same watch.
-		if (!this.vParent)
+		if (!this.vParent_)
 			return;
 
 		Refract.currentVElement = this;
@@ -3313,7 +3313,7 @@ class VExpression {
 		// Path 1:  If modifying a property on a single array item.
 		// -2 because we're modifying not a loop item child, but a property of it.
 		// Path 1:  If modifying a property on a single array item.
-		if (this.type==='loop' && path.length > 2 && utils.arrayStartsWith_(path.slice(0, -2), this.watchPaths[0].slice(1))) {
+		if (this.type==='loop' && path.length > 2 && utils.arrayStartsWith_(path.slice(0, -2), this.watchPaths_[0].slice(1))) {
 			// Do nothing, because the watch should trigger on the child VExpression instead of this one.
 			return;
 		}
@@ -3324,7 +3324,7 @@ class VExpression {
 			return;
 		}
 
-		this.childCount = this.getAllChildrenLength_();
+		this.childCount_ = this.getAllChildrenLength_();
 
 		// Path 2:  If inserting, removing, or replacing a whole item within an array that matches certain criteria.
 		if (this.type !== 'complex' && path[path.length - 1].match(/^\d+$/)) {
@@ -3335,30 +3335,30 @@ class VExpression {
 
 			// If the array is one of our watched paths:
 			// TODO: watchPaths besides 0?  Or only go this way if there's only one watchPath?
-			if (Array.isArray(array) && utils.arrayEq(this.watchPaths[0].slice(1), arrayPath)) {
+			if (Array.isArray(array) && utils.arrayEq(this.watchPaths_[0].slice(1), arrayPath)) {
 
 				let index = parseInt(path[path.length - 1]);
 				if (action === 'remove') { // TODO: Combine with remove step below used for set.
-					for (let vChild of this.vChildren[index])
+					for (let vChild of this.vChildren_[index])
 						vChild.remove();
-					this.vChildren.splice(index, 1);
+					this.vChildren_.splice(index, 1);
 				}
 
 				else { // insert or set
 
 					// 1. Remove old ones from the DOM
-					if (action === 'set' && this.vChildren[index])
-						for (let vChild of this.vChildren[index])
+					if (action === 'set' && this.vChildren_[index])
+						for (let vChild of this.vChildren_[index])
 							vChild.remove();
 
 					// 2. Create new loop item elements.
 					if (action === 'insert')
-						this.vChildren.splice(index, 0, []);
+						this.vChildren_.splice(index, 0, []);
 
 					if (this.type === 'simple') // A simple expression ${this.var} always just prints the value.
-						this.vChildren[index] = [new VText(array[index], this.refr)]; // TODO: What about html-escape?
+						this.vChildren_[index] = [new VText(array[index], this.refr)]; // TODO: What about html-escape?
 					else { // loop
-						this.vChildren[index] = this.loopItemEls.map(vel => vel.clone(this.refr, this));
+						this.vChildren_[index] = this.loopItemEls_.map(vel => vel.clone(this.refr, this));
 
 					}
 
@@ -3366,7 +3366,7 @@ class VExpression {
 					let i = 0;
 					let startIndex = this.arrayToChildIndex_(index); // TODO: Could it be faster to get the index from an existing vchild here?
 					let params = [array[index], index, array];
-					for (let newItem of this.vChildren[index]) {
+					for (let newItem of this.vChildren_[index]) {
 						newItem.startIndex_ = startIndex + i;
 						newItem.parent = this.parent;
 
@@ -3397,12 +3397,12 @@ class VExpression {
 	remove() {
 
 		// 1 Remove watches
-		for (let watch of this.watches)
+		for (let watch of this.watches_)
 			Watch.remove(...watch);
-		this.watches = [];
+		this.watches_ = [];
 
 		// 2. Remove children, so that their watches are unsubscribed.
-		for (let group of this.vChildren)
+		for (let group of this.vChildren_)
 			if (group instanceof HTMLElement)
 				group.parentNode.removeChild(group);
 			else
@@ -3413,22 +3413,22 @@ class VExpression {
 		// E.g. one will remove its parent vexpression and another will remove this one ourselves.
 		// If we don't reset the vChildren array after the first remove, we'll try to remove elements more than once.
 		// This is covered by the test: Refract.loop.ExprNested
-		this.vChildren = [];
+		this.vChildren_ = [];
 
 		// 3. Remove from parent.
-		if (this.vParent instanceof VElement) {
+		if (this.vParent_ instanceof VElement) {
 
 			// TODO: Keep an index somewhere so this can be done in constant, not linear time.
-			let index = this.vParent.vChildren.indexOf(this);
+			let index = this.vParent_.vChildren_.indexOf(this);
 			//#IFDEV
 			if (index < 0)
 				throw new Error();
 			//#ENDIF
-			this.vParent.vChildren.splice(index, 1);
+			this.vParent_.vChildren_.splice(index, 1);
 
 		}
 		else // Parent is VEXpression
-			for (let group of this.vParent.vChildren) {
+			for (let group of this.vParent_.vChildren_) {
 				let index = group.indexOf(this);
 				if (index >= 0) {
 					group.splice(index, 1);
@@ -3437,7 +3437,7 @@ class VExpression {
 			}
 
 		// This is an easy way to test of a vexpression has been removed.
-		this.vParent = null;
+		this.vParent_ = null;
 	}
 
 	/**
@@ -3461,7 +3461,7 @@ class VExpression {
 	 * @return {int} */
 	getAllChildrenLength_() {
 		let result = 0;
-		for (let group of this.vChildren) {
+		for (let group of this.vChildren_) {
 			if (group instanceof HTMLElement)
 				result ++;
 			else
@@ -3485,7 +3485,7 @@ class VExpression {
 		let result = this.startIndex_;
 
 		// Get this VExpression's children before index.
-		for (let group of this.vChildren.slice(0, index)) {
+		for (let group of this.vChildren_.slice(0, index)) {
 			for (let vel of group) {
 				if (vel instanceof VExpression)
 					result += vel.getAllChildrenLength_();
@@ -3507,7 +3507,7 @@ class VExpression {
 	 * @return {VExpression|null} */
 	getNextVExpression_() {
 
-		let vSiblings = this.vParent.vChildren.flat();
+		let vSiblings = this.vParent_.vChildren_.flat();
 
 		// Check siblings for another VExpression.
 		let index = vSiblings.indexOf(this);
@@ -3516,15 +3516,15 @@ class VExpression {
 				return vSibling;
 
 		// If not, go up a level, if that level has the same parent.
-		if (this.vParent.parent === this.parent && (this.vParent instanceof VExpression))
-			return this.vParent.getNextVExpression_();
+		if (this.vParent_.parent === this.parent && (this.vParent_ instanceof VExpression))
+			return this.vParent_.getNextVExpression_();
 
 		return null;
 	}
 
 	updateSubsequentIndices_() {
 		let newLength = this.getAllChildrenLength_();
-		let diff = newLength - this.childCount;
+		let diff = newLength - this.childCount_;
 
 		// Stop if going into a different parent
 		let next = this;
@@ -3544,7 +3544,7 @@ class VExpression {
 
 		//if (window.debug)
 
-		for (let path of this.watchPaths) {
+		for (let path of this.watchPaths_) {
 			let root = this.refr;
 			let scope;
 
@@ -3561,7 +3561,7 @@ class VExpression {
 			}
 
 			// The 100k options benchmark is about 30% faster if I replace this brance with a continue statement.
-			else if (scope = this.scope3.get(path[0])) {
+			else if (scope = this.scope3_.get(path[0])) {
 
 				// Only watch this path if it's an array or object, not a primitive.
 				let obj = delve(root, scope.path.slice(1));
@@ -3579,7 +3579,7 @@ class VExpression {
 			if (path.length && (typeof root === 'object' || Array.isArray(root))) {
 				// An expression that's just ${this} won't have a length.  E.g. we might have <child-el parent="${this}"></child-el>
 
-				this.watches.push([root, path, callback]);  // Keep track of the subscription so we can remove it when this VExpr is removed.
+				this.watches_.push([root, path, callback]);  // Keep track of the subscription so we can remove it when this VExpr is removed.
 				Watch.add(root, path, callback);
 
 			}
@@ -3610,10 +3610,10 @@ class VElement {
 
 
 	/** @type {VElement} */
-	vParent = null;
+	vParent_ = null;
 
 	/** @type {(VElement|VExpression|VText)[]} */
-	vChildren = [];
+	vChildren_ = [];
 
 	/**
 	 * TODO: We can speed things up if a VElement has no expressions within it.
@@ -3635,7 +3635,7 @@ class VElement {
 
 	/**
 	 * Stores a map from local variable names, to their value and their path from the root Refract object. */
-	scope3 = new Scope();
+	scope3_ = new Scope();
 
 	/** @type {int} DOM index of the first DOM child created by this VExpression within parent. */
 	startIndex_ = 0;
@@ -3649,10 +3649,10 @@ class VElement {
 		if (parent instanceof HTMLElement)
 			this.refr = parent;
 		else if (parent) {
-			this.vParent = parent;
+			this.vParent_ = parent;
 			this.refr = parent.refr;
 			this.scope = {...parent.scope};
-			this.scope3 = parent.scope3.clone();
+			this.scope3_ = parent.scope3_.clone();
 		}
 
 		//#IFDEV
@@ -3831,7 +3831,7 @@ class VElement {
 			let slotChildren = VElement.fromHtml_(this.refr.slotHtml, Object.keys(this.scope), this, this.refr);
 			for (let vChild of slotChildren) {
 				vChild.scope = {...this.scope};
-				vChild.scope3 = this.scope3.clone();
+				vChild.scope3_ = this.scope3_.clone();
 				vChild.startIndex_ = count;
 				count += vChild.apply_(this.el);
 			}
@@ -3839,12 +3839,12 @@ class VElement {
 
 		// 4. Recurse through children
 		let isText = this.el.tagName === 'TEXTAREA' || this.attributes['contenteditable'] && (this.attributes['contenteditable']+'') !== 'false';
-		for (let vChild of this.vChildren) {
+		for (let vChild of this.vChildren_) {
 			if (isText && (vChild instanceof VExpression))
 				throw new Error("textarea and contenteditable can't have templates as children. Use value=${this.variable} instead.");
 
 			vChild.scope = {...this.scope}; // copy
-			vChild.scope3 = this.scope3.clone();
+			vChild.scope3_ = this.scope3_.clone();
 			vChild.refr = this.refr;
 			vChild.startIndex_ = count;
 			count += vChild.apply_(this.el);
@@ -3858,7 +3858,7 @@ class VElement {
 					let expr = attrPart;
 					expr.parent = this.el;
 					expr.scope = this.scope; // Share scope with attributes.
-					expr.scope3 = this.scope3.clone();
+					expr.scope3_ = this.scope3_.clone();
 					expr.watch_(() => {
 						if (name === 'value')
 							setInputValue_(this.refr, this.el, value, this.scope);
@@ -3901,7 +3901,7 @@ class VElement {
 		// Attribute expressions
 		for (let expr of this.attributeExpressions_) {
 			expr.scope = this.scope;
-			expr.scope3 = this.scope3.clone();
+			expr.scope3_ = this.scope3_.clone();
 			expr.apply_(this.el);
 			expr.watch_(() => {
 				expr.apply_(this.el);
@@ -3973,7 +3973,7 @@ class VElement {
 		let result = new VElement();
 		result.tagName = this.tagName;
 		result.refr = refr || this.refr;
-		result.vParent = vParent;
+		result.vParent_ = vParent;
 
 		for (let attrName in this.attributes) {
 			result.attributes[attrName] = [];
@@ -3987,8 +3987,8 @@ class VElement {
 		for (let expr of this.attributeExpressions_) // Expresions that create one or more attributes.
 			result.attributeExpressions_.push(expr.clone(result.refr, this));
 
-		for (let child of this.vChildren)
-			result.vChildren.push(child.clone(result.refr, result)); // string for text node.
+		for (let child of this.vChildren_)
+			result.vChildren_.push(child.clone(result.refr, result)); // string for text node.
 
 		return result;
 	}
@@ -4031,14 +4031,14 @@ class VElement {
 	remove() {
 
 		// 1. Remove children, so that their watches are unsubscribed.
-		for (let vChild of this.vChildren)
+		for (let vChild of this.vChildren_)
 			vChild.remove();
 
 		// 2. Remove the associated element.  We call parentNode.removeChild in case remove() is overridden.
 		this.el.parentNode.removeChild(this.el);
 
 		// 3. Mark it as removed so we don't accidently use it again.
-		this.vParent = null;
+		this.vParent_ = null;
 	}
 
 	//#IFDEV
@@ -4152,8 +4152,8 @@ class VElement {
 					index++;
 
 					// New path:
-					vel.vChildren = VElement.fromTokens_(tokens, scopeVars, vel, refr, false, index);
-					index = vel.vChildren.index; // What is this?
+					vel.vChildren_ = VElement.fromTokens_(tokens, scopeVars, vel, refr, false, index);
+					index = vel.vChildren_.index; // What is this?
 				}
 			}
 
@@ -4353,7 +4353,7 @@ class Compiler {
 					>${omap(ve.attributes, (name, val) => ` <span>${name}="${renderItem(val, true)}"</span>`).join('')}&gt;
 				</div>
 				<div style="padding-left: 4ex">
-					${ve.vChildren.map(renderItem).join('')}
+					${ve.vChildren_.map(renderItem).join('')}
 				</div>
 				<div>&lt;/${ve.tagName}&gt;</div>			
 			</div>`;
@@ -4367,16 +4367,16 @@ class Compiler {
 					<div style="color: #08f">	
 						<div style="background: #222">				
 							<span style="color: #8888" title="startIndex">[${vexpr.startIndex_}]</span>
-							${renderPaths(vexpr.watchPaths)}.map(${vexpr.loopParamName} => 
+							${renderPaths(vexpr.watchPaths_)}.map(${vexpr.loopParamName} => 
 							
 							<span style="color: #8888" title="watchPaths">
-								[${renderPaths(vexpr.watchPaths)}] => ${vexpr.loopParamName}
+								[${renderPaths(vexpr.watchPaths_)}] => ${vexpr.loopParamName}
 							</span>
 						</div>
 					
 						<div style="padding-left: 4ex">
-							<div title="loopItemEls" style="background: #222">${vexpr.loopItemEls.map(renderItem).join('')}</div>
-							${vexpr.vChildren.map(renderItem).join('')}
+							<div title="loopItemEls" style="background: #222">${vexpr.loopItemEls_.map(renderItem).join('')}</div>
+							${vexpr.vChildren_.map(renderItem).join('')}
 						</div>
 						) 
 					</div>`;
@@ -4386,10 +4386,10 @@ class Compiler {
 					<span style="color: #8888" title="startIndex">[${vexpr.startIndex_}]</span>
 					<span style="color: #60f" title="VExpression">${vexpr.code}</span>
 					<span style="color: #8888" title="watchPaths">
-						[${renderPaths(vexpr.watchPaths)}]
+						[${renderPaths(vexpr.watchPaths_)}]
 					</span>
 				</div>
-				${vexpr.vChildren.map(renderItem).join('')}`;
+				${vexpr.vChildren_.map(renderItem).join('')}`;
 		};
 
 
@@ -4448,7 +4448,7 @@ class Compiler {
 					>${omap(ve.attributes, (name, val) => ` <span>${name}="${renderItem(val, true)}"</span>`).join('')}&gt;
 				</div>
 				<div style="padding-left: 4ex">
-					${ve.vChildren.map(renderItem).join('')}		
+					${ve.vChildren_.map(renderItem).join('')}		
 				</div>
 				<div>&lt;/${ve.tagName}&gt;</div>			
 			</div>`;
@@ -4459,21 +4459,21 @@ class Compiler {
 		let renderVExpr = vexpr => {
 			if (vexpr.type === 'loop')
 				return `
-					<div style="color: #08f">${renderPaths(vexpr.watchPaths)}.map(${vexpr.loopParamName} => 
+					<div style="color: #08f">${renderPaths(vexpr.watchPaths_)}.map(${vexpr.loopParamName} => 
 						
 						<span style="color: #8888" title="watchPaths">
-							[${renderPaths(vexpr.watchPaths)}] => ${vexpr.loopParamName}
+							[${renderPaths(vexpr.watchPaths_)}] => ${vexpr.loopParamName}
 						</span>
 					
 						<div style="padding-left: 4ex">
-							${vexpr.loopItemEls.map(renderItem).join('')}
+							${vexpr.loopItemEls_.map(renderItem).join('')}
 						</div>
 						) 
 					</div>`;
 
 			return `<span style="color: #60f">${vexpr.code}</span>
 				<span style="color: #8888" title="watchPaths">
-					[${renderPaths(vexpr.watchPaths)}]
+					[${renderPaths(vexpr.watchPaths_)}]
 				</span>`;
 		};
 
@@ -4898,7 +4898,7 @@ class Refract extends HTMLElement {
 
 				// If a parent vexpr is being re-applied, no need to re-apply this one too.
 				let vparent = vexpr;
-				while (vparent = vparent.vParent)
+				while (vparent = vparent.vParent_)
 					if (this.__toRender.has(vparent)) {
 						this.__toRender.delete(vexpr);
 						break;

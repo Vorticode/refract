@@ -147,7 +147,7 @@ export default class Refract extends HTMLElement {
 
 				// If a parent vexpr is being re-applied, no need to re-apply this one too.
 				let vparent = vexpr;
-				while (vparent = vparent.vParent)
+				while (vparent = vparent.vParent_)
 					if (this.__toRender.has(vparent)) {
 						this.__toRender.delete(vexpr)
 						break;

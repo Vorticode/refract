@@ -30,10 +30,10 @@ export default class VElement {
 
 
 	/** @type {VElement} */
-	vParent = null;
+	vParent_ = null;
 
 	/** @type {(VElement|VExpression|VText)[]} */
-	vChildren = [];
+	vChildren_ = [];
 
 	/**
 	 * TODO: We can speed things up if a VElement has no expressions within it.
@@ -55,7 +55,7 @@ export default class VElement {
 
 	/**
 	 * Stores a map from local variable names, to their value and their path from the root Refract object. */
-	scope3 = new Scope();
+	scope3_ = new Scope();
 
 	/** @type {int} DOM index of the first DOM child created by this VExpression within parent. */
 	startIndex_ = 0;
@@ -69,10 +69,10 @@ export default class VElement {
 		if (parent instanceof HTMLElement)
 			this.refr = parent
 		else if (parent) {
-			this.vParent = parent;
+			this.vParent_ = parent;
 			this.refr = parent.refr;
 			this.scope = {...parent.scope};
-			this.scope3 = parent.scope3.clone();
+			this.scope3_ = parent.scope3_.clone();
 		}
 
 		//#IFDEV
@@ -251,7 +251,7 @@ export default class VElement {
 			let slotChildren = VElement.fromHtml_(this.refr.slotHtml, Object.keys(this.scope), this, this.refr);
 			for (let vChild of slotChildren) {
 				vChild.scope = {...this.scope}
-				vChild.scope3 = this.scope3.clone();
+				vChild.scope3_ = this.scope3_.clone();
 				vChild.startIndex_ = count;
 				count += vChild.apply_(this.el);
 			}
@@ -259,12 +259,12 @@ export default class VElement {
 
 		// 4. Recurse through children
 		let isText = this.el.tagName === 'TEXTAREA' || this.attributes['contenteditable'] && (this.attributes['contenteditable']+'') !== 'false';
-		for (let vChild of this.vChildren) {
+		for (let vChild of this.vChildren_) {
 			if (isText && (vChild instanceof VExpression))
 				throw new Error("textarea and contenteditable can't have templates as children. Use value=${this.variable} instead.");
 
 			vChild.scope = {...this.scope} // copy
-			vChild.scope3 = this.scope3.clone();
+			vChild.scope3_ = this.scope3_.clone();
 			vChild.refr = this.refr;
 			vChild.startIndex_ = count;
 			count += vChild.apply_(this.el);
@@ -278,7 +278,7 @@ export default class VElement {
 					let expr = attrPart;
 					expr.parent = this.el;
 					expr.scope = this.scope; // Share scope with attributes.
-					expr.scope3 = this.scope3.clone();
+					expr.scope3_ = this.scope3_.clone();
 					expr.watch_(() => {
 						if (name === 'value')
 							setInputValue_(this.refr, this.el, value, this.scope);
@@ -321,7 +321,7 @@ export default class VElement {
 		// Attribute expressions
 		for (let expr of this.attributeExpressions_) {
 			expr.scope = this.scope;
-			expr.scope3 = this.scope3.clone();
+			expr.scope3_ = this.scope3_.clone();
 			expr.apply_(this.el)
 			expr.watch_(() => {
 				expr.apply_(this.el);
@@ -393,7 +393,7 @@ export default class VElement {
 		let result = new VElement();
 		result.tagName = this.tagName;
 		result.refr = refr || this.refr;
-		result.vParent = vParent;
+		result.vParent_ = vParent;
 
 		for (let attrName in this.attributes) {
 			result.attributes[attrName] = [];
@@ -407,8 +407,8 @@ export default class VElement {
 		for (let expr of this.attributeExpressions_) // Expresions that create one or more attributes.
 			result.attributeExpressions_.push(expr.clone(result.refr, this));
 
-		for (let child of this.vChildren)
-			result.vChildren.push(child.clone(result.refr, result)); // string for text node.
+		for (let child of this.vChildren_)
+			result.vChildren_.push(child.clone(result.refr, result)); // string for text node.
 
 		return result;
 	}
@@ -451,14 +451,14 @@ export default class VElement {
 	remove() {
 
 		// 1. Remove children, so that their watches are unsubscribed.
-		for (let vChild of this.vChildren)
+		for (let vChild of this.vChildren_)
 			vChild.remove();
 
 		// 2. Remove the associated element.  We call parentNode.removeChild in case remove() is overridden.
 		this.el.parentNode.removeChild(this.el);
 
 		// 3. Mark it as removed so we don't accidently use it again.
-		this.vParent = null;
+		this.vParent_ = null;
 	}
 
 	//#IFDEV
@@ -572,8 +572,8 @@ export default class VElement {
 					index++
 
 					// New path:
-					vel.vChildren = VElement.fromTokens_(tokens, scopeVars, vel, refr, false, index);
-					index = vel.vChildren.index; // What is this?
+					vel.vChildren_ = VElement.fromTokens_(tokens, scopeVars, vel, refr, false, index);
+					index = vel.vChildren_.index; // What is this?
 				}
 			}
 

@@ -67,7 +67,7 @@ export class Compiler {
 					>${omap(ve.attributes, (name, val) => ` <span>${name}="${renderItem(val, true)}"</span>`).join('')}&gt;
 				</div>
 				<div style="padding-left: 4ex">
-					${ve.vChildren.map(renderItem).join('')}
+					${ve.vChildren_.map(renderItem).join('')}
 				</div>
 				<div>&lt;/${ve.tagName}&gt;</div>			
 			</div>`;
@@ -81,16 +81,16 @@ export class Compiler {
 					<div style="color: #08f">	
 						<div style="background: #222">				
 							<span style="color: #8888" title="startIndex">[${vexpr.startIndex_}]</span>
-							${renderPaths(vexpr.watchPaths)}.map(${vexpr.loopParamName} => 
+							${renderPaths(vexpr.watchPaths_)}.map(${vexpr.loopParamName} => 
 							
 							<span style="color: #8888" title="watchPaths">
-								[${renderPaths(vexpr.watchPaths)}] => ${vexpr.loopParamName}
+								[${renderPaths(vexpr.watchPaths_)}] => ${vexpr.loopParamName}
 							</span>
 						</div>
 					
 						<div style="padding-left: 4ex">
-							<div title="loopItemEls" style="background: #222">${vexpr.loopItemEls.map(renderItem).join('')}</div>
-							${vexpr.vChildren.map(renderItem).join('')}
+							<div title="loopItemEls" style="background: #222">${vexpr.loopItemEls_.map(renderItem).join('')}</div>
+							${vexpr.vChildren_.map(renderItem).join('')}
 						</div>
 						) 
 					</div>`;
@@ -100,10 +100,10 @@ export class Compiler {
 					<span style="color: #8888" title="startIndex">[${vexpr.startIndex_}]</span>
 					<span style="color: #60f" title="VExpression">${vexpr.code}</span>
 					<span style="color: #8888" title="watchPaths">
-						[${renderPaths(vexpr.watchPaths)}]
+						[${renderPaths(vexpr.watchPaths_)}]
 					</span>
 				</div>
-				${vexpr.vChildren.map(renderItem).join('')}`;
+				${vexpr.vChildren_.map(renderItem).join('')}`;
 		};
 
 
@@ -162,7 +162,7 @@ export class Compiler {
 					>${omap(ve.attributes, (name, val) => ` <span>${name}="${renderItem(val, true)}"</span>`).join('')}&gt;
 				</div>
 				<div style="padding-left: 4ex">
-					${ve.vChildren.map(renderItem).join('')}		
+					${ve.vChildren_.map(renderItem).join('')}		
 				</div>
 				<div>&lt;/${ve.tagName}&gt;</div>			
 			</div>`;
@@ -173,21 +173,21 @@ export class Compiler {
 		let renderVExpr = vexpr => {
 			if (vexpr.type === 'loop')
 				return `
-					<div style="color: #08f">${renderPaths(vexpr.watchPaths)}.map(${vexpr.loopParamName} => 
+					<div style="color: #08f">${renderPaths(vexpr.watchPaths_)}.map(${vexpr.loopParamName} => 
 						
 						<span style="color: #8888" title="watchPaths">
-							[${renderPaths(vexpr.watchPaths)}] => ${vexpr.loopParamName}
+							[${renderPaths(vexpr.watchPaths_)}] => ${vexpr.loopParamName}
 						</span>
 					
 						<div style="padding-left: 4ex">
-							${vexpr.loopItemEls.map(renderItem).join('')}
+							${vexpr.loopItemEls_.map(renderItem).join('')}
 						</div>
 						) 
 					</div>`;
 
 			return `<span style="color: #60f">${vexpr.code}</span>
 				<span style="color: #8888" title="watchPaths">
-					[${renderPaths(vexpr.watchPaths)}]
+					[${renderPaths(vexpr.watchPaths_)}]
 				</span>`;
 		};
 
