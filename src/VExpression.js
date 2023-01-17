@@ -528,7 +528,7 @@ export default class VExpression {
 					let params = [array[index], index, array];
 					for (let newItem of this.vChildren_[index]) {
 						newItem.startIndex_ = startIndex + i;
-						//newItem.parent_ = this.parent_; // Everything works even when this is commented out.
+						newItem.parent_ = this.parent_; // Everything works even when this is commented out.
 
 						this.setScope_(newItem, params, i+index);
 						newItem.apply_(this.parent_, null);

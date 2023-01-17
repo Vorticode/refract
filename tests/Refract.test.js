@@ -1413,7 +1413,6 @@ Testimony.test('Refract.loop.nested3', () => {
 	assertEquals(Refract.elsCreated, ["won't", "won't", "won't"]);
 });
 
-
 Testimony.test('Refract.loop.grid', () => {
 
 	class A extends Refract {
@@ -1437,6 +1436,9 @@ Testimony.test('Refract.loop.grid', () => {
 	a.rows[0][0] = 4;
 	assert.eq(a.outerHTML, `<a-745>4</a-745>`);
 	assert.eq(Refract.elsCreated, ['4']);
+
+	a.rows = [];
+	assert.eq(a.outerHTML, `<a-745></a-745>`);
 });
 
 
@@ -1473,6 +1475,9 @@ Testimony.test('Refract.loop.grid2', () => {
 	a.rows[0][0] = 4;
 	assert.eq(a.outerHTML, `<a-750>42</a-750>`);
 	assert.eq(Refract.elsCreated, ['4']);
+
+	a.rows = [];
+	assert.eq(a.outerHTML, `<a-750></a-750>`);
 });
 
 Testimony.test('Refract.loop.grid3', 'Triple nested grid', () => {
@@ -1502,6 +1507,9 @@ Testimony.test('Refract.loop.grid3', 'Triple nested grid', () => {
 	a.rows[0][0][0] = 4;
 	assert.eq(a.outerHTML, `<a-752>4</a-752>`);
 	assert.eq(Refract.elsCreated, ['4']);
+
+	a.rows = [];
+	assert.eq(a.outerHTML, `<a-752></a-752>`);
 });
 
 

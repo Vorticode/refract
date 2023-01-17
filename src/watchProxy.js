@@ -7,10 +7,11 @@ import Utils, {isObj} from './utils.js';
  * */
 
 {
+	//#IFDEV
 	class ProxyArray extends Array {
 
 	}
-
+	//#ENDIF
 
 	let arrayRead = ['indexOf', 'lastIndexOf', 'includes'];
 	let arrayWrite = ['push', 'pop', 'splice', 'shift', 'sort', 'reverse', 'unshift'];
@@ -229,8 +230,8 @@ import Utils, {isObj} from './utils.js';
 
 						Object.defineProperty(proxy, func, {
 							enumerable: false,
-							get: () => // Return a new version of indexOf or the other functions.
-								(item) => Array.prototype[func].call(obj, Utils.removeProxy(item))
+							get: () => // Regular indexOf won't work if some of the items are proxied.
+								item => obj.findIndex(a => Utils.removeProxy(a) === Utils.removeProxy(item))
 						});
 
 					/*
@@ -265,8 +266,12 @@ import Utils, {isObj} from './utils.js';
 				startIndex = originalLength;
 			else if (func === 'pop')
 				startIndex = originalLength - 1;
-			else if (func === 'splice') // Splice's first argument can be from the beginning or from the end.
+			else if (func === 'splice') { // Splice's first argument can be from the beginning or from the end.
 				startIndex = args[0] < 0 ? originalLength - args[0] : args[0];
+
+				if (startIndex < 0 || startIndex + args[1] > array.length)
+					throw new Error(`Invalid index ${startIndex}`);
+			}
 
 
 			// Apply array operations on the underlying watched object, so we don't notify a jillion times.

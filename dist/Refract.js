@@ -42,7 +42,7 @@ var ascendIf = regex => code => {
  * */
 
 {
-
+	//#ENDIF
 
 	let arrayRead = ['indexOf', 'lastIndexOf', 'includes'];
 	let arrayWrite = ['push', 'pop', 'splice', 'shift', 'sort', 'reverse', 'unshift'];
@@ -261,8 +261,8 @@ var ascendIf = regex => code => {
 
 						Object.defineProperty(proxy, func, {
 							enumerable: false,
-							get: () => // Return a new version of indexOf or the other functions.
-								(item) => Array.prototype[func].call(obj, utils.removeProxy(item))
+							get: () => // Regular indexOf won't work if some of the items are proxied.
+								item => obj.findIndex(a => utils.removeProxy(a) === utils.removeProxy(item))
 						});
 
 					/*
@@ -297,8 +297,12 @@ var ascendIf = regex => code => {
 				startIndex = originalLength;
 			else if (func === 'pop')
 				startIndex = originalLength - 1;
-			else if (func === 'splice') // Splice's first argument can be from the beginning or from the end.
+			else if (func === 'splice') { // Splice's first argument can be from the beginning or from the end.
 				startIndex = args[0] < 0 ? originalLength - args[0] : args[0];
+
+				if (startIndex < 0 || startIndex + args[1] > array.length)
+					throw new Error(`Invalid index ${startIndex}`);
+			}
 
 
 			// Apply array operations on the underlying watched object, so we don't notify a jillion times.
@@ -3331,7 +3335,7 @@ class VExpression {
 					let params = [array[index], index, array];
 					for (let newItem of this.vChildren_[index]) {
 						newItem.startIndex_ = startIndex + i;
-						//newItem.parent_ = this.parent_; // Everything works even when this is commented out.
+						newItem.parent_ = this.parent_; // Everything works even when this is commented out.
 
 						this.setScope_(newItem, params, i+index);
 						newItem.apply_(this.parent_, null);
