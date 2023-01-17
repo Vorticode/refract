@@ -141,7 +141,6 @@ export default class VElement {
 	 * @param parent {HTMLElement}
 	 * @param el {HTMLElement} */
 	apply_(parent=null, el=null) {
-		parent = parent || this.parent;
 		let tagName = this.tagName;
 
 		if (tagName === 'svg')

@@ -2,8 +2,8 @@ import Testimony, {assert, assertEquals} from './Testimony.js';
 Testimony.enableJsDom();
 
 //import Refract from './../dist/Refract.js';
-import Refract from './../dist/Refract.min.js';
-//import Refract, {h} from './../src/Refract.js';
+//import Refract from './../dist/Refract.min.js';
+import Refract, {h} from './../src/Refract.js';
 import createEl from '../src/createEl.js';
 
 Refract.elsCreated = [];
@@ -1442,8 +1442,6 @@ Testimony.test('Refract.loop.grid', () => {
 
 
 Testimony.test('Refract.loop.grid2', () => {
-
-
 	class ImportData extends Refract {
 		rows = [];
 
@@ -1477,22 +1475,34 @@ Testimony.test('Refract.loop.grid2', () => {
 	assert.eq(Refract.elsCreated, ['4']);
 });
 
+Testimony.test('Refract.loop.grid3', 'Triple nested grid', () => {
 
+	class A extends Refract {
+		rows = [[[0]]];
+		init() {
+			window.debug = true;
+			for (let i in this.rows)
+				this.rows[i][0][0] = parseInt(i)+2;
+		}
 
+		html() { return `
+			<a-752>${this.rows.map(row =>
+				row.map(items => 
+					items.map(item =>
+						item
+					))
+			)}</a-752>`}
+	}
+	eval(A.compile());
 
+	let a = new A();
+	assert.eq(a.outerHTML, `<a-752>2</a-752>`);
 
-
-
-
-
-
-
-
-
-
-
-
-
+	Refract.elsCreated = [];
+	a.rows[0][0][0] = 4;
+	assert.eq(a.outerHTML, `<a-752>4</a-752>`);
+	assert.eq(Refract.elsCreated, ['4']);
+});
 
 
 Testimony.test('Refract.loop.Slice', () => {
@@ -1501,21 +1511,21 @@ Testimony.test('Refract.loop.Slice', () => {
 	class A extends Refract {
 		items = ['a', 'b'];
 		html() { return `
-			<x-753>${this.items.slice().map(item =>
+			<x-755>${this.items.slice().map(item =>
 				`${item}`
-			)}</x-753>`}
+			)}</x-755>`}
 	}
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-753>ab</x-753>`);
+	assertEquals(a.outerHTML, `<x-755>ab</x-755>`);
 
 	a.items[0] = 'c';
-	assertEquals(a.outerHTML, `<x-753>cb</x-753>`);
+	assertEquals(a.outerHTML, `<x-755>cb</x-755>`);
 
 
 	a.items = ['d', 'e'];
-	assertEquals(a.outerHTML, `<x-753>de</x-753>`);
+	assertEquals(a.outerHTML, `<x-755>de</x-755>`);
 });
 
 Testimony.test('Refract.loop.Expr', () => {

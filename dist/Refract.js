@@ -2794,7 +2794,6 @@ class ScopeItem {
  * @extends {Map<string, ScopeItem>} */
 class Scope extends Map {
 
-
 	/**
 	 * @return {Scope} */
 	clone_() {
@@ -2805,14 +2804,14 @@ class Scope extends Map {
 	}
 
 	/**
-	 * Convert a local variable path to a path from the root Reflect element.
+	 * Convert a local variable path to a path from the root Refract element.
 	 * @param path {string[]}
 	 * @return {string[]} */
 	getFullPath_(path) {
 		if (path[0] === 'this')
 			return path;
 
-		while (path[0] in this) {
+		while (this.has(path[0])) {
 			let parentPath = this.get(path[0]).path;
 			path = [...parentPath, ...path.slice(1)];
 		}
@@ -3276,7 +3275,6 @@ class VExpression {
 		if (!this.vParent_)
 			return;
 
-		Globals.currentVElement_ = this;
 
 		// Path 1:  If modifying a property on a single array item.
 		// -2 because we're modifying not a loop item child, but a property of it.
@@ -3292,6 +3290,7 @@ class VExpression {
 			return;
 		}
 
+		Globals.currentVElement_ = this;
 		this.childCount_ = this.getAllChildrenLength_();
 
 		// Path 2:  If inserting, removing, or replacing a whole item within an array that matches certain criteria.
@@ -3336,7 +3335,7 @@ class VExpression {
 					let params = [array[index], index, array];
 					for (let newItem of this.vChildren_[index]) {
 						newItem.startIndex_ = startIndex + i;
-						newItem.parent_ = this.parent_;
+						//newItem.parent_ = this.parent_; // Everything works even when this is commented out.
 
 						this.setScope_(newItem, params, i+index);
 						newItem.apply_(this.parent_, null);
@@ -3345,6 +3344,7 @@ class VExpression {
 				}
 
 				this.updateSubsequentIndices_();
+				Globals.currentVElement_ = null;
 				return;
 			}
 		}
@@ -3506,8 +3506,6 @@ class VExpression {
 	 * @param callback {function} */
 	watch_(callback) {
 
-		//if (window.debug)
-
 		for (let path of this.watchPaths_) {
 			let root = this.refr_;
 			let scope;
@@ -3524,6 +3522,7 @@ class VExpression {
 				path = path.slice(1);
 			}
 
+			// If a path of length 1, subscribe to the parent array or object instead.
 			// The 100k options benchmark is about 30% faster if I replace this brance with a continue statement.
 			else if (scope = this.scope3_.get(path[0])) {
 
@@ -3685,7 +3684,6 @@ class VElement {
 	 * @param parent {HTMLElement}
 	 * @param el {HTMLElement} */
 	apply_(parent=null, el=null) {
-		parent = parent || this.parent;
 		let tagName = this.tagName;
 
 		if (tagName === 'svg')
@@ -4631,7 +4629,7 @@ class Compiler {
 		// TODO: Does this need to be done for non-static methos also?
 		// TODO: Can this be combined with step 3 above?
 		/*
-		for (let name of Reflect.ownKeys(NewClass))
+		for (let name of Refract.ownKeys(NewClass))
 			if ((typeof NewClass[name] === 'function') && name !== 'createFunction') {
 				let code = NewClass[name].toString();
 				code = code.slice(code.indexOf('{')+1, code.lastIndexOf('}'));

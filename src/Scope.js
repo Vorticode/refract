@@ -23,7 +23,6 @@ export class ScopeItem {
  * @extends {Map<string, ScopeItem>} */
 export default class Scope extends Map {
 
-
 	/**
 	 * @return {Scope} */
 	clone_() {
@@ -34,14 +33,14 @@ export default class Scope extends Map {
 	}
 
 	/**
-	 * Convert a local variable path to a path from the root Reflect element.
+	 * Convert a local variable path to a path from the root Refract element.
 	 * @param path {string[]}
 	 * @return {string[]} */
 	getFullPath_(path) {
 		if (path[0] === 'this')
 			return path;
 
-		while (path[0] in this) {
+		while (this.has(path[0])) {
 			let parentPath = this.get(path[0]).path;
 			path = [...parentPath, ...path.slice(1)];
 		}

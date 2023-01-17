@@ -434,7 +434,7 @@ export class Compiler {
 		// TODO: Does this need to be done for non-static methos also?
 		// TODO: Can this be combined with step 3 above?
 		/*
-		for (let name of Reflect.ownKeys(NewClass))
+		for (let name of Refract.ownKeys(NewClass))
 			if ((typeof NewClass[name] === 'function') && name !== 'createFunction') {
 				let code = NewClass[name].toString();
 				code = code.slice(code.indexOf('{')+1, code.lastIndexOf('}'));

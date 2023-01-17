@@ -468,7 +468,6 @@ export default class VExpression {
 		if (!this.vParent_)
 			return;
 
-		Globals.currentVElement_ = this;
 
 		// Path 1:  If modifying a property on a single array item.
 		// -2 because we're modifying not a loop item child, but a property of it.
@@ -484,6 +483,7 @@ export default class VExpression {
 			return;
 		}
 
+		Globals.currentVElement_ = this;
 		this.childCount_ = this.getAllChildrenLength_();
 
 		// Path 2:  If inserting, removing, or replacing a whole item within an array that matches certain criteria.
@@ -528,7 +528,7 @@ export default class VExpression {
 					let params = [array[index], index, array];
 					for (let newItem of this.vChildren_[index]) {
 						newItem.startIndex_ = startIndex + i;
-						newItem.parent_ = this.parent_;
+						//newItem.parent_ = this.parent_; // Everything works even when this is commented out.
 
 						this.setScope_(newItem, params, i+index);
 						newItem.apply_(this.parent_, null);
@@ -537,6 +537,7 @@ export default class VExpression {
 				}
 
 				this.updateSubsequentIndices_();
+				Globals.currentVElement_ = null;
 				return;
 			}
 		}
@@ -698,8 +699,6 @@ export default class VExpression {
 	 * @param callback {function} */
 	watch_(callback) {
 
-		//if (window.debug)
-
 		for (let path of this.watchPaths_) {
 			let root = this.refr_;
 			let scope;
@@ -716,6 +715,7 @@ export default class VExpression {
 				path = path.slice(1);
 			}
 
+			// If a path of length 1, subscribe to the parent array or object instead.
 			// The 100k options benchmark is about 30% faster if I replace this brance with a continue statement.
 			else if (scope = this.scope3_.get(path[0])) {
 
