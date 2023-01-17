@@ -42,9 +42,6 @@ var ascendIf = regex => code => {
  * */
 
 {
-	//#ENDIF
-
-	let arrayRead = ['indexOf', 'lastIndexOf', 'includes'];
 	let arrayWrite = ['push', 'pop', 'splice', 'shift', 'sort', 'reverse', 'unshift'];
 	// TODO What about array copy functions, like slice() and flat() ?  Currently they just remove the proxy.
 
@@ -257,13 +254,22 @@ var ascendIf = regex => code => {
 					// Because this.proxy_ is a Proxy, we have to replace the functions
 					// on it in this special way by using Object.defineProperty()
 					// Directly assigning this.proxy_.indexOf = ... calls the setter and leads to infinite recursion.
-					for (let func of arrayRead) // TODO: Support more array functions.
-
-						Object.defineProperty(proxy, func, {
-							enumerable: false,
-							get: () => // Regular indexOf won't work if some of the items are proxied.
-								item => obj.findIndex(a => utils.removeProxy(a) === utils.removeProxy(item))
-						});
+					// TODO: Support more array functions.
+					Object.defineProperty(proxy, 'indexOf', {
+						enumerable: false,
+						get: () => // Regular indexOf won't work if some of the items are proxied.
+							item => obj.findIndex(a => utils.removeProxy(a) === utils.removeProxy(item))
+					});
+					Object.defineProperty(proxy, 'lastIndexOf', {
+						enumerable: false,
+						get: () => // Regular lastIndexOf won't work if some of the items are proxied.
+							item => obj.findLastIndex(a => utils.removeProxy(a) === utils.removeProxy(item))
+					});
+					Object.defineProperty(proxy, 'includes', {
+						enumerable: false,
+						get: () => // Regular includes won't work if some of the items are proxied.
+							item => obj.findIndex(a => utils.removeProxy(a) === utils.removeProxy(item)) !== -1
+					});
 
 					/*
 					 * Intercept array modification functions so that we only send one notification instead
