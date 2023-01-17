@@ -268,7 +268,7 @@ var Parse = {
 		if (!(mapEnd(tokens.slice(funcEndIndex))))
 			return [null, null];
 
-		return [[...func.getArgNames_()], func.bodyTokens_];
+		return [[...func.getArgNames()], func.bodyTokens_];
 	},
 
 	/**

@@ -195,7 +195,7 @@ export default class Refract extends HTMLElement {
 	static getInitArgs_() {
 		if (!this.initArgs && this.prototype.init) {
 			let pf = new ParsedFunction(this.prototype.init, false);
-			this.initArgs = [...pf.getArgNames_()];
+			this.initArgs = [...pf.getArgNames()];
 		}
 		return this.initArgs || [];
 	}

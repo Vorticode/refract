@@ -2,12 +2,11 @@ import delve from "./delve.js";
 import Utils, {assert} from "./utils.js";
 import Parse from './Parse.js';
 import Watch from "./Watch.js";
-import {WatchUtil} from "./watchProxy.js";
 import VElement from './VElement.js';
 import VText from "./VText.js";
 import lex from "./lex.js";
 import lexHtmljs from "./lex-htmljs.js";
-import Refract, {Globals} from "./Refract.js";
+import {Globals} from "./Refract.js";
 import Scope, {ScopeItem} from "./Scope.js";
 
 
@@ -152,6 +151,7 @@ export default class VExpression {
 
 			// Find the watchPathTokens before we call fromTokens() on child elements.
 			// That way we don't descend too deep.
+			scopeVars = (scopeVars || []).slice(); // copy
 			let watchPathTokens = Parse.varExpressions_(tokens, scopeVars);
 
 			// Find loopItem props if this is a loop.
@@ -720,11 +720,11 @@ export default class VExpression {
 			else if (scope = this.scope3_.get(path[0])) {
 
 				// Only watch this path if it's an array or object, not a primitive.
-				let obj = delve(root, scope.path.slice(1))
+				let obj = delve(root, scope.path.slice(1), delve.dontCreateValue, true);
 				if (typeof obj !== 'object' && !Array.isArray(obj))
 					continue;
 
-				root = delve(this.refr_, scope.path.slice(1, -1));
+				root = delve(this.refr_, scope.path.slice(1, -1), delve.dontCreateValue, true);
 				path = scope.path.slice(-1);
 			}
 

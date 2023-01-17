@@ -2236,7 +2236,7 @@ class ParsedFunction {
 	 * the next non-nested comma when it encounters an '=' ?
 	 *
 	 * @return {Generator<object|string>} */
-	*getArgNames_() {
+	*getArgNames() {
 		let tokens = this.argTokens_;
 
 		if (this.type === 'arrowParam')
@@ -2561,7 +2561,7 @@ var Parse = {
 		if (!(mapEnd(tokens.slice(funcEndIndex))))
 			return [null, null];
 
-		return [[...func.getArgNames_()], func.bodyTokens_];
+		return [[...func.getArgNames()], func.bodyTokens_];
 	},
 
 	/**
@@ -2958,6 +2958,7 @@ class VExpression {
 
 			// Find the watchPathTokens before we call fromTokens() on child elements.
 			// That way we don't descend too deep.
+			scopeVars = (scopeVars || []).slice(); // copy
 			let watchPathTokens = Parse.varExpressions_(tokens, scopeVars);
 
 			// Find loopItem props if this is a loop.
@@ -3526,11 +3527,11 @@ class VExpression {
 			else if (scope = this.scope3_.get(path[0])) {
 
 				// Only watch this path if it's an array or object, not a primitive.
-				let obj = delve(root, scope.path.slice(1));
+				let obj = delve(root, scope.path.slice(1), delve.dontCreateValue, true);
 				if (typeof obj !== 'object' && !Array.isArray(obj))
 					continue;
 
-				root = delve(this.refr_, scope.path.slice(1, -1));
+				root = delve(this.refr_, scope.path.slice(1, -1), delve.dontCreateValue, true);
 				path = scope.path.slice(-1);
 			}
 
@@ -4857,7 +4858,7 @@ class Refract extends HTMLElement {
 	static getInitArgs_() {
 		if (!this.initArgs && this.prototype.init) {
 			let pf = new ParsedFunction(this.prototype.init, false);
-			this.initArgs = [...pf.getArgNames_()];
+			this.initArgs = [...pf.getArgNames()];
 		}
 		return this.initArgs || [];
 	}

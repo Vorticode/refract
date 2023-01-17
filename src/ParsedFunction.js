@@ -222,7 +222,7 @@ export class ParsedFunction {
 	 * the next non-nested comma when it encounters an '=' ?
 	 *
 	 * @return {Generator<object|string>} */
-	*getArgNames_() {
+	*getArgNames() {
 		let tokens = this.argTokens_;
 
 		if (this.type === 'arrowParam')
