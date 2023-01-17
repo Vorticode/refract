@@ -40,10 +40,9 @@ export default class Scope extends Map {
 		if (path[0] === 'this')
 			return path;
 
-		while (this.has(path[0])) {
-			let parentPath = this.get(path[0]).path;
-			path = [...parentPath, ...path.slice(1)];
-		}
+		let parentScope;
+		while (parentScope = this.get(path[0]))
+			path = [...parentScope.path, ...path.slice(1)];
 		return path;
 	}
 }
