@@ -5,7 +5,7 @@
  * @param mode
  * @param current
  * @return {(*)[]} */
-function findFastMatch(grammar, mode, current) {
+function fastLex(grammar, mode, current) {
 	let type;
 	let pattern = grammar.fastMatch[mode];
 	if (pattern) {
@@ -61,7 +61,6 @@ export class Token {
 }
 
 
-
 /**
  * Parse code into tokens according to rules in a grammar.
  *
@@ -113,7 +112,7 @@ export default function lex(grammar, code, mode=null, options={}, line=1, col=1,
 	const cacheLen = 256;
 	if (code.length < cacheLen) {
 		var key = mode + '|' + code.slice(0, 24); // avoid long keys
-		result = lexCache[key];
+		result = cache[key];
 		if (result && result[0] === code) {
 			return result[1];
 		}
@@ -134,7 +133,7 @@ export default function lex(grammar, code, mode=null, options={}, line=1, col=1,
 		// 1. Identify token
 
 		// 1a. Fast match
-		[pattern, type] = findFastMatch(grammar, mode, current); // Tells us what pattern to try.
+		[pattern, type] = fastLex(grammar, mode, current); // Tells us what pattern to try.
 		if (pattern)
 			[token, matchType, originalLength] = pattern(current, before, result) || [];
 
@@ -222,11 +221,11 @@ export default function lex(grammar, code, mode=null, options={}, line=1, col=1,
 
 	// Cache
 	if (code.length < cacheLen)
-		lexCache[key] = [code, result];
+		cache[key] = [code, result];
 
 	return result;
 }
 
 
-var lexCache = {};
+var cache = {};
 //window.slowMatches = {};

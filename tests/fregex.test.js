@@ -66,7 +66,8 @@ Testimony.test('fregex._not', () => {
 	assertEquals(isMatch(['b', 'c']), true);
 	assertEquals(isMatch(['a', 'b']), false);
 });
-
+/*
+// fregex.nor() isn't used by Refract, so it's commented out to reduce Refract bundle size.
 Testimony.test('fregex.nor', () => {
 	let isMatch = fregex(
 		'a',
@@ -78,7 +79,7 @@ Testimony.test('fregex.nor', () => {
 	assertEquals(isMatch(['a', 'b2', 'c']), false);
 	assertEquals(isMatch(['a', 'b3', 'c']), 3);
 });
-
+*/
 Testimony.test('fregex.zeroOrOne', () => {
 	let isMatch = fregex(
 		'a',

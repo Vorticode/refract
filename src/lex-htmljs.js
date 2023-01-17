@@ -19,7 +19,7 @@ import utils from './utils.js';
 	let tagStart = /^<!?([\w\xA0-\uFFFF:-]+)/i; // \w includes underscore
 	let closeTag = /^<\/[\w\xA0-\uFFFF:-]+\s*>/i;
 
-	let operators = (
+	let operator = (
 		'&& || ! => ' +                 // Logic / misc operators
 		'<<= >>= &= ^= |= &&= ||= ' +   // Assignment operators
 		'& | ^ ~ >>> << >> ' +          // Bitwise operators
@@ -30,7 +30,7 @@ import utils from './utils.js';
 	).split(/ /g);
 
 	let operatorMap = {};
-	for (let op of operators) // Used to speed up operator search.
+	for (let op of operator) // Used to speed up operator search.
 		operatorMap[op[0]] = [...(operatorMap[op[0]]||[]), op];
 
 
@@ -75,9 +75,9 @@ import utils from './utils.js';
 				return ['/>', -1]; // exit tag mode.
 		},
 
-		unknown: code => lexHtmlJs.allowUnknownTagTokens
-			? [code.match(/^\w+|\S/) || []][0] // Don't fail on unknown stuff in html tags.
-			: undefined,
+		// unknown: code => lexHtmlJs.allowUnknownTagTokens
+		// 	? [code.match(/^\w+|\S/) || []][0] // Don't fail on unknown stuff in html tags.
+		// 	: undefined,
 	};
 
 	// Check previous token to see if we've just entered a script tag.
@@ -106,7 +106,6 @@ import utils from './utils.js';
 	/**
 	 * A grammar for parsing js and html within js templates, for use with lex.js. */
 	var lexHtmlJs = {
-
 
 		js: {
 			whitespace,
@@ -183,7 +182,7 @@ import utils from './utils.js';
 			},
 			semicolon: ';',
 			keyword,
-			operator: operators,
+			operator,
 			string: /^"(\\\\|\\"|[^"])*"|^'(\\\\|\\'|[^'])*'/
 		},
 		html: { // top level html not within javascript.  No other modes go to this mode.
@@ -281,7 +280,7 @@ import utils from './utils.js';
 
 		/**
 		 * @deprecated for lex.options.failOnUnknown. */
-		allowUnknownTagTokens: false
+		//allowUnknownTagTokens: false
 	};
 
 	// Convert everything to a function.

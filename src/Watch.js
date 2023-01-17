@@ -73,14 +73,14 @@ class WatchProperties {
 				result.push([callback, [action, path, value, oldVal, this.obj_]]);
 
 		// Traverse to our current level and downward looking for anything subscribed
-		let newVal = delve(this.obj_, path, delve.dontCreateValue, true);
+		let newVal = delve(this.obj_, path, delve.dontCreate, true);
 		for (let name in this.subs_)
 			if (name.startsWith(cpath) && name.length > cpath.length) {
 				let subPath = name.slice(cpath.length > 0 ? cpath.length + 1 : cpath.length); // +1 for ','
 				let oldSubPath = JSON.parse('[' + subPath + ']');
 
-				let oldSubVal = utils.removeProxy(delve(oldVal, oldSubPath, delve.dontCreateValue, true));
-				let newSubVal = utils.removeProxy(delve(newVal, oldSubPath, delve.dontCreateValue, true));
+				let oldSubVal = utils.removeProxy(delve(oldVal, oldSubPath, delve.dontCreate, true));
+				let newSubVal = utils.removeProxy(delve(newVal, oldSubPath, delve.dontCreate, true));
 
 				if (oldSubVal !== newSubVal) {
 					let callbacks = this.subs_[name];

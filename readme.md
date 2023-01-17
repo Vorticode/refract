@@ -53,13 +53,13 @@ Refract is still **in development** and has several known bugs.  Exercise cautio
 ## CDN / Download
 
 - [Refract.js](https://cdn.jsdelivr.net/gh/Vorticode/refract/dist/Refract.js) - 154KB
-- [Refract.min.js](https://cdn.jsdelivr.net/gh/Vorticode/refract/dist/Refract.min.js) - 41KB (13.7KB gzipped)
+- [Refract.min.js](https://cdn.jsdelivr.net/gh/Vorticode/refract/dist/Refract.min.js) - 39KB (13.4KB gzipped)
 
 ## Feature Summary:
 
 - Automatically updates DOM elements when properties change.
 - Fine-grained change detection.  Adding a single item to a TODO list of 10,000 items won't create 10,000 virtual elements behind the scenes and compare them with the DOM to see what has changed.
-- Lightweight.  **41KB** minified, **13.7KB** gzipped.
+- Lightweight.  **39KB** minified, **13.4KB** gzipped.
 - No custom build steps and no dependencies.  Not even Node.js.  Just `import` Refract.js or Refract.min.js.
 - Doesn't take over your whole project.  Place Refract web components among standard DOM nodes only where you need them.
 - Uses standard, native html and JavaScript.  No need to learn another template or markup language.

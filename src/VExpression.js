@@ -720,11 +720,11 @@ export default class VExpression {
 			else if (scope = this.scope3_.get(path[0])) {
 
 				// Only watch this path if it's an array or object, not a primitive.
-				let obj = delve(root, scope.path.slice(1), delve.dontCreateValue, true);
+				let obj = delve(root, scope.path.slice(1), delve.dontCreate, true);
 				if (typeof obj !== 'object' && !Array.isArray(obj))
 					continue;
 
-				root = delve(this.refr_, scope.path.slice(1, -1), delve.dontCreateValue, true);
+				root = delve(this.refr_, scope.path.slice(1, -1), delve.dontCreate, true);
 				path = scope.path.slice(-1);
 			}
 

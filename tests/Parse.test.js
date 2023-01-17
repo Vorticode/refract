@@ -222,7 +222,7 @@ Testimony.test('ParseFunction.construct.method', () => {
 
 Testimony.test('ParseFunction.getArgNames.basic', () => {
 	let f = function(a, b=window) { return a+1 };
-	let args = [...new ParsedFunction(f).getArgNames_()];
+	let args = [...new ParsedFunction(f).getArgNames()];
 	assert.eq(args, ['a', 'b']);
 });
 
@@ -231,7 +231,7 @@ Testimony.test('ParseFunction.getArgNames.basic', () => {
 
 Testimony.test('ParseFunction.getArgNames.named', () => {
 	let f = function({a, b}={}, c) { return a+1 };
-	let args = [...new ParsedFunction(f).getArgNames_()];
+	let args = [...new ParsedFunction(f).getArgNames()];
 	assert.eq(args, [{a:undefined, b:undefined}, 'c']);
 });
 
@@ -239,7 +239,7 @@ Testimony.test('ParseFunction.getArgNames.named', () => {
 Testimony.test('ParseFunction.getArgNames.named2', () => {
 	let f = function({a, b: {c:d}}, e={f:2}, g=function() { return {window, document} }, h) { return a+1 };
 
-	let args = [...new ParsedFunction(f).getArgNames_()];
+	let args = [...new ParsedFunction(f).getArgNames()];
 
 	assert.eq(args, [{a: undefined, b: {c: undefined}}, 'e', 'g', 'h']);
 });

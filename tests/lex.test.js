@@ -174,14 +174,14 @@ Testimony.test('lex.error', () => {
 	let code = 'div \n  ; ';
 	let msg = '';
 
-	jsHtml.allowUnknownTagTokens = false;
+	//jsHtml.allowUnknownTagTokens = false;
 	try {
 		lex(jsHtml, code, 'tag', {failOnUknown: true});
 	}
 	catch (e) {
 		msg = e.message;
 	}
-	jsHtml.allowUnknownTagTokens = true;
+	//jsHtml.allowUnknownTagTokens = true;
 	assertStartsWith(msg, 'Unknown token within "tag" at 2:3');
 });
 

@@ -72,9 +72,9 @@ fregex.not = (...rules) => {
 
 /**
  * Advance one token if none of the children match.  A "nor"
- * Equivalent to /[^abc]/
+ * Equivalent to /[^abc]/ or not(or())
  * @return {function(tokens:*[]):int|bool}
- *     A function that returns the number of elements matched, or false if none were matched. */
+ *     A function that returns the number of elements matched, or false if none were matched.
 fregex.nor = (...rules) => {
 	rules = prepare(rules);
 	let result = tokens => {
@@ -88,7 +88,7 @@ fregex.nor = (...rules) => {
 		result.debug = 'nor(' + rules.map(r => r.debug || r).join(', ') + ')';
 	//#ENDIF
 	return result;
-}
+}*/
 
 
 /**

@@ -562,8 +562,6 @@ var ascendIf = regex => code => {
 	};
 }
 
-var dontCreateValue_ = {};
-
 /**
  * Follow a path into a object.
  * @param obj {object}
@@ -571,8 +569,8 @@ var dontCreateValue_ = {};
  * @param createVal {*}  If set, non-existant paths will be created and value at path will be set to createVal.
  * @param watchless {boolean}
  * @return The value, or undefined if it can't be reached. */
-function delve(obj, path, createVal=dontCreateValue_, watchless=false) {
-	let create = createVal !== dontCreateValue_;
+function delve(obj, path, createVal=delve.dontCreate, watchless=false) {
+	let create = createVal !== delve.dontCreate;
 
 	if (!obj && !create && path.length)
 		return undefined;
@@ -622,7 +620,7 @@ function delve(obj, path, createVal=dontCreateValue_, watchless=false) {
 	return obj;
 }
 
-delve.dontCreateValue = dontCreateValue_;
+delve.dontCreate = {};
 
 /**
  * Allow subscribing only to specific properties of an object.
@@ -693,14 +691,14 @@ class WatchProperties {
 				result.push([callback, [action, path, value, oldVal, this.obj_]]);
 
 		// Traverse to our current level and downward looking for anything subscribed
-		let newVal = delve(this.obj_, path, delve.dontCreateValue, true);
+		let newVal = delve(this.obj_, path, delve.dontCreate, true);
 		for (let name in this.subs_)
 			if (name.startsWith(cpath) && name.length > cpath.length) {
 				let subPath = name.slice(cpath.length > 0 ? cpath.length + 1 : cpath.length); // +1 for ','
 				let oldSubPath = JSON.parse('[' + subPath + ']');
 
-				let oldSubVal = utils.removeProxy(delve(oldVal, oldSubPath, delve.dontCreateValue, true));
-				let newSubVal = utils.removeProxy(delve(newVal, oldSubPath, delve.dontCreateValue, true));
+				let oldSubVal = utils.removeProxy(delve(oldVal, oldSubPath, delve.dontCreate, true));
+				let newSubVal = utils.removeProxy(delve(newVal, oldSubPath, delve.dontCreate, true));
 
 				if (oldSubVal !== newSubVal) {
 					let callbacks = this.subs_[name];
@@ -1126,7 +1124,7 @@ var isObj = obj => obj && typeof obj === 'object'; // Make sure it's not null, s
 	let tagStart = /^<!?([\w\xA0-\uFFFF:-]+)/i; // \w includes underscore
 	let closeTag = /^<\/[\w\xA0-\uFFFF:-]+\s*>/i;
 
-	let operators = (
+	let operator = (
 		'&& || ! => ' +                 // Logic / misc operators
 		'<<= >>= &= ^= |= &&= ||= ' +   // Assignment operators
 		'& | ^ ~ >>> << >> ' +          // Bitwise operators
@@ -1137,7 +1135,7 @@ var isObj = obj => obj && typeof obj === 'object'; // Make sure it's not null, s
 	).split(/ /g);
 
 	let operatorMap = {};
-	for (let op of operators) // Used to speed up operator search.
+	for (let op of operator) // Used to speed up operator search.
 		operatorMap[op[0]] = [...(operatorMap[op[0]]||[]), op];
 
 
@@ -1182,9 +1180,9 @@ var isObj = obj => obj && typeof obj === 'object'; // Make sure it's not null, s
 				return ['/>', -1]; // exit tag mode.
 		},
 
-		unknown: code => lexHtmlJs.allowUnknownTagTokens
-			? [code.match(/^\w+|\S/) || []][0] // Don't fail on unknown stuff in html tags.
-			: undefined,
+		// unknown: code => lexHtmlJs.allowUnknownTagTokens
+		// 	? [code.match(/^\w+|\S/) || []][0] // Don't fail on unknown stuff in html tags.
+		// 	: undefined,
 	};
 
 	// Check previous token to see if we've just entered a script tag.
@@ -1213,7 +1211,6 @@ var isObj = obj => obj && typeof obj === 'object'; // Make sure it's not null, s
 	/**
 	 * A grammar for parsing js and html within js templates, for use with lex.js. */
 	var lexHtmlJs = {
-
 
 		js: {
 			whitespace,
@@ -1290,7 +1287,7 @@ var isObj = obj => obj && typeof obj === 'object'; // Make sure it's not null, s
 			},
 			semicolon: ';',
 			keyword,
-			operator: operators,
+			operator,
 			string: /^"(\\\\|\\"|[^"])*"|^'(\\\\|\\'|[^'])*'/
 		},
 		html: { // top level html not within javascript.  No other modes go to this mode.
@@ -1388,7 +1385,7 @@ var isObj = obj => obj && typeof obj === 'object'; // Make sure it's not null, s
 
 		/**
 		 * @deprecated for lex.options.failOnUnknown. */
-		allowUnknownTagTokens: false
+		//allowUnknownTagTokens: false
 	};
 
 	// Convert everything to a function.
@@ -1601,9 +1598,9 @@ fregex.not = (...rules) => {
 
 /**
  * Advance one token if none of the children match.  A "nor"
- * Equivalent to /[^abc]/
+ * Equivalent to /[^abc]/ or not(or())
  * @return {function(tokens:*[]):int|bool}
- *     A function that returns the number of elements matched, or false if none were matched. */
+ *     A function that returns the number of elements matched, or false if none were matched.
 fregex.nor = (...rules) => {
 	rules = prepare(rules);
 	let result = tokens => {
@@ -1617,7 +1614,7 @@ fregex.nor = (...rules) => {
 		result.debug = 'nor(' + rules.map(r => r.debug || r).join(', ') + ')';
 	//#ENDIF
 	return result;
-};
+}*/
 
 
 /**
@@ -1791,7 +1788,7 @@ var prepare = rules => {
  * @param mode
  * @param current
  * @return {(*)[]} */
-function findFastMatch(grammar, mode, current) {
+function fastLex(grammar, mode, current) {
 	let type;
 	let pattern = grammar.fastMatch[mode];
 	if (pattern) {
@@ -1847,7 +1844,6 @@ class Token {
 }
 
 
-
 /**
  * Parse code into tokens according to rules in a grammar.
  *
@@ -1899,7 +1895,7 @@ function lex(grammar, code, mode=null, options={}, line=1, col=1, index=0) {
 	const cacheLen = 256;
 	if (code.length < cacheLen) {
 		var key = mode + '|' + code.slice(0, 24); // avoid long keys
-		result = lexCache[key];
+		result = cache[key];
 		if (result && result[0] === code) {
 			return result[1];
 		}
@@ -1920,7 +1916,7 @@ function lex(grammar, code, mode=null, options={}, line=1, col=1, index=0) {
 		// 1. Identify token
 
 		// 1a. Fast match
-		[pattern, type] = findFastMatch(grammar, mode, current); // Tells us what pattern to try.
+		[pattern, type] = fastLex(grammar, mode, current); // Tells us what pattern to try.
 		if (pattern)
 			[token, matchType, originalLength] = pattern(current, before, result) || [];
 
@@ -2008,13 +2004,13 @@ function lex(grammar, code, mode=null, options={}, line=1, col=1, index=0) {
 
 	// Cache
 	if (code.length < cacheLen)
-		lexCache[key] = [code, result];
+		cache[key] = [code, result];
 
 	return result;
 }
 
 
-var lexCache = {};
+var cache = {};
 //window.slowMatches = {};
 
 class ParsedFunction {
@@ -3527,11 +3523,11 @@ class VExpression {
 			else if (scope = this.scope3_.get(path[0])) {
 
 				// Only watch this path if it's an array or object, not a primitive.
-				let obj = delve(root, scope.path.slice(1), delve.dontCreateValue, true);
+				let obj = delve(root, scope.path.slice(1), delve.dontCreate, true);
 				if (typeof obj !== 'object' && !Array.isArray(obj))
 					continue;
 
-				root = delve(this.refr_, scope.path.slice(1, -1), delve.dontCreateValue, true);
+				root = delve(this.refr_, scope.path.slice(1, -1), delve.dontCreate, true);
 				path = scope.path.slice(-1);
 			}
 

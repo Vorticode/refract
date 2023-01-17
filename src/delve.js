@@ -1,4 +1,3 @@
-var dontCreateValue_ = {};
 
 /**
  * Follow a path into a object.
@@ -7,8 +6,8 @@ var dontCreateValue_ = {};
  * @param createVal {*}  If set, non-existant paths will be created and value at path will be set to createVal.
  * @param watchless {boolean}
  * @return The value, or undefined if it can't be reached. */
-export default function delve(obj, path, createVal=dontCreateValue_, watchless=false) {
-	let create = createVal !== dontCreateValue_;
+export default function delve(obj, path, createVal=delve.dontCreate, watchless=false) {
+	let create = createVal !== delve.dontCreate;
 
 	if (!obj && !create && path.length)
 		return undefined;
@@ -58,4 +57,4 @@ export default function delve(obj, path, createVal=dontCreateValue_, watchless=f
 	return obj;
 }
 
-delve.dontCreateValue = dontCreateValue_;
+delve.dontCreate = {};
