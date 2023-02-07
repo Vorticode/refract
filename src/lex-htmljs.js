@@ -252,7 +252,7 @@ import Utils from './utils.js';
 			text: code => [code.match(
 				lexHtmlJs.allowHashTemplates
 				? /^(?:\\'|(?!'|#{|\${)[\S\s])+/
-				: /^(?:\\'|(?!'|#{)[\S\s])+/) || []][0]
+				: /^(?:\\'|(?!'|\${)[\S\s])+/) || []][0]
 		},
 
 		dquote: { // double quote string within tag.
@@ -261,7 +261,7 @@ import Utils from './utils.js';
 			text: code => [code.match(
 				lexHtmlJs.allowHashTemplates
 				? /^(?:\\"|(?!"|#{|\${)[\S\s])+/
-				: /^(?:\\"|(?!"|#{)[\S\s])+/) || []][0]
+				: /^(?:\\"|(?!"|\${)[\S\s])+/) || []][0]
 		},
 
 		// TODO: css?

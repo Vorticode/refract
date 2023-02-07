@@ -1369,7 +1369,7 @@ var isObj = obj => obj && typeof obj === 'object'; // Make sure it's not null, s
 			text: code => [code.match(
 				lexHtmlJs.allowHashTemplates
 				? /^(?:\\'|(?!'|#{|\${)[\S\s])+/
-				: /^(?:\\'|(?!'|#{)[\S\s])+/) || []][0]
+				: /^(?:\\'|(?!'|\${)[\S\s])+/) || []][0]
 		},
 
 		dquote: { // double quote string within tag.
@@ -1378,7 +1378,7 @@ var isObj = obj => obj && typeof obj === 'object'; // Make sure it's not null, s
 			text: code => [code.match(
 				lexHtmlJs.allowHashTemplates
 				? /^(?:\\"|(?!"|#{|\${)[\S\s])+/
-				: /^(?:\\"|(?!"|#{)[\S\s])+/) || []][0]
+				: /^(?:\\"|(?!"|\${)[\S\s])+/) || []][0]
 		},
 
 		// TODO: css?
@@ -4463,8 +4463,11 @@ class Compiler {
 
 			// 1. Parse into tokens
 			let code = self.toString();
+			//let old = htmljs.allowUnknownTagTokens;
+			//htmljs.allowUnknownTagTokens = true;
 			let tokens = [...lex(lexHtmlJs, code)];
 
+			//htmljs.allowUnknownTagTokens = old;
 			tokens = removeComments(tokens);
 			let htmlIdx = 0, constructorIdx = 0;
 

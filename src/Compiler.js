@@ -268,8 +268,11 @@ export class Compiler {
 
 			// 1. Parse into tokens
 			let code = self.toString();
+			//let old = htmljs.allowUnknownTagTokens;
+			//htmljs.allowUnknownTagTokens = true;
 			let tokens = [...lex(htmljs, code)];
 
+			//htmljs.allowUnknownTagTokens = old;
 			tokens = removeComments(tokens);
 			let htmlIdx = 0, constructorIdx = 0;
 
