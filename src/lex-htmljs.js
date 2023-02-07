@@ -1,5 +1,5 @@
 import {descendIf, ascendIf} from "./lex-tools.js";
-import utils from './utils.js';
+import Utils from './utils.js';
 /**
  * Grammar for html/js code, including js templates.
  *
@@ -74,10 +74,6 @@ import utils from './utils.js';
 			if (code.startsWith('/>'))
 				return ['/>', -1]; // exit tag mode.
 		},
-
-		// unknown: code => lexHtmlJs.allowUnknownTagTokens
-		// 	? [code.match(/^\w+|\S/) || []][0] // Don't fail on unknown stuff in html tags.
-		// 	: undefined,
 	};
 
 	// Check previous token to see if we've just entered a script tag.
@@ -214,7 +210,7 @@ import utils from './utils.js';
 				let matches = code.match(regex);
 				if (matches) {
 					let result = matches[0];
-					result = utils.unescapeTemplate_(result);
+					result = Utils.unescapeTemplate_(result);
 					//result = Object.assign(result, {originalLength: matches[0].length});
 					// if (result.length !== matches[0].length)
 					// 	debugger;
@@ -240,7 +236,7 @@ import utils from './utils.js';
 				let matches = code.match(/^( |\r|\n|\t|\v|\f|\xa0|\\r|\\n|\\t|\\v|\\f|\\xa0)+/);
 				if (matches) {
 					let result = matches[0];
-					result = utils.unescapeTemplate_(result);
+					result = Utils.unescapeTemplate_(result);
 					//result = Object.assign(result, {originalLength: matches[0].length});
 					return [result, undefined, matches[0].length];
 				}
@@ -277,10 +273,6 @@ import utils from './utils.js';
 		// Setting this true can cause problems in parsing css, since {} surrounds the rules.
 		// Perhaps add a css mode?
 		allowHashTemplates: false,
-
-		/**
-		 * @deprecated for lex.options.failOnUnknown. */
-		//allowUnknownTagTokens: false
 	};
 
 	// Convert everything to a function.

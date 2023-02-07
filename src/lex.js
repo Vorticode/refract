@@ -96,7 +96,7 @@ export class Token {
  * @param line {int=} Start counting from this line.
  * @param col {int=} Start counting from this column.
  * @param options {Object}
- * @param options.failOnUknown {boolean}
+ * @param options.failOnUnknown {boolean}
  * @param options.callback
  * @param index {int} Used internally.  Start reading code at this index.
  *
@@ -153,7 +153,7 @@ export default function lex(grammar, code, mode=null, options={}, line=1, col=1,
 
 
 		if (token === undefined) {
-			if (options.failOnUknown) {
+			if (options.failOnUnknown) {
 				let before = code.slice(Math.max(index - 15, 0), index);
 				let after = current.slice(0, 25).replace(/\r/g, '\\r').replace(/\n/g, '\\n')
 				let msg = before + '⚠️' + after;

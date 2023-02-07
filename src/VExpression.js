@@ -8,6 +8,7 @@ import lex from "./lex.js";
 import lexHtmljs from "./lex-htmljs.js";
 import {Globals} from "./Refract.js";
 import Scope, {ScopeItem} from "./Scope.js";
+import Html from "./Html.js";
 
 
 
@@ -210,8 +211,8 @@ export default class VExpression {
 				//console.log(tokens.join(''));
 
 				// Trim required.  B/c if there's a line return after return, the function will return undefined!
-				let body = tokens.map(t => t.text).join('');
-				if (tokens[0].text != '{')
+				let body = Html.decode(tokens.map(t => t.text).join(''));
+				if (tokens[0].text !== '{')
 					body = 'return (' + body.trim() + ')';
 				this.exec_ = this.refr_.constructor.createFunction(...scopeVars, body);
 			}

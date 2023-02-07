@@ -8,6 +8,7 @@ import Utils, {isObj} from './utils.js';
 
 {
 	//#IFDEV
+	// TODO: Put ProxyArray in its own file.
 	class ProxyArray extends Array {
 
 	}

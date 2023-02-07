@@ -806,15 +806,17 @@ class WatchProperties {
 
 				// Undo the Object.defineProperty() call when there are no more subscriptions to it.
 				// If there are no subscriptions that start with propCPath
-				// TODO This can be VERY SLOW when an object has many subscribers.  Such as an x-loop with hundreds of children.
+				// TODO This can be VERY SLOW when an object has many subscribers.  Such as a loop with hundreds of children.
 				// If the loop tries to remove every child at once the complexity is O(n^2) because each child must search every key in this.subs_.
 				// We need to find a faster way.
 				let propCpath = csv([path[0]]);
 				if (!utils.hasKeyStartingWith_(this.subs_, propCpath)) {
 
-					delete this.obj_[path[0]]; // Remove the defined property.
-					this.obj_[path[0]] = this.fields_[path[0]]; // reset original unproxied value to object.
-
+					// If it wasn't deleted already.  But how would that happen?
+					if (path[0] in this.obj_) {
+						delete this.obj_[path[0]]; // Remove the defined property.
+						this.obj_[path[0]] = this.fields_[path[0]]; // reset original unproxied value to object.
+					}
 					// Get all roots that point to the field
 					// Not sure why this makes some unit tests fail.
 					let roots = WatchUtil.roots.get(this.fields_[path[0]]);
@@ -852,10 +854,10 @@ class WatchProperties {
 
 					if (!Object.keys(this.obj_).length) {
 						//#IFDEV
-						if (!WatchUtil.paths.has(this.obj_))
-							throw new Error('');
-						if (!WatchUtil.roots.has(this.obj_))
-							throw new Error('');
+						// if (!WatchUtil.paths.has(this.obj_))
+						// 	throw new Error('');
+						// if (!WatchUtil.roots.has(this.obj_))
+						// 	throw new Error('');
 						//#ENDIF
 
 						WatchUtil.paths.delete(this.obj_);
@@ -1189,10 +1191,6 @@ var isObj = obj => obj && typeof obj === 'object'; // Make sure it's not null, s
 			if (code.startsWith('/>'))
 				return ['/>', -1]; // exit tag mode.
 		},
-
-		// unknown: code => lexHtmlJs.allowUnknownTagTokens
-		// 	? [code.match(/^\w+|\S/) || []][0] // Don't fail on unknown stuff in html tags.
-		// 	: undefined,
 	};
 
 	// Check previous token to see if we've just entered a script tag.
@@ -1392,10 +1390,6 @@ var isObj = obj => obj && typeof obj === 'object'; // Make sure it's not null, s
 		// Setting this true can cause problems in parsing css, since {} surrounds the rules.
 		// Perhaps add a css mode?
 		allowHashTemplates: false,
-
-		/**
-		 * @deprecated for lex.options.failOnUnknown. */
-		//allowUnknownTagTokens: false
 	};
 
 	// Convert everything to a function.
@@ -1889,7 +1883,7 @@ class Token {
  * @param line {int=} Start counting from this line.
  * @param col {int=} Start counting from this column.
  * @param options {Object}
- * @param options.failOnUknown {boolean}
+ * @param options.failOnUnknown {boolean}
  * @param options.callback
  * @param index {int} Used internally.  Start reading code at this index.
  *
@@ -1946,7 +1940,7 @@ function lex(grammar, code, mode=null, options={}, line=1, col=1, index=0) {
 
 
 		if (token === undefined) {
-			if (options.failOnUknown) {
+			if (options.failOnUnknown) {
 				let before = code.slice(Math.max(index - 15, 0), index);
 				let after = current.slice(0, 25).replace(/\r/g, '\\r').replace(/\n/g, '\\n');
 				let msg = before + '⚠️' + after;
@@ -3023,8 +3017,8 @@ class VExpression {
 				//console.log(tokens.join(''));
 
 				// Trim required.  B/c if there's a line return after return, the function will return undefined!
-				let body = tokens.map(t => t.text).join('');
-				if (tokens[0].text != '{')
+				let body = Html.decode(tokens.map(t => t.text).join(''));
+				if (tokens[0].text !== '{')
 					body = 'return (' + body.trim() + ')';
 				this.exec_ = this.refr_.constructor.createFunction(...scopeVars, body);
 			}
@@ -4437,7 +4431,7 @@ class Compiler {
 
 			if (this.init) {
 				let args = this.parentElement
-					? Refract.compiler.populateArgsFromAttribs(this, this.constructor.getInitArgs_())
+					? this.constructor.compiler.populateArgsFromAttribs(this, this.constructor.getInitArgs_())
 					: this.constructorArgs2_;
 				this.init(...args);
 			}
@@ -4469,11 +4463,8 @@ class Compiler {
 
 			// 1. Parse into tokens
 			let code = self.toString();
-			//let old = htmljs.allowUnknownTagTokens;
-			//htmljs.allowUnknownTagTokens = true;
 			let tokens = [...lex(lexHtmlJs, code)];
 
-			//htmljs.allowUnknownTagTokens = old;
 			tokens = removeComments(tokens);
 			let htmlIdx = 0, constructorIdx = 0;
 
@@ -4511,7 +4502,7 @@ class Compiler {
 					let injectLines = [
 						(nextToken == ',' ? ',' : ';'),
 						`(()=>{`, // We wrap this in a function b/c some minifiers will strangely rewrite the super call into another expression.
-						...result.constructorArgs.map(argName => [`\t${argName} = this.getAttrib('${argName}', ${argName});`]),
+						...result.constructorArgs.map(argName => [`\t${argName} = this.getAttrib_('${argName}', ${argName});`]),
 						`})()`
 					];
 					let injectCode = '\r\n\t\t' + [

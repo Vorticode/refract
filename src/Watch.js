@@ -178,15 +178,17 @@ class WatchProperties {
 
 				// Undo the Object.defineProperty() call when there are no more subscriptions to it.
 				// If there are no subscriptions that start with propCPath
-				// TODO This can be VERY SLOW when an object has many subscribers.  Such as an x-loop with hundreds of children.
+				// TODO This can be VERY SLOW when an object has many subscribers.  Such as a loop with hundreds of children.
 				// If the loop tries to remove every child at once the complexity is O(n^2) because each child must search every key in this.subs_.
 				// We need to find a faster way.
 				let propCpath = csv([path[0]]);
 				if (!Utils.hasKeyStartingWith_(this.subs_, propCpath)) {
 
-					delete this.obj_[path[0]]; // Remove the defined property.
-					this.obj_[path[0]] = this.fields_[path[0]]; // reset original unproxied value to object.
-
+					// If it wasn't deleted already.  But how would that happen?
+					if (path[0] in this.obj_) {
+						delete this.obj_[path[0]]; // Remove the defined property.
+						this.obj_[path[0]] = this.fields_[path[0]]; // reset original unproxied value to object.
+					}
 					// Get all roots that point to the field
 					// Not sure why this makes some unit tests fail.
 					let roots = WatchUtil.roots.get(this.fields_[path[0]]);
@@ -224,10 +226,10 @@ class WatchProperties {
 
 					if (!Object.keys(this.obj_).length) {
 						//#IFDEV
-						if (!WatchUtil.paths.has(this.obj_))
-							throw new Error('');
-						if (!WatchUtil.roots.has(this.obj_))
-							throw new Error('');
+						// if (!WatchUtil.paths.has(this.obj_))
+						// 	throw new Error('');
+						// if (!WatchUtil.roots.has(this.obj_))
+						// 	throw new Error('');
 						//#ENDIF
 
 						WatchUtil.paths.delete(this.obj_);

@@ -236,7 +236,7 @@ export class Compiler {
 
 			if (this.init) {
 				let args = this.parentElement
-					? Refract.compiler.populateArgsFromAttribs(this, this.constructor.getInitArgs_())
+					? this.constructor.compiler.populateArgsFromAttribs(this, this.constructor.getInitArgs_())
 					: this.constructorArgs2_;
 				this.init(...args);
 			}
@@ -268,11 +268,8 @@ export class Compiler {
 
 			// 1. Parse into tokens
 			let code = self.toString();
-			//let old = htmljs.allowUnknownTagTokens;
-			//htmljs.allowUnknownTagTokens = true;
 			let tokens = [...lex(htmljs, code)];
 
-			//htmljs.allowUnknownTagTokens = old;
 			tokens = removeComments(tokens);
 			let htmlIdx = 0, constructorIdx = 0;
 
@@ -310,7 +307,7 @@ export class Compiler {
 					let injectLines = [
 						(nextToken == ',' ? ',' : ';'),
 						`(()=>{`, // We wrap this in a function b/c some minifiers will strangely rewrite the super call into another expression.
-						...result.constructorArgs.map(argName => [`\t${argName} = this.getAttrib('${argName}', ${argName});`]),
+						...result.constructorArgs.map(argName => [`\t${argName} = this.getAttrib_('${argName}', ${argName});`]),
 						`})()`
 					];
 					let injectCode = '\r\n\t\t' + [
