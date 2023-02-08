@@ -1,6 +1,5 @@
 import Testimony, {assert, assertEquals} from './Testimony.js';
 import fregex from './../src/fregex.js';
-import fregex2 from './../src/fregex2.js';
 
 Testimony.test('fregex.sequence', () => {
 	let isMatch = fregex('a', '=', 'b');

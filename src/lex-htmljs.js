@@ -1,4 +1,4 @@
-import {descendIf, ascendIf} from "./lex-tools.js";
+import {descendIf, ascendIf, functionize} from "./lex-tools.js";
 import Utils from './utils.js';
 /**
  * Grammar for html/js code, including js templates.
@@ -20,13 +20,13 @@ import Utils from './utils.js';
 	let closeTag = /^<\/[\w\xA0-\uFFFF:-]+\s*>/i;
 
 	let operator = (
-		'&& || ! => ' +                 // Logic / misc operators
+		'&& || => ' +                 // Logic / misc operators
 		'<<= >>= &= ^= |= &&= ||= ' +   // Assignment operators
 		'& | ^ ~ >>> << >> ' +          // Bitwise operators
 		'=== !=== == != >= > <= < ' +   // Comparison operators
 		'= **= += -= *= /= %= ??= ' +   // Assignment operators 2
 		'++ -- ** + - * / % ' +         // Arithmetic operators
-		', ... . ( ) [ ] ?. ? :'		// Other operators
+		', ... . ( ) [ ] ?. ? : !'		// Other operators
 	).split(/ /g);
 
 	let operatorMap = {};
@@ -145,7 +145,7 @@ import Utils from './utils.js';
 
 			},
 			hex: /^0x[0-9a-f]+/, // Must occur before number.
-			number: /^\d*\.?\d+(e\d+)?/, // Must occur before . operator.
+			number: /^-?\d*\.?\d+(e\d+)?/, // Must occur before . operator.
 			// These are not included as keywords b/c they're also valid identifier names:  constructor, from
 			identifier: code => {
 				let result = (code.match(/^[_$a-z\xA0-\uFFFF][_$\w\xA0-\uFFFF]*/i) || [])[0] // variables, labels, other things?
@@ -276,34 +276,7 @@ import Utils from './utils.js';
 	};
 
 	// Convert everything to a function.
-	for (let mode in lexHtmlJs)
-		for (let type in lexHtmlJs[mode]) {
-			let pattern = lexHtmlJs[mode][type];
-			if (Array.isArray(pattern)) {
-
-				// Replace arrays with functions to do lookups in maps.
-				// Benchmarking shows a performance increase of about 3%.
-
-				// 1. Build a lookup map based on first letter.
-				let lookup = {};
-				for (let token of pattern)
-					lookup[token[0]] = [...(lookup[token[0]]||[]), token];
-
-				// 2. Replace the array of tokens with a function that uses this lookup map.
-				lexHtmlJs[mode][type] = code => {
-					let tokens = lookup[code[0]];
-					if (tokens)
-						for (let token of tokens)
-							if (code.startsWith(token))
-								return [token];
-				}
-			}
-			else if (typeof pattern === 'string')
-				lexHtmlJs[mode][type] = code => [code.startsWith(pattern) ? pattern : undefined]
-			else if (pattern instanceof RegExp) {
-				lexHtmlJs[mode][type] = code => [(code.match(pattern) || [])[0]]
-			}
-		}
+	functionize(lexHtmlJs);
 
 	// A fast lookup table based on starting characters.
 	// Be careful not to suggest a pattern that must come after another pattern.

@@ -1,5 +1,4 @@
 
-
 /**
  * Go into the mode if the string starts with the given regex.
  * @param regex {RegExp|string}
@@ -35,4 +34,37 @@ export var ascendIf = regex => code => {
 	}
 	else if (code.startsWith(regex))
 		return [regex, -1];
+}
+
+
+// Convert everything to a function.
+export var functionize = grammar => {
+	for (let mode in grammar)
+		for (let type in grammar[mode]) {
+			let pattern = grammar[mode][type];
+			if (Array.isArray(pattern)) {
+
+				// Replace arrays with functions to do lookups in maps.
+				// Benchmarking shows a performance increase of about 3%.
+
+				// 1. Build a lookup map based on first letter.
+				let lookup = {};
+				for (let token of pattern)
+					lookup[token[0]] = [...(lookup[token[0]]||[]), token];
+
+				// 2. Replace the array of tokens with a function that uses this lookup map.
+				grammar[mode][type] = code => {
+					let tokens = lookup[code[0]];
+					if (tokens)
+						for (let token of tokens)
+							if (code.startsWith(token))
+								return [token];
+				}
+			}
+			else if (typeof pattern === 'string')
+				grammar[mode][type] = code => [code.startsWith(pattern) ? pattern : undefined]
+			else if (pattern instanceof RegExp) {
+				grammar[mode][type] = code => [(code.match(pattern) || [])[0]]
+			}
+		}
 }

@@ -7,6 +7,8 @@
  * @return {(*)[]} */
 function fastLex(grammar, mode, current) {
 	let type;
+	if (!grammar.fastMatch)
+		return [false, false];
 	let pattern = grammar.fastMatch[mode];
 	if (pattern) {
 		let i = 0;
