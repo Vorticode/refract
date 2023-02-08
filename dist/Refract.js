@@ -1541,10 +1541,10 @@ var isObj = obj => obj && typeof obj === 'object'; // Make sure it's not null, s
  */
 function fregex(...rules) {
 	rules = prepare(rules);
-	let result = tokens => {
+	let result = (tokens, capture=[]) => {
 		let i = 0;
 		for (let rule of rules) {
-			let used = rule(tokens.slice(i));
+			let used = rule(tokens.slice(i), capture);
 			if (used === false) // 0, false, null, or undefined
 				return false;
 
@@ -1561,6 +1561,30 @@ function fregex(...rules) {
 
 }
 
+fregex.capture = (...rules) => {
+	rules = prepare(rules);
+	let result = (tokens, capture=[]) => {
+		let i = 0;
+		for (let rule of rules) {
+			let used = rule(tokens.slice(i), capture);
+			if (used === false) // 0, false, null, or undefined
+				return false;
+
+			// True becomes 1
+			i += used;
+		}
+		capture.push(tokens.slice(0, i));
+
+		return i; // returns number of tokens used.
+	};
+	//#IFDEV
+	if (fregex.debug)
+		result.debug = 'and(' + rules.map(r => r.debug || r).join(', ') + ')';
+	//#ENDIF
+	return result;
+
+};
+
 /**
  * Advance the number of tokens used by the first child that matches true.
  * TODO: Automatically treat an array given to an and() as an or() ?
@@ -1568,9 +1592,9 @@ function fregex(...rules) {
  *     A function that returns the number of elements matched, or false if none were matched. */
 fregex.or = (...rules) => {
 	rules = prepare(rules);
-	let result = tokens => {
+	let result = (tokens, capture=[]) => {
 		for (let rule of rules) {
-			let used = rule(tokens);
+			let used = rule(tokens, capture);
 			if (used !== false)
 				return used;
 		}
@@ -1590,8 +1614,8 @@ fregex.or = (...rules) => {
  *     A function that returns the number of elements matched, or false if none were matched. */
 fregex.not = (...rules) => {
 	let f = fregex(rules); // re-use
-	let result = tokens =>
-		f(tokens) === false ? 0 : false; // If it matches, return false, otherwise advance 0.
+	let result = (tokens, capture=[]) =>
+		f(tokens, capture) === false ? 0 : false; // If it matches, return false, otherwise advance 0.
 
 	//#IFDEV
 	if (fregex.debug)
@@ -1627,8 +1651,8 @@ fregex.nor = (...rules) => {
  *     A function that returns the number of elements matched, or false if none were matched. */
 fregex.zeroOrOne = (...rules) => {
 	let f = fregex(rules);
-	let result = tokens => {
-		let used = f(tokens);
+	let result = (tokens, capture=[]) => {
+		let used = f(tokens, capture);
 		if (used === false)
 			return 0; // don't fail if no match.
 		return used;
@@ -1648,10 +1672,10 @@ fregex.zeroOrOne = (...rules) => {
  *     A function that returns the number of elements matched, or false if none were matched. */
 fregex.xOrMore = (x, ...rules) => {
 	let f = fregex(rules); // re-use
-	let result = (tokens) => {
+	let result =(tokens, capture=[]) => {
 		let total = 0;
 		for (let i=0; tokens.length; i++) {
-			let used = f(tokens);
+			let used = f(tokens, capture);
 			if (used === false)
 				return i >= x ? total : false;
 			total += used || 1;
@@ -1688,21 +1712,22 @@ fregex.oneOrMore = (...rules) => fregex.xOrMore(1, ...rules);
  * @param pattern {*[]|function(tokens:*[]):int|bool}
  * @param haystack {array}
  * @param startIndex {int}
+ * @param capture
  * @return {*[]} A slice of the items in haystack that match.
  *     with an added index property designating the index of the match within the haystack array. */
-fregex.matchFirst = (pattern, haystack, startIndex=0) => {
-	let result = fregex.matchAll(pattern, haystack, 1, startIndex);
+fregex.matchFirst = (pattern, haystack, startIndex=0, capture=[]) => {
+	let result = fregex.matchAll(pattern, haystack, 1, startIndex, capture);
 	return result.length ? result[0] : null;
 };
 
-fregex.matchAll = (pattern, haystack, limit=Infinity, startIndex=0) => {
+fregex.matchAll = (pattern, haystack, limit=Infinity, startIndex=0, capture=[]) => {
 	if (Array.isArray(pattern))
 		pattern = fregex(pattern);
 	let result = [];
 
 	// Iterate through each offset in haystack looking for strings of tokens that match pattern.
 	for (let i = startIndex; i < haystack.length && result.length < limit; i++) {
-		let count = pattern(haystack.slice(i));
+		let count = pattern(haystack.slice(i), capture);
 		if (count !== false)
 			result.push(Object.assign(haystack.slice(i, i + count), {index: i}));
 	}
@@ -1713,9 +1738,9 @@ fregex.matchAll = (pattern, haystack, limit=Infinity, startIndex=0) => {
 // Experimental
 fregex.lookAhead = (...rules) => {
 	rules = prepare(rules);
-	let result = tokens => {
+	let result = (tokens, capture=[]) => {
 		for (let rule of rules) {
-			let used = rule(tokens);
+			let used = rule(tokens, capture);
 			if (used === false)
 				return false;
 		}

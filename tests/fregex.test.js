@@ -1,5 +1,6 @@
 import Testimony, {assert, assertEquals} from './Testimony.js';
 import fregex from './../src/fregex.js';
+import fregex2 from './../src/fregex2.js';
 
 Testimony.test('fregex.sequence', () => {
 	let isMatch = fregex('a', '=', 'b');
@@ -224,7 +225,7 @@ Testimony.test('fregex.matchFirst', () => {
 	let result = fregex.matchFirst(pattern, tokens);
 
 	assert.eqJson(result, ['a', '=', 'b']);
-	assertEquals(result.index, 1);
+	assert.eq(result.index, 1);
 });
 
 Testimony.test('fregex.end', () => {
@@ -253,4 +254,76 @@ Testimony.test('fregex.endOr', () => {
 	assert(isMatch(['a', '=', '1', ';']));
 	assert(!isMatch(['a', '=', '1', '+']));
 	assert(!isMatch(['a', '=', '2']));
+});
+
+
+Testimony.test('fregex.capture', () => {
+	let isMatch = fregex('a', '=', fregex.capture(/\d/));
+
+	let capture = [];
+	assert.eq(isMatch(['a', '=', '1', ';'], capture), 3);
+	assert.eq(capture, [['1']])
+});
+
+
+Testimony.test('fregex.captureAnd', () => {
+	let isMatch = fregex('a', '=', fregex.capture(/\d/, ';'));
+
+	let capture = [];
+	assert.eq(isMatch(['a', '=', '1', ';'], capture), 4);
+	assert.eq(capture, [['1', ';']])
+});
+
+
+Testimony.test('fregex.captureOr', () => {
+	let isMatch = fregex('a', '=', fregex.capture(
+		fregex.or('1', '2'))
+	);
+
+	let capture = [];
+	assert.eq(isMatch(['a', '=', '1', ';'], capture), 3);
+	assert.eq(capture, [['1']])
+});
+
+
+Testimony.test('fregex.orCapture', () => {
+	let isMatch = fregex('a', '=', fregex.or(
+		'1', fregex.capture('2'))
+	);
+
+	let capture = [];
+	assert.eq(isMatch(['a', '=', '1', ';'], capture), 3);
+	assert.eq(capture, [])
+
+	capture = [];
+	assert.eq(isMatch(['a', '=', '2', ';'], capture), 3);
+	assert.eq(capture, [['2']])
+});
+
+
+
+Testimony.test('fregex.captureAndZeroOrMore', () => {
+	let isMatch = fregex('a', '=', fregex.capture(/\d/, fregex.zeroOrMore(';')));
+
+	let capture = [];
+	assert.eq(isMatch(['a', '=', '1'], capture), 3);
+	assert.eq(capture, [['1']]);
+
+	capture = [];
+	assert.eq(isMatch(['a', '=', '1', ';', ';', ';'], capture), 6);
+	assert.eq(capture, [['1', ';', ';', ';']]);
+});
+
+
+Testimony.test('fregex.zeroOrMoreCapture', () => {
+	let isMatch = fregex('a', '=', /\d/, fregex.zeroOrMore(fregex.capture(';')));
+
+	let capture = [];
+	assert.eq(isMatch(['a', '=', '1'], capture), 3);
+	assert.eq(capture, []);
+
+
+	capture = [];
+	assert.eq(isMatch(['a', '=', '1', ';', ';', ';'], capture), 6);
+	assert.eq(capture, [[';'], [';'], [';']]);
 });
