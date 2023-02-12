@@ -1,1 +1,1 @@
-node build ../src/Refract.js ../dist/Refract.js
+node build ../src/refract/Refract.js ../dist/Refract.js
