@@ -1,5 +1,5 @@
 import {descendIf, ascendIf, functionize} from "./lex-tools.js";
-import Utils from './utils.js';
+import Utils from '../refract/utils.js';
 /**
  * Grammar for html/js code, including js templates.
  *

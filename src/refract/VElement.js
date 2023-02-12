@@ -1,12 +1,12 @@
 import VExpression from './VExpression.js';
 import VText from './VText.js';
 import Refract, {Globals} from './Refract.js';
-import lex from "./lex.js";
-import htmljs from "./lex-htmljs.js";
+import lex from "../parselib/lex.js";
+import htmljs from "../parselib/lex-htmljs.js";
 htmljs.allowHashTemplates = true;
-import Html, {div} from "./Html.js";
+import Html, {div} from "../lib/Html.js";
 import Utils, {assert} from "./utils.js";
-import delve from "./delve.js";
+import delve from "../lib/delve.js";
 import Scope from "./Scope.js";
 
 /**

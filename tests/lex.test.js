@@ -1,6 +1,6 @@
 import Testimony, {assert, assertEquals, assertStartsWith} from './Testimony.js';
-import lex from './../src/lex.js';
-import lexHtmlJs from './../src/lex-htmljs.js';
+import lex from '../src/parselib/lex.js';
+import lexHtmlJs from '../src/parselib/lex-htmljs.js';
 
 
 /**

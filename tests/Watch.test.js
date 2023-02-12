@@ -1,9 +1,9 @@
 import {assert, assertEquals, Testimony} from './Testimony.js';
 Testimony.enableJsDom();
 
-import Watch, {WatchProperties} from "../src/Watch.js";
+import Watch, {WatchProperties} from "../src/watch/Watch.js";
 import Watcher from "../src/unused/Watcher.js";
-import watchProxy, {WatchUtil} from '../src/watchProxy.js';
+import watchProxy, {WatchUtil} from '../src/watch/watchProxy.js';
 
 
 /**

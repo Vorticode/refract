@@ -1,7 +1,7 @@
-import htmljs from './lex-htmljs.js';
+import htmljs from '../parselib/lex-htmljs.js';
 import Parse from './Parse.js';
 import VElement from './VElement.js';
-import Html from "./Html.js";
+import Html from "../lib/Html.js";
 import {ParsedFunction} from "./ParsedFunction.js";
 import {Compiler} from "./Compiler.js";
 
@@ -329,9 +329,9 @@ var h = (text, quotes=`"'`) => Html.encode(text, quotes);
 export {h};
 
 // Expose useful internals to users of Refract:
-export {default as Watch} from './Watch.js';
-export {default as lex} from './lex.js';
-export {default as lexHtmlJs} from './lex-htmljs.js';
-export {default as delve} from './delve.js';
-export {default as fregex} from './fregex.js';
+export {default as Watch} from '../watch/Watch.js';
+export {default as lex} from '../parselib/lex.js';
+export {default as lexHtmlJs} from '../parselib/lex-htmljs.js';
+export {default as delve} from '../lib/delve.js';
+export {default as fregex} from '../parselib/fregex.js';
 export {default as Utils} from './utils.js';

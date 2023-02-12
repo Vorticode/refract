@@ -1,8 +1,8 @@
 import Testimony, {assert} from './Testimony.js';
-import Parse from './../src/Parse.js';
-import lex from "./../src/lex.js";
-import htmljs from "./../src/lex-htmljs.js";
-import {ParsedFunction} from "../src/ParsedFunction.js";
+import Parse from '../src/refract/Parse.js';
+import lex from "../src/parselib/lex.js";
+import htmljs from "../src/parselib/lex-htmljs.js";
+import {ParsedFunction} from "../src/refract/ParsedFunction.js";
 
 
 /**

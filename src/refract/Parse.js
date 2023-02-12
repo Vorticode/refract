@@ -1,8 +1,8 @@
-import fregex from "./fregex.js";
-import lex, {Token} from './lex.js';
+import fregex from "../parselib/fregex.js";
+import lex, {Token} from '../parselib/lex.js';
 import Utils from "./utils.js";
-import htmljs from "./lex-htmljs.js";
-import lexHtmlJs from "./lex-htmljs.js";
+import htmljs from "../parselib/lex-htmljs.js";
+import lexHtmlJs from "../parselib/lex-htmljs.js";
 import {ParsedFunction} from "./ParsedFunction.js";
 
 

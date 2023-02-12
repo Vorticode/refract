@@ -3,8 +3,8 @@ Testimony.enableJsDom();
 
 //import Refract from './../dist/Refract.js';
 //import Refract from './../dist/Refract.min.js';
-import Refract, {h} from './../src/Refract.js';
-import createEl from '../src/createEl.js';
+import Refract, {h} from '../src/refract/Refract.js';
+import createEl from '../src/lib/createEl.js';
 
 Refract.elsCreated = [];
 

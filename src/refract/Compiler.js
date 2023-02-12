@@ -1,9 +1,9 @@
 import VExpression from "./VExpression.js";
 import VElement from "./VElement.js";
 import Parse from "./Parse.js";
-import lex from "./lex.js";
-import htmljs from "./lex-htmljs.js";
-import fregex from "./fregex.js";
+import lex from "../parselib/lex.js";
+import htmljs from "../parselib/lex-htmljs.js";
+import fregex from "../parselib/fregex.js";
 import utils from "./utils.js";
 import Refract from "./Refract.js";
 

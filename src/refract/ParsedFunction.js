@@ -1,5 +1,5 @@
-import lex from "./lex.js";
-import htmljs from "./lex-htmljs.js";
+import lex from "../parselib/lex.js";
+import htmljs from "../parselib/lex-htmljs.js";
 import {assert} from "./utils.js";
 import Parse from "./Parse.js";
 
@@ -159,6 +159,8 @@ export class ParsedFunction {
 			// We look for a semicolon at depth zero or a line return not preceeded by an operator.
 			let bodyEnd;
 			let isBracelessArrow = ['arrowParam', 'arrowParams'].includes(this.type);
+
+			// TODO: Replace this with fregex.munch?
 			if (isBracelessArrow) {
 				const open = ['{', '(', '['];
 				const close = ['}', ')', ']'];
@@ -236,6 +238,7 @@ export class ParsedFunction {
 			let find = true; // If we're in the proper context to find variable names.
 			let depth = 0;
 
+			// TODO: Replace this with fregex.munch() ?
 			for (let token of tokens) {
 				let text = token.text;
 

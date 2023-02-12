@@ -1,5 +1,5 @@
 import Refract from "./Refract.js";
-import Html from "./Html.js";
+import Html from "../lib/Html.js";
 import Utils from "./utils.js";
 
 export default class VText {

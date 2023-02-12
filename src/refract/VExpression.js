@@ -1,14 +1,14 @@
-import delve from "./delve.js";
+import delve from "../lib/delve.js";
 import Utils, {assert} from "./utils.js";
 import Parse from './Parse.js';
-import Watch from "./Watch.js";
+import Watch from "../watch/Watch.js";
 import VElement from './VElement.js';
 import VText from "./VText.js";
-import lex from "./lex.js";
-import lexHtmljs from "./lex-htmljs.js";
+import lex from "../parselib/lex.js";
+import lexHtmljs from "../parselib/lex-htmljs.js";
 import {Globals} from "./Refract.js";
 import Scope, {ScopeItem} from "./Scope.js";
-import Html from "./Html.js";
+import Html from "../lib/Html.js";
 
 
 

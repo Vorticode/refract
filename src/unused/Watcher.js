@@ -1,5 +1,5 @@
-import {WatchUtil} from "../watchProxy.js";
-import delve from "../delve.js";
+import {WatchUtil} from "../watch/watchProxy.js";
+import delve from "../lib/delve.js";
 
 class WatchCallback {
 

@@ -1,4 +1,4 @@
-import Refract from '../src/Refract.js';
+import Refract from '../src/refract/Refract.js';
 
 export default class Spreadsheet extends Refract{
 

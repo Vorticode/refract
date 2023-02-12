@@ -1,9 +1,9 @@
 import {assert, assertEquals, Testimony} from './Testimony.js';
 Testimony.enableJsDom();
 
-import watchProxy, {WatchUtil} from "../src/watchProxy.js";
-import Watch from "../src/Watch.js";
-import Refract from "../src/Refract.js";
+import watchProxy, {WatchUtil} from "../src/watch/watchProxy.js";
+import Watch from "../src/watch/Watch.js";
+import Refract from "../src/refract/Refract.js";
 
 function trackGarbage(callback) {
 	// Switch them from WeakMap to Map so we can check the size.
