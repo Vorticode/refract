@@ -1,4 +1,4 @@
-import Watch from "../watch/Watch.js";
+import Watch from "./Watch.js";
 
 //#IFDEV
 var assert = expr => {

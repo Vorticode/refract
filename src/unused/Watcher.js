@@ -1,4 +1,4 @@
-import {WatchUtil} from "../watch/watchProxy.js";
+import {WatchUtil} from "../refract/watchProxy.js";
 import delve from "../lib/delve.js";
 
 class WatchCallback {

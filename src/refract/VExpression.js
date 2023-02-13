@@ -1,7 +1,7 @@
 import delve from "../lib/delve.js";
 import Utils, {assert} from "./utils.js";
 import Parse from './Parse.js';
-import Watch from "../watch/Watch.js";
+import Watch from "./Watch.js";
 import VElement from './VElement.js';
 import VText from "./VText.js";
 import lex from "../parselib/lex.js";

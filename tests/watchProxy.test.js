@@ -1,8 +1,8 @@
 import {assert, assertEquals, Testimony} from './Testimony.js';
 Testimony.enableJsDom();
 
-import watchProxy, {WatchUtil} from "../src/watch/watchProxy.js";
-import Watch from "../src/watch/Watch.js";
+import watchProxy, {WatchUtil} from "../src/refract/watchProxy.js";
+import Watch from "../src/refract/Watch.js";
 import Refract from "../src/refract/Refract.js";
 
 function trackGarbage(callback) {

@@ -1,7 +1,7 @@
-import Utils, {assert, csv} from '../refract/utils.js';
+import Utils, {assert, csv} from './utils.js';
 import watchProxy, {WatchUtil} from './watchProxy.js';
 import delve from '../lib/delve.js';
-import utils from "../refract/utils.js";
+import utils from "./utils.js";
 
 
 /**

@@ -329,7 +329,7 @@ var h = (text, quotes=`"'`) => Html.encode(text, quotes);
 export {h};
 
 // Expose useful internals to users of Refract:
-export {default as Watch} from '../watch/Watch.js';
+export {default as Watch} from './Watch.js';
 export {default as lex} from '../parselib/lex.js';
 export {default as lexHtmlJs} from '../parselib/lex-htmljs.js';
 export {default as delve} from '../lib/delve.js';

@@ -1,4 +1,4 @@
-import Utils, {isObj} from '../refract/utils.js';
+import Utils, {isObj} from './utils.js';
 
 /**
  * @property object.$isProxy
