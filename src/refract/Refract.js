@@ -1,7 +1,7 @@
 import htmljs from '../parselib/lex-htmljs.js';
 import Parse from './Parse.js';
 import VElement from './VElement.js';
-import Html from "../lib/Html.js";
+import Html from "../util/Html.js";
 import {ParsedFunction} from "./ParsedFunction.js";
 import {Compiler} from "./Compiler.js";
 
@@ -332,6 +332,6 @@ export {h};
 export {default as Watch} from './Watch.js';
 export {default as lex} from '../parselib/lex.js';
 export {default as lexHtmlJs} from '../parselib/lex-htmljs.js';
-export {default as delve} from '../lib/delve.js';
+export {default as delve} from '../util/delve.js';
 export {default as fregex} from '../parselib/fregex.js';
 export {default as Utils} from './utils.js';

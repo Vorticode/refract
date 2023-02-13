@@ -1,4 +1,4 @@
-import delve from "../lib/delve.js";
+import delve from "../util/delve.js";
 import Utils, {assert} from "./utils.js";
 import Parse from './Parse.js';
 import Watch from "./Watch.js";
@@ -8,7 +8,7 @@ import lex from "../parselib/lex.js";
 import lexHtmljs from "../parselib/lex-htmljs.js";
 import {Globals} from "./Refract.js";
 import Scope, {ScopeItem} from "./Scope.js";
-import Html from "../lib/Html.js";
+import Html from "../util/Html.js";
 
 
 

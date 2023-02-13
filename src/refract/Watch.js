@@ -1,6 +1,6 @@
 import Utils, {assert, csv} from './utils.js';
 import watchProxy, {WatchUtil} from './watchProxy.js';
-import delve from '../lib/delve.js';
+import delve from '../util/delve.js';
 import utils from "./utils.js";
 
 

@@ -4,9 +4,9 @@ import Refract, {Globals} from './Refract.js';
 import lex from "../parselib/lex.js";
 import htmljs from "../parselib/lex-htmljs.js";
 htmljs.allowHashTemplates = true;
-import Html, {div} from "../lib/Html.js";
+import Html, {div} from "../util/Html.js";
 import Utils, {assert} from "./utils.js";
-import delve from "../lib/delve.js";
+import delve from "../util/delve.js";
 import Scope from "./Scope.js";
 
 /**
