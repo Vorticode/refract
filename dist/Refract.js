@@ -1256,7 +1256,7 @@ var isObj = obj => obj && typeof obj === 'object'; // Make sure it's not null, s
 		js: {
 			whitespace,
 			ln, // Separate from whitespace because \n can be used instead of semicolon to separate js statements.
-			comment: /^\/\/.*(?=\r?\n)|^\/\*[\s\S]*?\*\//,
+			comment: /^\/\/.*?(?=(\r?\n|$))|^\/\*[\s\S]*?\*\//,
 			end: code => code.startsWith('</script>') ? ['', -1] : undefined,
 
 			// Can't use a regex to parse a regex, so instead we look for pairs of matching / and see if
