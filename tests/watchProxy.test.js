@@ -1,9 +1,7 @@
-import {assert, assertEquals, Testimony} from './Testimony.js';
+import {assert, Testimony} from './Testimony.js';
 Testimony.enableJsDom();
 
 import watchProxy, {WatchUtil} from "../src/refract/watchProxy.js";
-import Watch from "../src/refract/Watch.js";
-import Refract from "../src/refract/Refract.js";
 
 function trackGarbage(callback) {
 	// Switch them from WeakMap to Map so we can check the size.
@@ -36,7 +34,7 @@ Testimony.test('watchProxy.simple', () => {
 	});
 
 	wp.a[0] = 3;
-	assert.eqJson(log, [['set', ['a', '0'], 3]]);
+	assert.eq(log, [['set', ['a', '0'], 3]]);
 });
 
 // Two watchers of the same array, make sure changing it through one path notifies the other.
@@ -53,9 +51,9 @@ Testimony.test('watchProxy.twoArrays', () => {
 
 	b2[0] = 5;
 
-	assert.eqJson(ops.length, 2);
-	assert.eqJson(ops[0], 'b1');
-	assert.eqJson(ops[1], 'b2');
+	assert.eq(ops.length, 2);
+	assert.eq(ops[0], 'b1');
+	assert.eq(ops[1], 'b2');
 });
 
 // Watches with roots on both an object and it's sub-property.
@@ -83,7 +81,7 @@ Testimony.test('watchProxy.twoLevel', () => {
 
 	var b2 = bW.parent.b2[0] = 5;
 
-	assertEquals(a.b2[0], 5);
+	assert.eq(a.b2[0], 5);
 	assert(called.has('a.b2'));
 	assert(called.has('b1.parent.b2'));
 });
@@ -99,12 +97,12 @@ Testimony.test('watchProxy.arrayShift', () => {
 
 	wp.a.shift(); // remove the 0 from the beginning.
 
-	assertEquals(wp.a.length, 1);
-	assertEquals(wp.a[0], 1);
+	assert.eq(wp.a.length, 1);
+	assert.eq(wp.a[0], 1);
 
 	// Make sure we only have one op
-	assert.eqJson(ops[0].slice(0, 3), ["remove", ['a', '0'], 0]);
-	assertEquals(ops.length, 1);
+	assert.eq(ops[0].slice(0, 3), ["remove", ['a', '0'], 0]);
+	assert.eq(ops.length, 1);
 });
 
 Testimony.test('watchProxy.arrayShift2', () => {
@@ -126,7 +124,7 @@ Testimony.test('watchProxy.arrayShift2', () => {
 	// Make sure path of b has been updated.
 	let path = WatchUtil.getPaths(o, b)[0];
 
-	assert.eqJson(path, ['items', '0']);
+	assert.eq(path, ['items', '0']);
 });
 
 // Same as above, but make sure references to sub-array are updated.
@@ -158,7 +156,7 @@ Testimony.test('watchProxy.arrayShiftRecurse', () => {
 
 	let path = WatchUtil.getPaths(o, b)[0];
 
-	assert.eqJson(path, ['items', '0', 'parts', '0']);
+	assert.eq(path, ['items', '0', 'parts', '0']);
 });
 
 // Test an object that refers to another object twice.
@@ -177,7 +175,7 @@ Testimony.test('watchProxy.doubleRef', () => {
 
 	// wp.items[0].name has never been accessed so it isn't registered:
 	wp.item.name = 3;
-	assert.eqJson(paths, [
+	assert.eq(paths, [
 		['item', 'name']
 	]);
 
@@ -186,7 +184,7 @@ Testimony.test('watchProxy.doubleRef', () => {
 	paths = [];
 	var a = wp.items[0].name;
 	wp.item.name = 4;
-	assert.eqJson(paths, [
+	assert.eq(paths, [
 		['item', 'name'],
 		['items', '0', 'name']
 	]);
@@ -195,14 +193,14 @@ Testimony.test('watchProxy.doubleRef', () => {
 	paths = [];
 	a = wp.items[0].name;
 	wp.item.name = 4;
-	assert.eqJson(paths, []);
+	assert.eq(paths, []);
 
 
 
 	// Set the value via p.items[0].name
 	paths = [];
 	wp.items[0].name = 2;
-	assert.eqJson(paths, [
+	assert.eq(paths, [
 		['item', 'name'],
 		['items', '0', 'name']
 	]);
@@ -234,7 +232,7 @@ Testimony.test('watchProxy.forOf', () => {
 	for (let a2 of wp.a)
 		a2.b = 2;
 
-	assert.eqJson(called, 1);
+	assert.eq(called, 1);
 });
 
 /**
@@ -250,7 +248,7 @@ Testimony.test('watchProxy.shift', () => {
 	});
 
 	wp.a.shift();
-	assertEquals(log, [['remove', ['a', '0'], 1]]); // 1 was the value removed.
+	assert.eq(log, [['remove', ['a', '0'], 1]]); // 1 was the value removed.
 });
 
 
@@ -265,7 +263,7 @@ Testimony.test('watchProxy.spliceReplace', () => {
 	});
 
 	wp.a.splice(2, 2, 'C', 'D');
-	assert.eqJson(log, [
+	assert.eq(log, [
 		['set', ['a', '2'], 'C'],
 		['set', ['a', '3'], 'D']
 	]);
@@ -282,7 +280,7 @@ Testimony.test('watchProxy.spliceAdd', () => {
 	});
 
 	var item = wp.a.splice(2, 2, 'C', 'D', 'E');
-	assert.eqJson(log, [
+	assert.eq(log, [
 		['set', ['a', '2'], 'C'],
 		['set', ['a', '3'], 'D'],
 		['insert', ['a', '4'], 'E']
@@ -300,7 +298,7 @@ Testimony.test('watchProxy.spliceRemove', () => {
 	});
 
 	var item = wp.a.splice(2, 2, 'C');
-	assert.eqJson(log, [
+	assert.eq(log, [
 		['set', ['a', '2'], 'C'],
 		['remove', ['a', '3'], 3]
 	]);

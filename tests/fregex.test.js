@@ -1,4 +1,4 @@
-import Testimony, {assert, assertEquals} from './Testimony.js';
+import Testimony, {assert} from './Testimony.js';
 import fregex from '../src/parselib/fregex.js';
 import lexPhp from "../src/parselib/lex-php.js";
 import lex from "../src/parselib/lex.js";
@@ -32,8 +32,8 @@ Testimony.test('fregexOr', () => {
 		'c',
 	);
 
-	assertEquals(isMatch(['a', 'b1', 'c']), 3);
-	assertEquals(isMatch(['a', 'b3', 'c']), false);
+	assert.eq(isMatch(['a', 'b1', 'c']), 3);
+	assert.eq(isMatch(['a', 'b3', 'c']), false);
 });
 
 Testimony.test('fregexOr2', () => {
@@ -64,9 +64,9 @@ Testimony.test('fregex._not', () => {
 	);
 
 	console.log(isMatch(['b']));
-	assertEquals(isMatch(['a', 'c']), 2);
-	assertEquals(isMatch(['b', 'c']), true);
-	assertEquals(isMatch(['a', 'b']), false);
+	assert.eq(isMatch(['a', 'c']), 2);
+	assert.eq(isMatch(['b', 'c']), true);
+	assert.eq(isMatch(['a', 'b']), false);
 });
 /*
 // fregex.nor() isn't used by Refract, so it's commented out to reduce Refract bundle size.
@@ -77,9 +77,9 @@ Testimony.test('fregex.nor', () => {
 		'c',
 	);
 
-	assertEquals(isMatch(['a', 'b1', 'c']), false);
-	assertEquals(isMatch(['a', 'b2', 'c']), false);
-	assertEquals(isMatch(['a', 'b3', 'c']), 3);
+	assert.eq(isMatch(['a', 'b1', 'c']), false);
+	assert.eq(isMatch(['a', 'b2', 'c']), false);
+	assert.eq(isMatch(['a', 'b3', 'c']), 3);
 });
 */
 Testimony.test('fregex.zeroOrOne', () => {
@@ -89,9 +89,9 @@ Testimony.test('fregex.zeroOrOne', () => {
 		'c',
 	);
 
-	assertEquals(isMatch(['a', 'b1', 'c']), 3);
-	assertEquals(isMatch(['a', 'b2', 'c']), false);
-	assertEquals(isMatch(['a', 'c']), 2);
+	assert.eq(isMatch(['a', 'b1', 'c']), 3);
+	assert.eq(isMatch(['a', 'b2', 'c']), false);
+	assert.eq(isMatch(['a', 'c']), 2);
 });
 
 Testimony.test('fregex.zeroOrOne2', () => {
@@ -101,18 +101,18 @@ Testimony.test('fregex.zeroOrOne2', () => {
 		'c',
 	);
 
-	assertEquals(isMatch(['a', 'c']), 2);
-	assertEquals(isMatch(['a', 'b1', 'c']), false);
-	assertEquals(isMatch(['a', 'b2', 'c']), false);
-	assertEquals(isMatch(['a', 'b1', 'b2', 'c']), 4);
+	assert.eq(isMatch(['a', 'c']), 2);
+	assert.eq(isMatch(['a', 'b1', 'c']), false);
+	assert.eq(isMatch(['a', 'b2', 'c']), false);
+	assert.eq(isMatch(['a', 'b1', 'b2', 'c']), 4);
 });
 
 Testimony.test('fregex.zeroOrMore', () => {
 	let isMatch = fregex.zeroOrMore('b');
 
-	assertEquals(isMatch(['a']), 0);
-	assertEquals(isMatch(['b']), 1);
-	assertEquals(isMatch(['a', 'b']), 0); // only find at start.
+	assert.eq(isMatch(['a']), 0);
+	assert.eq(isMatch(['b']), 1);
+	assert.eq(isMatch(['a', 'b']), 0); // only find at start.
 });
 
 Testimony.test('fregex.zeroOrMore2', () => {
@@ -120,10 +120,10 @@ Testimony.test('fregex.zeroOrMore2', () => {
 		fregex.zeroOrMore('b1'),
 		'c',
 	);
-	assertEquals(isMatch(['c']), 1);
-	assertEquals(isMatch(['b1', 'c']), 2);
-	assertEquals(isMatch(['a', 'c']), false); // Doesn't start with the pattern.
-	assertEquals(isMatch(['a', 'b1', 'c']), false);
+	assert.eq(isMatch(['c']), 1);
+	assert.eq(isMatch(['b1', 'c']), 2);
+	assert.eq(isMatch(['a', 'c']), false); // Doesn't start with the pattern.
+	assert.eq(isMatch(['a', 'b1', 'c']), false);
 });
 
 Testimony.test('fregex.zeroOrMore3', () => {
@@ -133,12 +133,12 @@ Testimony.test('fregex.zeroOrMore3', () => {
 		'c',
 	);
 
-	assertEquals(isMatch(['a']), false);
-	assertEquals(isMatch(['a', 'd']), false);
-	assertEquals(isMatch(['a', 'c']), 2);
-	assertEquals(isMatch(['a', 'c', 'b1', 'c']), 2); // Match the first ones only.
-	assertEquals(isMatch(['a', 'b1', 'c']), 3);
-	assertEquals(isMatch(['a', 'b1', 'b1', 'c']), 4);
+	assert.eq(isMatch(['a']), false);
+	assert.eq(isMatch(['a', 'd']), false);
+	assert.eq(isMatch(['a', 'c']), 2);
+	assert.eq(isMatch(['a', 'c', 'b1', 'c']), 2); // Match the first ones only.
+	assert.eq(isMatch(['a', 'b1', 'c']), 3);
+	assert.eq(isMatch(['a', 'b1', 'b1', 'c']), 4);
 });
 
 Testimony.test('fregex.zeroOrMoreOr', () => {
@@ -148,11 +148,11 @@ Testimony.test('fregex.zeroOrMoreOr', () => {
 		'c',
 	);
 
-	assertEquals(isMatch(['a', 'c']), 2);
-	assertEquals(isMatch(['a', 'b1', 'c']), 3);
-	assertEquals(isMatch(['a', 'b1', 'b2', 'b1', 'c']), 5);
-	assertEquals(isMatch(['a', 'b1', 'b2', 'b3', 'c']), false);
-	assertEquals(isMatch(['a', 'b1', 'b2', 'd']), false);
+	assert.eq(isMatch(['a', 'c']), 2);
+	assert.eq(isMatch(['a', 'b1', 'c']), 3);
+	assert.eq(isMatch(['a', 'b1', 'b2', 'b1', 'c']), 5);
+	assert.eq(isMatch(['a', 'b1', 'b2', 'b3', 'c']), false);
+	assert.eq(isMatch(['a', 'b1', 'b2', 'd']), false);
 });
 
 
@@ -163,9 +163,9 @@ Testimony.test('fregex.oneOrMore', () => {
 		'c',
 	);
 
-	assertEquals(isMatch(['a', 'c']), false);
-	assertEquals(isMatch(['a', 'b1', 'c']), 3);
-	assertEquals(isMatch(['a', 'b1', 'b1', 'c']), 4);
+	assert.eq(isMatch(['a', 'c']), false);
+	assert.eq(isMatch(['a', 'b1', 'c']), 3);
+	assert.eq(isMatch(['a', 'b1', 'b1', 'c']), 4);
 });
 
 Testimony.test('fregex.oneOrMoreOr', () => {
@@ -175,11 +175,11 @@ Testimony.test('fregex.oneOrMoreOr', () => {
 		'c',
 	);
 
-	assertEquals(isMatch(['a', 'c']), false);
-	assertEquals(isMatch(['a', 'b1', 'c']), 3);
-	assertEquals(isMatch(['a', 'b1', 'b2', 'b3', 'b1', 'c']), 6);
+	assert.eq(isMatch(['a', 'c']), false);
+	assert.eq(isMatch(['a', 'b1', 'c']), 3);
+	assert.eq(isMatch(['a', 'b1', 'b2', 'b3', 'b1', 'c']), 6);
 
-	assertEquals(isMatch(['a', 'b1', 'b4', 'b3', 'c']), false);
+	assert.eq(isMatch(['a', 'b1', 'b4', 'b3', 'c']), false);
 });
 
 
@@ -193,11 +193,11 @@ Testimony.test('fregex.oneOrMoreOr', () => {
 		'c',
 	);
 
-	assertEquals(isMatch(['a', 'c']), false);
-	assertEquals(isMatch(['a', 'b1', 'c']), 3);
-	assertEquals(isMatch(['a', 'b1', 'b2', 'b1', 'c']), 5);
+	assert.eq(isMatch(['a', 'c']), false);
+	assert.eq(isMatch(['a', 'b1', 'c']), 3);
+	assert.eq(isMatch(['a', 'b1', 'b2', 'b1', 'c']), 5);
 
-	assertEquals(isMatch(['a', 'b1', 'b3', 'c']), false);
+	assert.eq(isMatch(['a', 'b1', 'b3', 'c']), false);
 });
 
 Testimony.test('fregex.oneOrMoreNot', () => {
@@ -205,9 +205,9 @@ Testimony.test('fregex.oneOrMoreNot', () => {
 		fregex.not(';')
 	);
 
-	assertEquals(isMatch([';']), false);
-	assertEquals(isMatch(['a', 'b', ';']), 2);
-	assertEquals(isMatch(['a', 'b', 'c']), 3);
+	assert.eq(isMatch([';']), false);
+	assert.eq(isMatch(['a', 'b', ';']), 2);
+	assert.eq(isMatch(['a', 'b', 'c']), 3);
 });
 
 Testimony.test('fregex.oneOrMoreNot2', () => {
@@ -215,9 +215,9 @@ Testimony.test('fregex.oneOrMoreNot2', () => {
 		fregex.not('end', ';')
 	);
 
-	assertEquals(isMatch(['end', ';']), false);
-	assertEquals(isMatch(['a', 'b', 'end', ';']), 2);
-	assertEquals(isMatch(['a', 'b', 'c', 'end']), 4);
+	assert.eq(isMatch(['end', ';']), false);
+	assert.eq(isMatch(['a', 'b', 'end', ';']), 2);
+	assert.eq(isMatch(['a', 'b', 'c', 'end']), 4);
 });
 
 Testimony.test('fregex.matchFirst', () => {
@@ -225,7 +225,7 @@ Testimony.test('fregex.matchFirst', () => {
 	let tokens = ['var', 'a', '=', 'b', ';'];
 	let result = fregex.matchFirst(pattern, tokens);
 
-	assert.eqJson(result, ['a', '=', 'b']);
+	assert.eq([...result], ['a', '=', 'b']);
 	assert.eq(result.index, 1);
 });
 

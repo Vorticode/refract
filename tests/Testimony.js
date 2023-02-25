@@ -23,7 +23,6 @@ class AssertError extends Error {
 	}
 }
 
-
 function assert(val) {
 	if (!val) {
 		if (Testimony.debugOnAssertFail)
@@ -32,21 +31,55 @@ function assert(val) {
 	}
 }
 
+Object.assign(assert, {
+	eq(expected, actual) {
+		if (!isSame(expected, actual)) { // JUnit, PhpUnit, and mocha all use the order: expected, actual.
+			if (Testimony.debugOnAssertFail)
+				debugger;
+			throw new AssertError(expected, actual, '==');
+		}
+	},
+
+	eqJson(expected, actual) {
+		if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+			if (Testimony.debugOnAssertFail)
+				debugger;
+			throw new AssertError(expected, actual);
+		}
+	},
+
+	neq(val1, val2) {
+		if (val1 !== val2) {
+			if (Testimony.debugOnAssertFail)
+				debugger;
+			throw new AssertError(val1 + ' === ' + val2);
+		}
+	},
+
+	lte(val1, val2) {
+		if (val1 > val2) {
+			if (Testimony.debugOnAssertFail)
+				debugger;
+			throw new AssertError(val1 + ' > ' + val2);
+		}
+	}
+});
+
+
+
 /**
  * https://stackoverflow.com/a/6713782/
  * @param x
  * @param y
  * @return {boolean} */
 function isSame( x, y ) {
-	if ( x === y )
+	if (x === y)
 		return true; // if both x and y are null or undefined and exactly the same
 
-	if (!(x instanceof Object) || !(y instanceof Object))
-		return false; // if they are not strictly equal, they both need to be Objects
-
+	// if they are not strictly equal, they both need to be Objects
 	// they must have the exact same prototype chain, the closest we can do is
 	// test their constructor.
-	if (x.constructor !== y.constructor)
+	if (!(x instanceof Object) || !(y instanceof Object) || x.constructor !== y.constructor)
 		return false;
 
 	for (var p in x) {
@@ -59,11 +92,7 @@ function isSame( x, y ) {
 		if (x[p] === y[p])
 			continue; // if they have the same strict value or identity then they are equal
 
-
-		if (typeof x[p] !== "object")
-			return false; // Numbers, Strings, Functions, Booleans must be strictly equal
-
-		if (!isSame(x[p], y[p]))
+		if (typeof x[p] !== "object" || !isSame(x[p], y[p])) // Numbers, Strings, Functions, Booleans must be strictly equal
 			return false; // Objects and Arrays must be tested recursively
 	}
 
@@ -74,321 +103,323 @@ function isSame( x, y ) {
 	return true;
 }
 
-const assertEquals = assert.eq = (expected, actual) => {
-
-	// JUnit, PhpUnit, and mocha all use the order: expected, actual.
-	if (!isSame(expected, actual)) {
-		if (Testimony.debugOnAssertFail)
-			debugger;
-		throw new AssertError(expected, actual, '==');
-	}
-};
-
-const assertTrue = assert.true = actual => {
-	if (!actual) {
-		if (Testimony.debugOnAssertFail)
-			debugger;
-		throw new AssertError(actual, true, '==');
-	}
-};
-
-
-const assertFalse = assert.false = actual => {
-	if (actual) {
-		if (Testimony.debugOnAssertFail)
-			debugger;
-		throw new AssertError(actual, false, '==');
-	}
-};
-
-const assertStartsWith = assert.startsWith = (haystack, needle) => {
-	// JSON.stringify lets us compare content to arbitrary depth
-	if (!haystack.startsWith(needle)) {
-		if (Testimony.debugOnAssertFail)
-			debugger;
-		throw new AssertError(haystack, needle, 'startsWith');
-	}
-};
-
-
-assert.eqJson = (expected, actual) => {
-	if (JSON.stringify(actual) === JSON.stringify(expected))
-		return true;
-
-	if (Testimony.debugOnAssertFail)
-		debugger;
-	throw new AssertError(expected, actual);
-};
-
-assert.neq = (val1, val2) => {
-	if (val1 !== val2) {
-		if (Testimony.debugOnAssertFail)
-			debugger;
-		throw new AssertError(val1 + ' === ' + val2);
-	}
-}
-
-assert.lte = (val1, val2) => {
-	if (val1 > val2) {
-		if (Testimony.debugOnAssertFail)
-			debugger;
-		throw new AssertError(val1 + ' > ' + val2);
-	}
-}
-
-
-let template = document.createElement('template');
+let styleId = 1;
 
 /**
  * Create a single html element, node, or comment from the html string.
  * The string will be trimmed so that an element with space before it doesn't create a text node with spaces.
- * @param html {string}*/
-function createEl(html) {
-	template.innerHTML = html.trim();
-	return template.content.removeChild(template.content.firstChild);
-}
+ * TODO: Allow specifying an existing div as props to bind a new set of html to it.
+ *     This could be used for manually adding children.
+ * TODO: Get values and setValues() functions for form fields?  Can make it work with any html element.
+ * TODO: Bind this to render() so I can render ${this.someField}
+ * TODO: Make properties, ids, events, and scoped styles only happen if a props argument is passed in, or is not false?
+ *
+ * I could use name="items[].name" to specify json structure of the result?
+ * OR:
+ *
+ * <div name="item[]">
+ *     <input name="description">
+ * </div>
+ *
+ * Will give me item[0].description
+ *
+ *
+ * @param html {string|function} Must be a function that returns html if you want to call render() again later.
+ * @param doc {Document}
+ * @param props {Object|boolean} */
+function createEl(html, props=false, doc=document) {
+	let template = doc.createElement('template');
+	let result = doc.createElement((html+'').match(/<(\w+[\w-]*)/)[1]);
+	let ids; // Track them so they can be removed later.
 
-
-
-
-/**
- * @param obj {object}
- * @param path {string[]}
- * @param createVal {*}  If set, non-existant paths will be created and the deepest value will be set to createVal.*/
-function delve(obj, path, createVal='dont_create_value') {
-	let create = createVal !== 'dont_create_value';
-
-	if (!obj && !create && path.length)
-		return undefined;
-
-	let i = 0;
-	for (let srcProp of path) {
-		let last = i === path.length-1;
-
-		// If the path is undefined and we're not to the end yet:
-		if (obj[srcProp] === undefined) {
-
-			// If the next index is an integer or integer string.
-			if (create) {
-				if (!last) {
-					// If next level path is a number, create as an array
-					let isArray = (path[i + 1] + '').match(/^\d+$/);
-					obj[srcProp] = isArray ? [] : {};
-				}
-			}
-			else
-				return undefined; // can't traverse
+	// Properties
+	if (typeof props === 'object')
+		for (let name in props) {
+			if (name in result)
+				throw new Error(`Property ${name} already exists.`);
+			result[name] = props[name];
 		}
 
-		// If last item in path
-		if (last && create)
-			obj[srcProp] = createVal;
+	// Render
+	result.render = () => {
+		template.innerHTML = (typeof html === 'function' ? html() : html).trim();
 
-		// Traverse deeper along destination object.
-		obj = obj[srcProp];
-		i++;
-	}
+		// Attributes and Children
+		if (props) {
+			result.innerHTML = '';
+			[...result.attributes].map(attr => result.removeAttribute(attr.name));
+		}
+		[...template.content.firstElementChild.attributes].map(attr => result.setAttribute(attr.name, attr.value));
+		[...template.content.firstElementChild.childNodes].map(child => result.append(child));
 
-	return obj;
-}
-
-function getUrlVar(name, url) { // From stackoverflow.com/a/8764051
-	url = url || window.location.href;
-	let regex = new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)');
-	return decodeURIComponent((regex.exec(url)||[,""])[1].replace(/\+/g, '%20')) || null;
-}
-
-var Html = {
-
-	/**
-	 * @param input {?string}
-	 * @param escapeQuotes {boolean=false}
-	 * @returns {?string}*/
-	escape(input, escapeQuotes) { // From: stackoverflow.com/a/4835406
-		if (input === null || input === undefined)
-			input = '';
-		else
-			input = input + ''; // Make string
-
-		var result = input.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-		if (escapeQuotes)
-			result = result.replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-		return result;
-	}
-}
-
-
-/**
- * Render the tests and results in a table.
- * TODO: These could be simpler if we used something like a Lite version of Refract, since we're attaching functions? */
-var TableRenderer = {
-
-	/**
-	 * Create a tr group for a test as well as a second tr that contains a table for sub-tests.
-	 * @param name {string}
-	 * @param level {int}
-	 * @returns {[HTMLTableRowElement, HTMLTableRowElement]} */
-	createGroup(name, level) {
-
-		// 1.  Create two tr rows.
-		let trs =  [
-
-			// Label for group and status of whole group.
-			createEl(`
-				<tr data-name="${name}" class="group">
-					<td>
-						<label class="expand" style="user-select: none; cursor: pointer; ${level===0 ? 'display: none': ''}">
-							+
-							<input type="checkbox" name="${name}_exp" value="1" style="display: none">
-						</label> 
-						<label class="enable">
-						
-							<!-- Checkbox --> 
-							[<span style="color: #55f; font-weight: bold; text-shadow: 1px 0 0 #55f">x</span><input 
-							type="checkbox" style="display: none">] 
-							
-							<!-- Status -->
-							<span class="status" style="line-height: 1; display: inline-block; width: 7.7px">&nbsp;</span> 
-
-							${name}</label>&nbsp;&nbsp;</td>
-					<td class="status"></td>
-				</tr>`),
-
-			// Container for children
-			createEl(`
-				<tr class="testGroup">
-					<td colspan="2">
-						<table style="margin-left: ${level ? 7.7*4 : 7.7*2}px"></table>
-					</td>
-				</tr>`)
-		];
-
-		// 2a. Checkbox initial state
-		let checkbox = trs[0].querySelector('.enable > input');
-		setTimeout(() => { // wait till children are populated.
-			let descendantTests = Array.from(trs[1].querySelectorAll('tr.test')); // only the tests, not all trs
-			let checked = descendantTests.reduce(
-				(a, b) =>
-					(a===true || a && a.isChecked()) && (b===true || b && b.isChecked())
-				, true);
-			TableRenderer.setEnabledChecked(trs[0], checked);
-		}, 0);
-
-
-		// 2b. Checkbox change event
-		checkbox.addEventListener('change', () => {
-			TableRenderer.setEnabledChecked(trs[0], checkbox.checked);
-
-			// Set children checked:
-			trs[1].querySelectorAll('tr.group, tr.test').forEach((tr) => {
-				// Only check it if no part of the path starts with an underscore.
-				// But always uncheck it.
-				let hasUnderscore = tr.getAttribute('data-name').split(/\./g).filter(x=>x.startsWith('_')).length;
-				if (!hasUnderscore || !checkbox.checked)
-					TableRenderer.setEnabledChecked(tr, checkbox.checked);
+		if (props) {
+			// Assign ids
+			(ids || []).map(id => delete result[id]);
+			ids = [...result.querySelectorAll('[id],[data-id]')].map(el => {
+				if (el.id in result && !(el.id in props)) // allow id's to override our custom props.
+					throw new Error(`Property ${el.id} already exists.`);
+				result[el.id] = el;
+				return [el.id];
 			});
-		});
 
-		// 2a. Expand initial state
-		let expand = trs[0].querySelector('.expand > input');
-		expand.checked = level === 0 || !!getUrlVar(name + '_exp'); // always expand level 0.
-		expand.previousSibling.textContent = expand.checked ? '-' : '+';
-		trs[1].style.display = expand.checked ? '' : 'none';
+			// Bind events
+			[result, ...result.querySelectorAll('*')].map(el =>
+				[...el.attributes].filter(attr => attr.name.startsWith('on')).map(attr => {
+					el[attr.name] = e => // e.g. el.onclick = ...
+						(new Function('event', 'el', attr.value)).bind(result)(e, el) // put "event", "el", and "this" in scope for the event code.
+				})
+			);
 
-		// 3b. Expand button change event
-		expand.addEventListener('change', () => {
-			expand.previousSibling.textContent = expand.checked ? '-' : '+';
-			trs[1].style.display = expand.checked ? '' : 'none';
-
-			// Minimizing also minimizes children.  Doesn't work right.
-			// if (!expand.checked) // Untested
-			// 	for (let tr of trs[1].querySelectorAll('tr.group')) {
-			// 		let expand2 = tr.querySelector('label.expand');
-			// 		expand2.checked = false;
-			// 		expand2.previousSibling.textContent = '-';
-			// 		tr.style.display = 'none';
-			// 	}
-		});
-
-		return trs;
-	},
-
-	/**
-	 * Create a table row with the name of a test, its checkbox, and a place to later print its status.
-	 * @param test {Test}
-	 * @returns {[HTMLTableRowElement, HTMLTableRowElement]} */
-	createTest(test) {
-		let baseName = test.name.slice(test.name.lastIndexOf('.')+1); // todo get name after last .
-		let tr = createEl(`
-			<tr data-name="${test.name}" class="test">
-				<td><label class="enable">&nbsp;
-				
-					<!-- Checkbox --> 
-					[<span style="color: #55f; font-weight: bold; text-shadow: 1px 0 0 #55f">x</span><input 
-						type="checkbox" name="${test.name}" value="1" style="display: none">]
-						
-					<!-- Status -->
-					<span class="status" style="line-height: 1; display: inline-block; width: 7.7px">&nbsp;</span> 
-
-					${baseName}</label>&nbsp;&nbsp;</td>
-				<td class="message"><span style="opacity: .5">${test.desc}</span></td>
-			</tr>`);
-
-		// Activate checkbox
-		let checkbox = tr.querySelector('input');
-		let updateXBox = () => checkbox.previousElementSibling.style.opacity = checkbox.checked ? '1' : '0';
-		tr.isChecked = () => checkbox.checked;
-
-		tr.setChecked = (status) => {
-			checkbox.checked = status;
-			updateXBox();
+			// Scoped Styles
+			let styles = result.querySelectorAll('style');
+			if (styles.length) {
+				result.setAttribute('data-style-scope', styleId++); // TODO: re-use style id on re-render.
+				[...styles].map(style => style.textContent = style.textContent.replace(/:host(?=[^a-z\d_])/gi,
+					'[data-style-scope="' + result.getAttribute('data-style-scope') + '"]'));
+			}
 		}
-		checkbox.addEventListener('change', updateXBox);
-		tr.setChecked(!!getUrlVar(test.name));
-
-		return tr;
-	},
-
-	/**
-	 * Print the result of starting a test.
-	 * @param el {HTMLElement} The element where the test status should be printed.
-	 * @param result {boolean|AssertError|Error}*/
-	insertTestResult(el, result) {
-		if (result === true)
-			return;
-
-		if (result instanceof AssertError) {
-
-			let line = result.stack.split(/\n/g)[2].match(/\((.*?)\)/)[1].slice(window.location.origin.length+1);
-
-			let expected = Html.escape(JSON.stringify(result.expected));
-			let actual = Html.escape(JSON.stringify(result.actual));
-			el.innerHTML = `
-				<span style="color: #666">${line} (${result.op})</span><br>
-				<span style="color: #666; white-space: pre-wrap"><b style="color: #999">Actual:</b> &nbsp; ${actual}<br><b style="color: #999">Expected:</b> ${expected}</span>`;
-		}
-		else if (result instanceof Error) {
-			let errorStack = Testimony.shortenError(result);
-			el.innerHTML = `				
-				<div style="color: #666">${errorStack}</div>`;
-		}
-		else
-			el.innerHTML = JSON.stringify(result);
-	},
-
-	setEnabledChecked(tr, checked) {
-		let checkbox = tr.querySelector('.enable > input');
-		checkbox.checked = checked;
-		checkbox.previousElementSibling.style.opacity = checked ? '1' : '0';
 	}
 
-};
+	if (typeof result.init === 'function')
+		result.init();
+	if (!ids) // if not called by init()
+		result.render();
+
+	return result;
+}
+
+// Html.encode()
+function h(text, quotes='"') {
+	text = (text === null || text === undefined ? '' : text+'')
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/\a0/g, '&nbsp;')
+	if (quotes.includes("'"))
+		text = text.replace(/'/g, '&apos;');
+	if (quotes.includes('"'))
+		text = text.replace(/"/g, '&quot;');
+	return text;
+}
+
+var HtmlRenderer = {
+
+	/**
+	 * @param test {Test}
+	 * @return {HTMLDivElement} */
+	render(test) {
+
+		// If updating
+		if (test.el) {
+			test.el.render();
+			for (let t2 of Object.values(test.children || {}))
+				test.el.childTests.append(HtmlRenderer.render(t2));
+			return test.el;
+		}
+		else {
+
+			let result = createEl(() => `
+				<div class="test">
+					<style>
+						:host input[type=checkbox] { width: 7.7px; appearance: none; margin: 0; color: inherit }						
+						:host #expandCB:after { content: '+'; user-select: none; cursor: pointer }		
+						:host #expandCB:checked:after { content: '-' }						
+						:host #enableCB:after { content: '\xa0'; color: #55f; font-weight: bold; text-shadow: 1px 0 0 #55f }
+						:host #enableCB:checked:after { content: 'x' }						
+						:host #status { line-height: 1; display: inline-block; width: 7.7px }
+						:host #childTests { padding-left: ${test.name.length ? '30.8' : '15.4'}px }
+					</style>					
+					<div>
+						${test.name.length ? 
+							Object.values(test.children || {}).length
+								?  `<input id="expandCB" type="checkbox" name="x" ${test.expanded ? 'checked' : ''}
+										value="${h(test.name) || ''}" onchange="this.expandClick()">` 
+								:  `&nbsp;`
+							: ''
+						}
+						<label>
+							[<input id="enableCB" type="checkbox" name="r" value="${h(test.name) || ''}"
+								${(test.getShortName()[0] === '_') ? 'data-disabled' : ''} 
+							    ${test.enabled ? 'checked' : ''} 
+							    onchange="this.enableClick()">]						
+							<span id="status">${
+								test.status === true ? `<span style="color: #0f0">✓</span>` :
+								test.status === null ? `&nbsp;` :
+								`<span style="color: red">✗</span>`
+							}</span>
+							${h(test.getShortName())}
+						</label>	
+						<span style="opacity: .5">${h(test.desc) || ''}</span>
+						<div style="color: red; padding-left: 61.6px">${test.status instanceof Error ? Testimony.shortenError(test.status) : ''}</div>
+					</div>
+					<div id="childTests" ${test.expanded ? '' : 'style="display: none"'}></div>
+				</div>`, {
+
+				test,
+
+				init() {
+					test.el = this;
+				},
+
+				enableClick() {
+					// Check all children if this is checked.
+					[...this.childTests.querySelectorAll('[name=r]:not([data-disabled])')].map(cb => cb.checked = this.enableCB.checked);
+
+					// Make every parent checked if all its children are checked.
+					let p = this;
+					while (p = p.parentNode)
+						if (p.nodeType === 1 && p.matches('.test'))
+							p.querySelector('[name=r]').checked = ![...p.childTests.querySelectorAll('[name=r]:not([data-disabled])')].find(cb => !cb.checked);
+				},
+
+				expandClick() {
+					this.childTests.style.display = this.expandCB.checked ? '': 'none';
+				}
+			});
+
+			// Recursively add child tests
+			if (test.children)
+				for (let test2 of Object.values(test.children))
+					result.childTests.append(HtmlRenderer.render(test2));
+
+			return result;
+		}
+	}
+}
+
+// Not used since Deno renders the tests.
+var TextRenderer = {
+
+	render(test) {
+		let result = [];
+
+		// If not the root node:
+		if (test.name) {
+
+			// Color codes: https://stackoverflow.com/a/41407246
+			let status = ' ';
+			if (test.status === null)
+				status = ' ';
+			else if (test.status === true)
+				status = '\x1b[1;32m' + '✓' + '\x1b[0m'; // green, 1; for bold
+			else
+				status = '\x1b[1;31m' + '✗' + '\x1b[0m'; // red
+
+			let result2 = '    '.repeat(test.getDepth()) + `[${status}] ${test.getShortName() || ''}`;
+			if (test.desc)
+				result2 += ` \x1b[90m${test.desc}\x1b[0m`; // gray
+			if (test.status instanceof Error)
+				result2 += ' \x1b[31m' + Testimony.shortenError(test.status, '\n    ') + '\x1b[0m';
+
+			result.push(result2);
+		}
+
+		// Recurse through children.
+		if (test.children)
+			for (let test2 of Object.values(test.children))
+				result.push(TextRenderer.render(test2));
+
+		return result.join('\n');
+	}
+}
+
 
 class Test {
-	constructor(name, desc, fn) {
+	name;
+	desc;
+	expanded;
+	enable;
+
+	/**
+	 * @type {boolean|Error|null}
+	 * true:  Test passed or all child tests passed
+	 * false:  One or more child tests failed.
+	 * Error:  Test failed.
+	 * null:  Hasn't been run yet. */
+	status = null;
+
+	/**
+	 * Every test will have either a fn OR children.
+	 * @type {?function} */
+	fn = null;
+
+	/**
+	 * @type {?Object<name:string, Test>} */
+	children = null;
+
+	constructor(name='', desc='', fn) {
 		this.name = name;
 		this.desc = desc;
 		this.fn = fn;
+
+		if (window.location) {
+			let url = new URL(window.location);
+			this.expanded = url.searchParams.getAll('x').includes(name);
+
+			// Enabled if this or a parent is checked
+			this.enabled = false;
+			let r = url.searchParams.getAll('r');
+			let parent = name;
+			do {
+				if (r.includes(parent) && !this.getShortName().startsWith('_')) {
+					this.enabled = true;
+					break;
+				}
+				parent = parent.split('.').slice(0, -1).join('.')
+			} while (parent);
+		}
+		else // TODO: Get enabled tests from the command line enable arguments.
+			this.enabled = true;
+	}
+
+	/**
+	 * Run this test or its children. */
+	async run() {
+
+		// A test to run.
+		if (this.fn && this.enabled) {
+			let result = true;
+			if (Testimony.throwOnFail) {
+				result = this.fn();
+				if (result instanceof Promise)
+					result = await result;
+				if (result !== false)
+					this.status = true;
+			} else {
+				try {
+					result = this.fn();
+					if (result instanceof Promise)
+						await result;
+					if (result !== false)
+						this.status = true;
+				} catch (e) {
+					this.status = e;
+				}
+			}
+		}
+
+		// A node containing other tests.
+		if (!this.fn) {
+			// TODO: Run in parallel?
+			this.status = true;
+			for (let child of Object.values(this.children)) {
+				await child.run();
+				if (child.status === false || child.status instanceof Error)
+					this.status = false;
+
+				else if (child.status === null && this.status !== false)
+					this.status = null;
+
+			}
+		}
+	}
+
+	getDepth() {
+		return ((this.name || '').match(/\./g) || []).length;
+	}
+
+	getShortName() {
+		return /[^.]*$/.exec(this.name)[0];
 	}
 }
 
@@ -399,12 +430,42 @@ var Testimony = {
 	throwOnFail: false, // throw from original location on assert fail or error.
 	expandLevel: 2,
 
-	/**
-	 * A flat object of full test name -> test object.
-	 * @type Object<string, Object<string, *> */
-	tests: {},
+	/** @type {Test} */
+	rootTest: new Test(),
 
-	render: TableRenderer,
+	async run(parent) {
+		let renderer = parent ? HtmlRenderer : TextRenderer;
+
+		if (parent) {
+			// Expand
+			function doExpand(test, expand) {
+				if (expand) {
+					test.expanded = true;
+					for (let child of Object.values(test.children || {}))
+						doExpand(child, expand - 1);
+				}
+			}
+
+			let hasXParam = new URL(location).searchParams.getAll('x').length;
+			doExpand(Testimony.rootTest, hasXParam ? 1 : this.expandLevel);
+
+			// Render empty tests
+			parent.append(renderer.render(Testimony.rootTest));
+			await new Promise(r => setTimeout(r, 1)); // allow browser to render.
+
+			// Run tests
+			await Testimony.rootTest.run();
+
+
+			// Update the status.
+			renderer.render(Testimony.rootTest);
+		}
+
+		else {
+			await Testimony.rootTest.run();
+			console.log(renderer.render(Testimony.rootTest));
+		}
+	},
 
 	/**
 	 * Add a test.
@@ -427,9 +488,11 @@ var Testimony = {
 				desc2 = arg || '';
 		}
 
-		// Create elements for html
+		// update func to create and destroy html before and after test.
 		if (html2) {
 			let oldFunc = func2;
+
+			// As an iframe.
 			if (html2.startsWith('<html') || html2.startsWith('<!')) {
 				func2 = async () => {
 					var iframe = document.createElement('iframe');
@@ -446,6 +509,8 @@ var Testimony = {
 					return result;
 				};
 			}
+
+			// As part of the regular document
 			else {
 				func2 = async () => {
 					let el = createEl(html2);
@@ -457,131 +522,54 @@ var Testimony = {
 			}
 		}
 
-		Testimony.tests[name2] = new Test(name2, desc2, func2);
-	},
+		if (globalThis.Deno) {
+			Deno.test(name2, func2);
+		}
+		else {
 
-	/**
-	 * @returns {Object<string, object|Test>} */
-	getTestTree() {
-		let result = {};
-		for (let name in Testimony.tests)
-			delve(result, name.split(/\./g), Testimony.tests[name]);
-		return {AllTests: result};
-	},
+			// Add to rootTest tree.
+			let path = name.split(/\./g);
+			let pathSoFar = [];
+			let test = this.rootTest;
+			for (let item of path) {
+				pathSoFar.push(item);
 
-	async runTests(parentEl, tree=undefined, level=0) {
+				if (!test.children)
+					test.children = {};
 
-		if (!tree)
-			tree = Testimony.getTestTree();
+				// If at leaf
+				if (pathSoFar.length === path.length)
+					test.children[item] = new Test(name2, desc2, func2);
 
-		for (let name in tree) {
-			let trs = []
-			let test = tree[name];
-
-			// A test
-			if (test instanceof Test) {
-
-				trs = [Testimony.render.createTest(test)];
-
-				if (!!getUrlVar(test.name)) {
-					let statusEl = trs[0].querySelector('.status');
-					let messageEl = trs[0].querySelector('.message');
-
-					// Timeout, so we can print test table before throwing errors.
-					setTimeout(async () => {
-
-						statusEl.innerHTML = '<span style="color: red">✗</span>';
-
-						let result = true;
-						if (Testimony.throwOnFail) {
-							result = result = test.fn();
-							if (result instanceof Promise)
-								result = await result;
-							if (result === undefined)
-								result = true;
-						} else {
-							try {
-								result = test.fn();
-								if (result instanceof Promise)
-									await result;
-								if (result === undefined)
-									result = true;
-							} catch (e) {
-								result = e;
-							}
-						}
-
-						statusEl.innerHTML = result===true
-							? '<span style="color: #0f0">✓</span>'
-							: '<span style="color: red">✗</span>';
-						Testimony.render.insertTestResult(messageEl, result);
-					}, 0);
+				// Create test if it doesn't exist.
+				else {
+					test.children[item] = test.children[item] || new Test(pathSoFar.join('.'));
+					test = test.children[item];
 				}
-
-			// Group header for a test
-			} else {
-				trs = Testimony.render.createGroup(name, level)
-				let table = trs[1].querySelector('table');
-				await Testimony.runTests(table, test, level+1); // recurse
 			}
-
-			parentEl.append(...trs);
 		}
 	},
 
-
-	/**
-	 * @deprecated for makeDoc()
-	 * Use an iframe to create a document.
-	 * @param html {string}
-	 * @param callback {function(Document)} */
-	async mockDoc(html, callback) {
-		if (!html.includes('<head'))
-			html = `<html lang="en"><head><meta charset="uft8"><title></title></head><body>${html}</body></html>`;
-
-		var iframe = document.createElement('iframe');
-		iframe.style.display = 'none';
-		document.body.append(iframe);
-
-		var doc = iframe.contentDocument || iframe.contentWindow.document;
-		doc.open();
-		doc.write(html);
-		doc.close();
-
-		await callback(doc);
-		iframe.parentNode.removeChild(iframe);
-	},
-
-	/** @deprecated for passing html to the regular test() function. */
-	mockElement(html, callback) {
-		let el = createEl('<div>' + html + '</div>').firstChild;
-		document.body.append(el);
-		callback(el, el.ownerDocument);
-		document.body.removeChild(el);
-	},
-
-
-
-
 	// Internal functions:
 
-	shortenError(error) {
+	shortenError(error, br='<br>&nbsp;&nbsp;') {
 		// slice(0, -3) to remove the 3 stacktrace lines inside Testimony.js that calls runtests.
 		let errorStack = error.stack.split(/\n/g).slice(0, -3).join('\r\n');
 
-		errorStack = errorStack.replace(/\r?\n/g, '<br>&nbsp;&nbsp;');
+		errorStack = errorStack.replace(/\r?\n/g, br);
 		return errorStack.replace(new RegExp(window.location.origin, 'g'), ''); // Remove server name to shorten error stack.
 	},
 
 	/**
 	 * Used only when running from the command line.
 	 * Define document object to allow us to run all modules from the command line.  */
-	enableJsDom() {
+	async enableJsDom() {
 		if (!globalThis.document) {
-			(async () => {
+			await (async () => {
 				let { default: jsdom} = await import('https://dev.jspm.io/jsdom');
 				globalThis.document = new jsdom.JSDOM(`<!DOCTYPE html>`).window.document;
-				/*let module =*/ import('https://deno.land/std@0.73.0/testing/asserts.ts');
+
+				/*let module =*/ /*import('https://deno.land/std@0.73.0/testing/asserts.ts');*/
 
 				// Sleep is required for JSDom to resolve its promises before tests begin.
 				await new Promise(resolve => setTimeout(resolve, 10));
@@ -590,14 +578,8 @@ var Testimony = {
 	},
 
 }
-
-function makeDoc(html) {
-	return `<html lang="en"><head><meta charset="uft8"><title></title></head><body>${html}</body></html>`
-}
+await Testimony.enableJsDom();
 
 
-// Emulate the Testimony.test() function
-if (!globalThis.Deno)
-	globalThis.Deno = {test: Testimony.test};
 export default Testimony;
-export {assert, assertEquals, assertStartsWith, assertTrue, assertFalse, makeDoc, Testimony};
+export {assert, Testimony, TextRenderer, HtmlRenderer};

@@ -1,4 +1,4 @@
-import {assert, assertEquals, Testimony} from './Testimony.js';
+import {assert, Testimony} from './Testimony.js';
 Testimony.enableJsDom();
 
 import Watch, {WatchProperties} from "../src/refract/Watch.js";
@@ -37,9 +37,9 @@ Testimony.test('Watcher.init', () => {
 	var o = {a: [0, 1]};
 
 	Watch.add(o,['a'], (action, path, value) => {});
-	assertEquals(o.a.length, 2);
-	assertEquals(o.a[0], 0);
-	assertEquals(o.a[1], 1);
+	assert.eq(o.a.length, 2);
+	assert.eq(o.a[0], 0);
+	assert.eq(o.a[1], 1);
 });
 
 Testimony.test('Watcher.set', () => {
@@ -58,9 +58,9 @@ Testimony.test('Watch.init', () => {
 	var o = {a: [0, 1]};
 	var wp = new WatchProperties(o);
 	wp.subscribe_(['a'], (action, path, value) => {});
-	assertEquals(o.a.length, 2);
-	assertEquals(o.a[0], 0);
-	assertEquals(o.a[1], 1);
+	assert.eq(o.a.length, 2);
+	assert.eq(o.a[0], 0);
+	assert.eq(o.a[1], 1);
 });
 
 
@@ -92,8 +92,8 @@ Testimony.test('Watch.removeProxy2', () => {
 
 	// o is an object with Object.defineProperty()'s defined and isn't a proxy.
 	//assertEqDeep(o.$removeProxy, {a: {c: undefined}, b: undefined});
-	assert.eqJson(o.a.$removeProxy, {c: undefined});
-	assertEquals(o.a.$removeProxy.c, undefined);
+	assert.eq(o.a.$removeProxy, {c: undefined});
+	assert.eq(o.a.$removeProxy.c, undefined);
 });
 
 // Same as WatchProxy.twoLevel, but with watch() instead of watchProxy.
@@ -120,7 +120,7 @@ Testimony.test('Watch.nestedUpdate', () => {
 
 	a.b1.parent.b2[0] = 5;
 
-	assertEquals(a.b2[0], 5);
+	assert.eq(a.b2[0], 5);
 	assert(called.has('a.b2'));
 	assert(called.has('b1.parent.b2'));
 });
@@ -147,7 +147,7 @@ Testimony.test('Watch._nestedUpdateViaFunction', () => {
 	});
 
 	a.b.update();
-	assertEquals(called, ['a.b.name', 'b.name']);
+	assert.eq(called, ['a.b.name', 'b.name']);
 });
 
 
@@ -161,7 +161,7 @@ Testimony.test('Watch.indexOf', () => {
 		let cb = ()=>{
 			var item = b.items[0];
 			var i = b.items.indexOf(item);
-			assertEquals(i, 0);
+			assert.eq(i, 0);
 		};
 
 		Watch.add(b, 'items', cb);
@@ -200,17 +200,17 @@ Testimony.test('Watch.unsubscribe', () => {
 		var cb = ()=>{ console.log(1);};
 
 		wp.subscribe_(['a'], cb);
-		assertEquals(Object.keys(wp.subs_).length, 1);
+		assert.eq(Object.keys(wp.subs_).length, 1);
 
 		wp.unsubscribe_(['a'], cb);
-		assertEquals(Object.keys(wp.subs_).length, 0);
+		assert.eq(Object.keys(wp.subs_).length, 0);
 
 		wp.subscribe_(['a', 0], cb);
-		assertEquals(Object.keys(wp.subs_).length, 1);
+		assert.eq(Object.keys(wp.subs_).length, 1);
 		o.a[0] = 2; // Watch isn't created until this step.
 
 		wp.unsubscribe_(['a', 0], cb);
-		assertEquals(Object.keys(wp.subs_).length, 0);
+		assert.eq(Object.keys(wp.subs_).length, 0);
 	});
 });
 

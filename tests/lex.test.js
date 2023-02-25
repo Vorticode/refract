@@ -1,4 +1,4 @@
-import Testimony, {assert, assertEquals, assertStartsWith} from './Testimony.js';
+import Testimony, {assert} from './Testimony.js';
 import lex from '../src/parselib/lex.js';
 import lexHtmlJs from '../src/parselib/lex-htmljs.js';
 
@@ -26,49 +26,49 @@ function tokensToText(array) {
 Testimony.test('lex.js', () => {
 	let code = 'var a = 3';
 	let tokens = lex(lexHtmlJs, code);
-	assertEquals(tokens.map(t=>t.text), ['var', ' ', 'a', ' ', '=', ' ', '3']);
-	assertEquals(tokens.map(t=>t.type), ['keyword','whitespace','identifier','whitespace','operator','whitespace','number']);
-	assertEquals(tokens.map(t=>t.mode), ['js','js','js','js','js','js','js']);
+	assert.eq(tokens.map(t=>t.text), ['var', ' ', 'a', ' ', '=', ' ', '3']);
+	assert.eq(tokens.map(t=>t.type), ['keyword','whitespace','identifier','whitespace','operator','whitespace','number']);
+	assert.eq(tokens.map(t=>t.mode), ['js','js','js','js','js','js','js']);
 });
 
 Testimony.test('lex.comment', () => {
 	let code = 'var a = 3;// comment\nline2';
 	let tokens = lex(lexHtmlJs, code);
-	assertEquals(tokens.map(t=>t.text), ['var',' ','a',' ','=',' ','3',';','// comment','\n','line2']);
-	assertEquals(tokens.map(t=>t.type), ['keyword','whitespace','identifier','whitespace','operator','whitespace','number','semicolon','comment','ln','identifier']);
+	assert.eq(tokens.map(t=>t.text), ['var',' ','a',' ','=',' ','3',';','// comment','\n','line2']);
+	assert.eq(tokens.map(t=>t.type), ['keyword','whitespace','identifier','whitespace','operator','whitespace','number','semicolon','comment','ln','identifier']);
 });
 
 Testimony.test('lex.comment2', () => {
 	let code = 'var a;\n// comment\nline2';
 	let tokens = lex(lexHtmlJs, code);
-	assertEquals(tokens.map(t=>t.text), ['var',' ','a',';','\n','// comment','\n','line2']);
-	assertEquals(tokens.map(t=>t.type), ['keyword','whitespace','identifier','semicolon','ln','comment','ln','identifier']);
+	assert.eq(tokens.map(t=>t.text), ['var',' ','a',';','\n','// comment','\n','line2']);
+	assert.eq(tokens.map(t=>t.type), ['keyword','whitespace','identifier','semicolon','ln','comment','ln','identifier']);
 });
 
 Testimony.test('lex.comment3', () => {
 	let code = 'var a;\n/*comment1\nline2\r\nline3*/\nline2/*comment2*/';
 	let tokens = lex(lexHtmlJs, code);
-	assertEquals(tokens.map(t=>t.text), ['var',' ','a',';','\n','/*comment1\nline2\r\nline3*/','\n','line2','/*comment2*/']);
-	assertEquals(tokens.map(t=>t.type), ['keyword','whitespace','identifier','semicolon','ln','comment','ln','identifier','comment']);
+	assert.eq(tokens.map(t=>t.text), ['var',' ','a',';','\n','/*comment1\nline2\r\nline3*/','\n','line2','/*comment2*/']);
+	assert.eq(tokens.map(t=>t.type), ['keyword','whitespace','identifier','semicolon','ln','comment','ln','identifier','comment']);
 });
 
 Testimony.test('lex.template', () => {
 	let code = 'var a=`hello ${name}`;';
 	let tokens = lex(lexHtmlJs, code);
 	// Javascript level
-	assertEquals(tokens.map(t=>t.text), ['var', ' ', 'a', '=', '`hello ${name}`', ';']);
-	assertEquals(tokens.map(t=>t.type), ['keyword','whitespace','identifier','operator','template','semicolon']);
-	assertEquals(tokens.map(t=>t.mode), ['js','js','js','js','js','js']);
+	assert.eq(tokens.map(t=>t.text), ['var', ' ', 'a', '=', '`hello ${name}`', ';']);
+	assert.eq(tokens.map(t=>t.type), ['keyword','whitespace','identifier','operator','template','semicolon']);
+	assert.eq(tokens.map(t=>t.mode), ['js','js','js','js','js','js']);
 
 	// Template string
-	assertEquals(tokens[4].tokens.map(t=>t.text), ['`', 'hello ', '${name}', '`']);
-	assertEquals(tokens[4].tokens[0].mode, 'template');
-	assertEquals(tokens[4].tokens.map(t=>t.type), ["template","text","expr","templateEnd"]);
-	assertEquals(tokens[4].tokens.map(t=>t.mode), ['template','template','template','template']);
+	assert.eq(tokens[4].tokens.map(t=>t.text), ['`', 'hello ', '${name}', '`']);
+	assert.eq(tokens[4].tokens[0].mode, 'template');
+	assert.eq(tokens[4].tokens.map(t=>t.type), ["template","text","expr","templateEnd"]);
+	assert.eq(tokens[4].tokens.map(t=>t.mode), ['template','template','template','template']);
 
 	// Js inside template string.
-	assertEquals(tokens[4].tokens[2].tokens.map(t=>t.text), ['${','name','}']);
-	assertEquals(tokens[4].tokens[2].tokens[0].mode, 'js');
+	assert.eq(tokens[4].tokens[2].tokens.map(t=>t.text), ['${','name','}']);
+	assert.eq(tokens[4].tokens[2].tokens[0].mode, 'js');
 });
 
 Testimony.test('lex.identifier', () => {
@@ -83,15 +83,15 @@ Testimony.test('lex.templateHash', () => {
 	let code = 'var a=`hello #{name}`;';
 	let tokens = lex(lexHtmlJs, code);
 	// Javascript level
-	assertEquals(tokens.map(t=>t.text), ['var', ' ', 'a', '=', '`hello #{name}`', ';']);
+	assert.eq(tokens.map(t=>t.text), ['var', ' ', 'a', '=', '`hello #{name}`', ';']);
 
 	// Template string
-	assertEquals(tokens[4].tokens.map(t=>t.text), ['`', 'hello ', '#{name}', '`']);
-	assertEquals(tokens[4].tokens[0].mode, 'template');
+	assert.eq(tokens[4].tokens.map(t=>t.text), ['`', 'hello ', '#{name}', '`']);
+	assert.eq(tokens[4].tokens[0].mode, 'template');
 
 	// Js inside template string.
-	assertEquals(tokens[4].tokens[2].tokens.map(t=>t.text), ['#{','name','}']);
-	assertEquals(tokens[4].tokens[2].tokens[0].mode, 'js');
+	assert.eq(tokens[4].tokens[2].tokens.map(t=>t.text), ['#{','name','}']);
+	assert.eq(tokens[4].tokens[2].tokens[0].mode, 'js');
 
 	lexHtmlJs.allowHashTemplates = old;
 });
@@ -100,12 +100,12 @@ Testimony.test('lex.template-escape', () => {
 	let code = 'var a=`hello \\${name}`;'; // Same as \$ instide a template string.
 	let tokens = lex(lexHtmlJs, code);
 	// Javascript level
-	assertEquals(tokens.map(t=>t.text), ['var', ' ', 'a', '=', '`hello \\' +
+	assert.eq(tokens.map(t=>t.text), ['var', ' ', 'a', '=', '`hello \\' +
 	'${name}`', ';']);
 
 	// Template string
-	assertEquals(tokens[4].tokens.map(t=>t.text), ['`', 'hello \\${name}', '`']); // It's not split into "hello" and ${name}
-	assertEquals(tokens[4].tokens[0].mode, 'template');
+	assert.eq(tokens[4].tokens.map(t=>t.text), ['`', 'hello \\${name}', '`']); // It's not split into "hello" and ${name}
+	assert.eq(tokens[4].tokens[0].mode, 'template');
 });
 
 
@@ -114,13 +114,13 @@ Testimony.test('lex.template-hash-escape', () => {
 	let code = 'var a=`hello \\#{name}`;';
 	let tokens = lex(lexHtmlJs, code);
 	// Javascript level
-	assertEquals(tokens.map(t=>t.text), ['var', ' ', 'a', '=', '`hello \\#{name}`', ';']);
+	assert.eq(tokens.map(t=>t.text), ['var', ' ', 'a', '=', '`hello \\#{name}`', ';']);
 
 	// Template string
-	assertEquals(tokens[4].tokens.map(t=>t.text), ['`', 'hello \\#{name}', '`']);
+	assert.eq(tokens[4].tokens.map(t=>t.text), ['`', 'hello \\#{name}', '`']);
 
 	// Js inside template string.
-	assertEquals(tokens[4].tokens[2].tokens, undefined);
+	assert.eq(tokens[4].tokens[2].tokens, undefined);
 });
 
 Testimony.test('lex.template-brace-depth', () => {
@@ -153,19 +153,19 @@ Testimony.test('lex.template-tag-expr', () => {
 
 	// Template string
 	assert.eqJson(tokens[4].tokens, ['`','hello ','<b class="one ${class}">','world','</b>','!','`']);
-	assertEquals(tokens[4].tokens[0].mode, 'template');
+	assert.eq(tokens[4].tokens[0].mode, 'template');
 
 	// Html tag inside template string.
 	assert.eqJson(tokens[4].tokens[2].tokens, ['<b',' ','class','=','"one ${class}"','>']);
-	assertEquals(tokens[4].tokens[2].tokens[0].mode, 'templateTag');
+	assert.eq(tokens[4].tokens[2].tokens[0].mode, 'templateTag');
 
 	// dquote string inside tag.
 	assert.eqJson(tokens[4].tokens[2].tokens[4].tokens, ['"','one ','${class}','"']);
-	assertEquals(tokens[4].tokens[2].tokens[4].tokens[0].mode, 'dquote');
+	assert.eq(tokens[4].tokens[2].tokens[4].tokens[0].mode, 'dquote');
 
 	// js expression inside dquote string.
 	assert.eqJson(tokens[4].tokens[2].tokens[4].tokens[2].tokens, ['${','class','}']);
-	assertEquals(tokens[4].tokens[2].tokens[4].tokens[2].tokens[0].mode, 'js');
+	assert.eq(tokens[4].tokens[2].tokens[4].tokens[2].tokens[0].mode, 'js');
 });
 
 Testimony.test('lex.error', () => {
@@ -178,7 +178,7 @@ Testimony.test('lex.error', () => {
 	catch (e) {
 		msg = e.message;
 	}
-	assertStartsWith(msg, 'Unknown token within "tag" at 2:3');
+	assert(msg.startsWith('Unknown token within "tag" at 2:3'));
 });
 
 Testimony.test('lex.template-multiple', () => {
@@ -222,7 +222,7 @@ Testimony.test('lex.template-script-tag', () => {
 
 	let template = js[5].tokens;
 	assert.eqJson(template, ['`', '<script>', 'var b=1<3', '</script>', '`']);
-	assertEquals(template.map(t=>t.type), ['template', 'openTag', 'script', 'closeTag', 'templateEnd']);
+	assert.eq(template.map(t=>t.type), ['template', 'openTag', 'script', 'closeTag', 'templateEnd']);
 
 
 	let js2 = template[2].tokens;
@@ -247,7 +247,7 @@ Testimony.test('lex.regex', () => {
 	let tokens = lex(lexHtmlJs, code, 'js');
 	tokens = tokensToText(tokens);
 	assert.eqJson(tokens, ['a', '=', '/^\\/(\\\\\\\\|\\\\\\/|\\[\\^\\/]|\\[[^]]]|[^/])+\\/[agimsx]*/']);
-	assertEquals(tokens[2].type, 'regex');
+	assert.eq(tokens[2].type, 'regex');
 });
 
 Testimony.test('lex.regex2', () => {
@@ -255,7 +255,7 @@ Testimony.test('lex.regex2', () => {
 	let tokens = lex(lexHtmlJs, code, 'js');
 	tokens = tokensToText(tokens);
 	assert.eqJson(tokens, ['/[/]+/g', ';', ' ', 'b', '=', "'/'"]);
-	assertEquals(tokens[0].type, 'regex');
+	assert.eq(tokens[0].type, 'regex');
 });
 
 Testimony.test('lex.html-self-closing', () => {
@@ -264,8 +264,8 @@ Testimony.test('lex.html-self-closing', () => {
 	let tokens = lex(lexHtmlJs, code, 'html');
 	tokens = tokensToText(tokens);
 	assert.eqJson(tokens[0].tokens, ['<img', '/>']);
-	assertEquals(tokens[0].tokens.map(t=>t.type), ['openTag', 'tagEnd']);
-	assertEquals(tokens[0].tokens.map(t=>t.mode), ['tag', 'tag']);
+	assert.eq(tokens[0].tokens.map(t=>t.type), ['openTag', 'tagEnd']);
+	assert.eq(tokens[0].tokens.map(t=>t.mode), ['tag', 'tag']);
 });
 
 Testimony.test('lex.html-comment', () => {
@@ -275,8 +275,8 @@ Testimony.test('lex.html-comment', () => {
 	tokens = tokensToText(tokens);
 
 	assert.eqJson(tokens, ['<div>', '<!-- \r\ncomment -->', '</div>']);
-	assertEquals(tokens.map(t=>t.type), ['openTag', 'comment', 'closeTag']);
-	assertEquals(tokens.map(t=>t.mode), ['html', 'html', 'html']);
+	assert.eq(tokens.map(t=>t.type), ['openTag', 'comment', 'closeTag']);
+	assert.eq(tokens.map(t=>t.mode), ['html', 'html', 'html']);
 });
 
 Testimony.test('lex.comment-expr', () => {
@@ -286,7 +286,7 @@ Testimony.test('lex.comment-expr', () => {
 	tokens = tokensToText(tokens);
 
 	assert.eqJson(tokens[0].tokens[2].tokens, ['<!--', ' ', '${a}', ' ', '-->']);
-	assertEquals(tokens[0].tokens[2].tokens.map(t=>t.type), ['comment', 'commentBody', 'expr', 'commentBody', 'commentEnd']);
+	assert.eq(tokens[0].tokens[2].tokens.map(t=>t.type), ['comment', 'commentBody', 'expr', 'commentBody', 'commentEnd']);
 });
 
 Testimony.test('lex.attr', () => {
@@ -305,8 +305,8 @@ Testimony.test('lex.attr', () => {
 	assert.eqJson(tokens[0].tokens[10].tokens, ['${', 'three', '}']);
 	assert.eqJson(tokens[0].tokens[12].tokens, ['#{', 'four', '}']);
 
-	// assertEquals(tokens[0].tokens[2].tokens, ['<!--', ' ', '${a}', ' ', '-->']);
-	// assertEquals(tokens[0].tokens[2].tokens.map(t=>t.type), ['comment', 'commentBody', 'expr', 'commentBody', 'commentEnd']);
+	// assert.eq(tokens[0].tokens[2].tokens, ['<!--', ' ', '${a}', ' ', '-->']);
+	// assert.eq(tokens[0].tokens[2].tokens.map(t=>t.type), ['comment', 'commentBody', 'expr', 'commentBody', 'commentEnd']);
 });
 
 // console.error( 'Oops, something went wrong!' );
@@ -319,7 +319,7 @@ Testimony.test('lex.unclosed-tag', () => {
 	tokens = tokensToText(tokens);
 
 	assert.eqJson(tokens, ['<p>', 'text']);
-	assertEquals(tokens.map(t=>t.type), ['openTag', 'text']);
+	assert.eq(tokens.map(t=>t.type), ['openTag', 'text']);
 });
 
 Testimony.test('lex.unclosed-comment', () => {
@@ -330,7 +330,7 @@ Testimony.test('lex.unclosed-comment', () => {
 
 	assert.eqJson(tokens, ['<!--text']);
 	assert.eqJson(tokens[0].tokens, ['<!--', 'text']);
-	assertEquals(tokens[0].tokens.map(t=>t.type), ['comment', 'commentBody']);
+	assert.eq(tokens[0].tokens.map(t=>t.type), ['comment', 'commentBody']);
 });
 
 Testimony.test('lex.badHtml1', () => {
@@ -357,13 +357,12 @@ Testimony.test('lex.badHtml3', () => {
 	console.log(tokens); // TODO
 });
 
-Testimony.test('lex.php', () => {
+Testimony.test('lex.php.1', 'Test parsing it as html', () => {
 	var code = `<?php print 1?-->`;
 	let tokens = lex(lexHtmlJs, code, 'html');
 	tokens = tokensToText(tokens);
 	assert.eqJson(tokens, ['<?php print 1?-->']);
-	assertEquals(tokens[0].type, 'text');
-
+	assert.eq(tokens[0].type, 'text');
 
 });
 

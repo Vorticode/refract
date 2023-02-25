@@ -1,4 +1,4 @@
-import Testimony, {assert, assertEquals} from './Testimony.js';
+import Testimony, {assert} from './Testimony.js';
 Testimony.enableJsDom();
 
 //import Refract from './../dist/Refract.js';
@@ -17,8 +17,8 @@ Testimony.test('Refract.basic.empty', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, '<x-10></x-10>');
-	assertEquals(a.childNodes.length, 0);
+	assert.eq(a.outerHTML, '<x-10></x-10>');
+	assert.eq(a.childNodes.length, 0);
 });
 
 Testimony.test('Refract.basic.nonTemplate', () => {
@@ -28,8 +28,8 @@ Testimony.test('Refract.basic.nonTemplate', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, '<x-15>everyone\'s <b>happy</b></x-15>');
-	assertEquals(a.childNodes.length, 2);
+	assert.eq(a.outerHTML, '<x-15>everyone\'s <b>happy</b></x-15>');
+	assert.eq(a.childNodes.length, 2);
 });
 
 Testimony.test('Refract.basic.escaped', () => {
@@ -39,8 +39,8 @@ Testimony.test('Refract.basic.escaped', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-16>everyone's <b>happy</b></x-16>`);
-	assertEquals(a.childNodes.length, 2);
+	assert.eq(a.outerHTML, `<x-16>everyone's <b>happy</b></x-16>`);
+	assert.eq(a.childNodes.length, 2);
 });
 
 
@@ -51,8 +51,8 @@ Testimony.test('Refract.basic.nonTemplateEscaped', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, '<x-17>everyone\'s <b>happy</b></x-17>');
-	assertEquals(a.childNodes.length, 2);
+	assert.eq(a.outerHTML, '<x-17>everyone\'s <b>happy</b></x-17>');
+	assert.eq(a.childNodes.length, 2);
 });
 
 
@@ -74,11 +74,11 @@ Testimony.test('Refract.basic.constructor', () => {
 	let a = new A();
 
 	// Make sure constructor is called when instantiative via createEl.
-	assertEquals(constructorCalled, 1);
+	assert.eq(constructorCalled, 1);
 
 	// let a2 = createEl('<a-20></a-20>');
 	//
-	// assertEquals(constructorCalled, 2);
+	// assert.eq(constructorCalled, 2);
 });
 
 Testimony.test('Refract.basic.constructor2', () => {
@@ -98,12 +98,12 @@ Testimony.test('Refract.basic.constructor2', () => {
 
 	// Check constructor params when instaniated from javascript.
 	let a = new A(1, [2], 3);
-	assertEquals(constructorCalled, 1);
+	assert.eq(constructorCalled, 1);
 
 
 	// Check constructor params when instantiative via createEl.
 	let a2 = createEl('<a-22 int="1" json="[2]" expr="${1+2}"></a-22>');
-	assertEquals(constructorCalled, 2);
+	assert.eq(constructorCalled, 2);
 });
 
 
@@ -131,12 +131,12 @@ Testimony.test('Refract.basic.init', () => {
 
 	// Check init(...params) params when instaniated from javascript.
 	let a = new A(1, [2], 3);
-	assertEquals(constructorCalled, 1);
+	assert.eq(constructorCalled, 1);
 
 
 	// Check init(...params) params when instantiative via createEl.
 	let a2 = createEl('<a-23 int="1" json="[2]" expr="${1+2}"></a-23>');
-	assertEquals(constructorCalled, 2);
+	assert.eq(constructorCalled, 2);
 });
 
 
@@ -166,12 +166,12 @@ Testimony.test('Refract.basic.initNamed', 'Test named init() parameters', () => 
 
 	// Check init(...params) when instaniated from javascript.
 	let a = new A({int:1, json:[2], expr:3});
-	assertEquals(constructorCalled, 1);
+	assert.eq(constructorCalled, 1);
 
 
 	// Check init(...params) params when instantiative via createEl.
 	let a2 = createEl('<a-24 int="1" json="[2]" expr="${1+2}"></a-24>');
-	assertEquals(constructorCalled, 2);
+	assert.eq(constructorCalled, 2);
 
 	// Check init(...params) params when instantiative from another Refract element.
 	class B extends Refract {
@@ -183,7 +183,7 @@ Testimony.test('Refract.basic.initNamed', 'Test named init() parameters', () => 
 
 
 	let b = new B();
-	assertEquals(constructorCalled, 3);
+	assert.eq(constructorCalled, 3);
 });
 
 
@@ -201,7 +201,7 @@ Testimony.test('Refract.basic.import', () => {
 		init() {
 			
 			// Uses module's import
-			assertEquals(1, 1);
+			assert.eq(1, 1);
 			this.constructorCalled = true;
 		}
 
@@ -209,8 +209,8 @@ Testimony.test('Refract.basic.import', () => {
 	}
 	eval(A.compile());
 	let a = new A();
-	assertEquals(a.outerHTML, '<x-4>hi</x-4>');
-	assertEquals(a.constructorCalled, true);
+	assert.eq(a.outerHTML, '<x-4>hi</x-4>');
+	assert.eq(a.constructorCalled, true);
 });
 
 Testimony.test('Refract.basic.text', () => {
@@ -221,7 +221,7 @@ Testimony.test('Refract.basic.text', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, '<x-5>text</x-5>');
+	assert.eq(a.outerHTML, '<x-5>text</x-5>');
 });
 
 Testimony.test('Refract.basic.entity', () => {
@@ -232,7 +232,7 @@ Testimony.test('Refract.basic.entity', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, '<x-6>a &lt; b</x-6>');
+	assert.eq(a.outerHTML, '<x-6>a &lt; b</x-6>');
 });
 
 Testimony.test('Refract.basic.entity2', () => {
@@ -243,7 +243,7 @@ Testimony.test('Refract.basic.entity2', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, '<b-70>a &lt; b</b-70>');
+	assert.eq(a.outerHTML, '<b-70>a &lt; b</b-70>');
 });
 
 Testimony.test('Refract.render.delay', "Don't render anything until we call the render() function.", () => {
@@ -346,8 +346,8 @@ Testimony.test('Refract.expr.string', () => {
 	}
 	eval(A.compile());
 	let a = new A();
-	assertEquals(a.outerHTML, '<b-80>hi</b-80>');
-	assertEquals(a.childNodes.length, 1);
+	assert.eq(a.outerHTML, '<b-80>hi</b-80>');
+	assert.eq(a.childNodes.length, 1);
 });
 
 Testimony.test('Refract.expr.template', () => {
@@ -356,8 +356,8 @@ Testimony.test('Refract.expr.template', () => {
 	}
 	eval(A.compile());
 	let a = new A();
-	assertEquals(a.outerHTML, '<x-120>hi</x-120>');
-	assertEquals(a.childNodes.length, 1);
+	assert.eq(a.outerHTML, '<x-120>hi</x-120>');
+	assert.eq(a.childNodes.length, 1);
 });
 
 // Make sure parser leaves spaces.
@@ -368,7 +368,7 @@ Testimony.test('Refract.expr.basic', () => {
 	eval(A.compile());
 	let a = new A();
 
-	assertEquals(a.outerHTML, '<x-123>2010</x-123>');
+	assert.eq(a.outerHTML, '<x-123>2010</x-123>');
 });
 
 Testimony.test('Refract.expr.undefinedText', () => {
@@ -379,7 +379,7 @@ Testimony.test('Refract.expr.undefinedText', () => {
 	eval(A.compile());
 	let a = new A();
 
-	assertEquals(a.outerHTML, `<x-130></x-130>`);
+	assert.eq(a.outerHTML, `<x-130></x-130>`);
 });
 
 Testimony.test('Refract.expr.loopInExprLoop', () => {
@@ -411,7 +411,7 @@ Testimony.test('Refract.expr.undefinedAttr', () => {
 	eval(A.compile());
 	let a = new A();
 
-	assertEquals(a.outerHTML, `<x-136><div title=""></div></x-136>`);
+	assert.eq(a.outerHTML, `<x-136><div title=""></div></x-136>`);
 });
 
 Testimony.test('Refract.expr.undefinedAttr2', () => {
@@ -422,7 +422,7 @@ Testimony.test('Refract.expr.undefinedAttr2', () => {
 	eval(A.compile());
 	let a = new A();
 
-	assertEquals(a.outerHTML, `<x-137><div title=""></div></x-137>`);
+	assert.eq(a.outerHTML, `<x-137><div title=""></div></x-137>`);
 });
 
 Testimony.test('Refract.expr.undefinedInputVal', () => {
@@ -432,8 +432,8 @@ Testimony.test('Refract.expr.undefinedInputVal', () => {
 	}
 	eval(A.compile());
 	let a = new A();
-	assertEquals(a.firstElementChild.value, '');
-	assertEquals(a.outerHTML, `<x-138><input value=""></x-138>`);
+	assert.eq(a.firstElementChild.value, '');
+	assert.eq(a.outerHTML, `<x-138><input value=""></x-138>`);
 });
 
 Testimony.test('Refract.expr.var', () => {
@@ -448,12 +448,12 @@ Testimony.test('Refract.expr.var', () => {
 	eval(A.compile());
 	let a = new A();
 
-	assertEquals(a.outerHTML, '<x-140>Apple</x-140>');
-	assertEquals(a.childNodes.length, 1);
+	assert.eq(a.outerHTML, '<x-140>Apple</x-140>');
+	assert.eq(a.childNodes.length, 1);
 
 	a.value = 'Banana';
-	assertEquals(a.outerHTML, '<x-140>Banana</x-140>');
-	assertEquals(a.childNodes.length, 1);
+	assert.eq(a.outerHTML, '<x-140>Banana</x-140>');
+	assert.eq(a.childNodes.length, 1);
 });
 
 Testimony.test('Refract.expr.varDeep', () => {
@@ -465,7 +465,7 @@ Testimony.test('Refract.expr.varDeep', () => {
 	let a = new A();
 
 	a.fruit.name = 'Cherry';
-	assertEquals(a.outerHTML, '<x-150>Cherry</x-150>');
+	assert.eq(a.outerHTML, '<x-150>Cherry</x-150>');
 });
 
 Testimony.test('Refract.expr.varDeep2', () => {
@@ -478,13 +478,13 @@ Testimony.test('Refract.expr.varDeep2', () => {
 	let a = new A();
 
 	a.fruits[0].name = 'Cherry';
-	assertEquals(a.outerHTML, '<x-160>Cherry</x-160>');
+	assert.eq(a.outerHTML, '<x-160>Cherry</x-160>');
 
 	a.fruits[0] = {name: 'Dragonfruit'};
-	assertEquals(a.outerHTML, '<x-160>Dragonfruit</x-160>');
+	assert.eq(a.outerHTML, '<x-160>Dragonfruit</x-160>');
 
 	a.fruits = [{name: 'Elderberry'}];
-	assertEquals(a.outerHTML, '<x-160>Elderberry</x-160>');
+	assert.eq(a.outerHTML, '<x-160>Elderberry</x-160>');
 });
 
 Testimony.test('Refract.expr.var2', () => {
@@ -495,12 +495,12 @@ Testimony.test('Refract.expr.var2', () => {
 	eval(A.compile());
 	let a = new A();
 
-	assertEquals(a.outerHTML, '<x-170>APPLE!</x-170>');
-	assertEquals(a.childNodes.length, 1);
+	assert.eq(a.outerHTML, '<x-170>APPLE!</x-170>');
+	assert.eq(a.childNodes.length, 1);
 
 	a.value = 'Banana';
-	assertEquals(a.outerHTML, '<x-170>BANANA!</x-170>');
-	assertEquals(a.childNodes.length, 1);
+	assert.eq(a.outerHTML, '<x-170>BANANA!</x-170>');
+	assert.eq(a.childNodes.length, 1);
 });
 
 Testimony.test('Refract.expr.optionalChaining', () => {
@@ -513,10 +513,10 @@ Testimony.test('Refract.expr.optionalChaining', () => {
 	eval(A.compile());
 	let a = new A();
 
-	assertEquals(a.outerHTML, '<x-172></x-172>');
+	assert.eq(a.outerHTML, '<x-172></x-172>');
 
 	a.path1.path2.path3 = 'a';
-	assertEquals(a.outerHTML, '<x-172>a</x-172>');
+	assert.eq(a.outerHTML, '<x-172>a</x-172>');
 });
 
 Testimony.test('Refract.expr.scope', () => {
@@ -528,12 +528,12 @@ Testimony.test('Refract.expr.scope', () => {
 	}
 	eval(A.compile());
 	let a = new A();
-	assertEquals(a.outerHTML, '<x-175>apple</x-175>');
-	assertEquals(a.childNodes.length, 1);
+	assert.eq(a.outerHTML, '<x-175>apple</x-175>');
+	assert.eq(a.childNodes.length, 1);
 
 	fruit = 'Banana'; // fruit is not watched, so changing this won't change the output.  This is by design:
-	assertEquals(a.outerHTML, '<x-175>apple</x-175>');
-	assertEquals(a.childNodes.length, 1);
+	assert.eq(a.outerHTML, '<x-175>apple</x-175>');
+	assert.eq(a.childNodes.length, 1);
 });
 
 Testimony.test('Refract.expr.Complex', () => {
@@ -544,16 +544,16 @@ Testimony.test('Refract.expr.Complex', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-180>"Apple"</x-180>`);
+	assert.eq(a.outerHTML, `<x-180>"Apple"</x-180>`);
 
 	a.value = [{name: 'Apple'}];
-	assertEquals(a.outerHTML, `<x-180>[{"name":"Apple"}]</x-180>`);
+	assert.eq(a.outerHTML, `<x-180>[{"name":"Apple"}]</x-180>`);
 
 	a.value.push({name: 'Banana'});
-	assertEquals(a.outerHTML, `<x-180>[{"name":"Apple"},{"name":"Banana"}]</x-180>`);
+	assert.eq(a.outerHTML, `<x-180>[{"name":"Apple"},{"name":"Banana"}]</x-180>`);
 
 	a.value[1].name = 'Cherry';
-	assertEquals(a.outerHTML, `<x-180>[{"name":"Apple"},{"name":"Cherry"}]</x-180>`);
+	assert.eq(a.outerHTML, `<x-180>[{"name":"Apple"},{"name":"Cherry"}]</x-180>`);
 });
 
 Testimony.test('Refract.expr.strings', () => {
@@ -564,10 +564,10 @@ Testimony.test('Refract.expr.strings', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-185>1</x-185>`);
+	assert.eq(a.outerHTML, `<x-185>1</x-185>`);
 
 	a.a.b.c.d = 2
-	assertEquals(a.outerHTML, `<x-185>2</x-185>`);
+	assert.eq(a.outerHTML, `<x-185>2</x-185>`);
 });
 
 Testimony.test('Refract.expr._strings2', () => {
@@ -578,10 +578,10 @@ Testimony.test('Refract.expr._strings2', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-187>1</x-187>`);
+	assert.eq(a.outerHTML, `<x-187>1</x-187>`);
 
 	a.a.b.c.d.e12 = 2
-	assertEquals(a.outerHTML, `<x-187>2</x-187>`);
+	assert.eq(a.outerHTML, `<x-187>2</x-187>`);
 });
 
 
@@ -593,7 +593,7 @@ Testimony.test('Refract.expr.HashVar', () => {
 	eval(A.compile());
 	let a = new A();
 
-	assertEquals(a.outerHTML, '<a-190>&lt;HI&gt;</a-190>');
+	assert.eq(a.outerHTML, '<a-190>&lt;HI&gt;</a-190>');
 });
 
 Testimony.test('Refract.expr.HashVarAttribute', () => {
@@ -604,7 +604,7 @@ Testimony.test('Refract.expr.HashVarAttribute', () => {
 	eval(A.compile());
 	let a = new A();
 
-	assertEquals(a.outerHTML, '<a-195><div title="Hello User"></div></a-195>');
+	assert.eq(a.outerHTML, '<a-195><div title="Hello User"></div></a-195>');
 });
 
 
@@ -631,7 +631,7 @@ Testimony.test('Refract.expr.Inherited', () => {
 	// This used to fail before the constructor checked if virutalElement.apply() had already been applied in a super class.
 	let b = new B();
 
-	assertEquals(b.outerHTML, '<b-200>3</b-200>');
+	assert.eq(b.outerHTML, '<b-200>3</b-200>');
 
 });
 
@@ -646,9 +646,9 @@ Testimony.test('Refract.expr.conditional', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<a-210>Apple</a-210>`);
+	assert.eq(a.outerHTML, `<a-210>Apple</a-210>`);
 	a.value = 'Banana';
-	assertEquals(a.outerHTML, `<a-210>Banana</a-210>`);
+	assert.eq(a.outerHTML, `<a-210>Banana</a-210>`);
 });
 
 Testimony.test('Refract.expr.doubleConditional', () => {
@@ -660,9 +660,9 @@ Testimony.test('Refract.expr.doubleConditional', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<a-220>Apple</a-220>`);
+	assert.eq(a.outerHTML, `<a-220>Apple</a-220>`);
 	a.value = 'Banana';
-	assertEquals(a.outerHTML, `<a-220>Banana</a-220>`);
+	assert.eq(a.outerHTML, `<a-220>Banana</a-220>`);
 });
 
 Testimony.test('Refract.expr.tripleConditional', () => {
@@ -674,9 +674,9 @@ Testimony.test('Refract.expr.tripleConditional', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<a-230>Apple</a-230>`);
+	assert.eq(a.outerHTML, `<a-230>Apple</a-230>`);
 	a.value = 'Banana';
-	assertEquals(a.outerHTML, `<a-230>Banana</a-230>`);
+	assert.eq(a.outerHTML, `<a-230>Banana</a-230>`);
 });
 
 Testimony.test('Refract.expr.exprDereference', () => {
@@ -689,14 +689,14 @@ Testimony.test('Refract.expr.exprDereference', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<a-240>1</a-240>`);
+	assert.eq(a.outerHTML, `<a-240>1</a-240>`);
 	a.index = 1;
-	assertEquals(a.outerHTML, `<a-240>2</a-240>`);
+	assert.eq(a.outerHTML, `<a-240>2</a-240>`);
 	a.index = 2; // undefined index
-	assertEquals(a.outerHTML, `<a-240></a-240>`);
+	assert.eq(a.outerHTML, `<a-240></a-240>`);
 
 	a.values = [1, 2, 3];
-	assertEquals(a.outerHTML, `<a-240>3</a-240>`);
+	assert.eq(a.outerHTML, `<a-240>3</a-240>`);
 });
 
 Testimony.test('Refract.expr.exprTemplate', () => {
@@ -709,16 +709,16 @@ Testimony.test('Refract.expr.exprTemplate', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<a-250>1-2</a-250>`);
+	assert.eq(a.outerHTML, `<a-250>1-2</a-250>`);
 
 	a.values[0] = 0;
-	assertEquals(a.outerHTML, `<a-250>0-2</a-250>`);
+	assert.eq(a.outerHTML, `<a-250>0-2</a-250>`);
 
 	a.values = [3, 4];
-	assertEquals(a.outerHTML, `<a-250>3-4</a-250>`);
+	assert.eq(a.outerHTML, `<a-250>3-4</a-250>`);
 
 	a.delimiter = ';';
-	assertEquals(a.outerHTML, `<a-250>3;4</a-250>`);
+	assert.eq(a.outerHTML, `<a-250>3;4</a-250>`);
 });
 
 Testimony.test('Refract.expr.conditionalFunction', () => {
@@ -730,10 +730,10 @@ Testimony.test('Refract.expr.conditionalFunction', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<a-260>23</a-260>`);
+	assert.eq(a.outerHTML, `<a-260>23</a-260>`);
 	a.value = [3, 4];
 	a.delimiter = ';';
-	assertEquals(a.outerHTML, `<a-260>45</a-260>`);
+	assert.eq(a.outerHTML, `<a-260>45</a-260>`);
 });
 
 Testimony.test('Refract.expr.conditionalFunctionMap', () => {
@@ -748,13 +748,13 @@ Testimony.test('Refract.expr.conditionalFunctionMap', () => {
 
 
 	let a = new A();
-	assertEquals(a.outerHTML, '<a-270>2-3</a-270>');
+	assert.eq(a.outerHTML, '<a-270>2-3</a-270>');
 
 	a.value = [3, 4];
-	assertEquals(a.outerHTML, '<a-270>4-5</a-270>');
+	assert.eq(a.outerHTML, '<a-270>4-5</a-270>');
 
 	a.delimiter = ';';
-	assertEquals(a.outerHTML, '<a-270>4;5</a-270>');
+	assert.eq(a.outerHTML, '<a-270>4;5</a-270>');
 });
 
 Testimony.test('Refract.expr.conditionalFunction2', () => {
@@ -767,13 +767,13 @@ Testimony.test('Refract.expr.conditionalFunction2', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, '<a-280>2-3</a-280>');
+	assert.eq(a.outerHTML, '<a-280>2-3</a-280>');
 
 	a.value = [3, 4];
-	assertEquals(a.outerHTML, '<a-280>4-5</a-280>');
+	assert.eq(a.outerHTML, '<a-280>4-5</a-280>');
 
 	a.delimiter = ';';
-	assertEquals(a.outerHTML, '<a-280>4;5</a-280>');
+	assert.eq(a.outerHTML, '<a-280>4;5</a-280>');
 });
 
 
@@ -788,10 +788,10 @@ Testimony.test('Refract.attributes.basic', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-82 title="Hello"></x-82>`);
+	assert.eq(a.outerHTML, `<x-82 title="Hello"></x-82>`);
 
 	a.title = 'Goodbye';
-	assertEquals(a.outerHTML, `<x-82 title="Goodbye"></x-82>`);
+	assert.eq(a.outerHTML, `<x-82 title="Goodbye"></x-82>`);
 
 	a.title = [1, 2, 3];
 });
@@ -805,16 +805,16 @@ Testimony.test('Refract.attributes.StyleObject', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-87><div style="width: 10px;  height: 20px"></div></x-87>`);
+	assert.eq(a.outerHTML, `<x-87><div style="width: 10px;  height: 20px"></div></x-87>`);
 
 	a.styles = {top: 0, left: '3px'};
-	assertEquals(a.outerHTML, `<x-87><div style="width: 10px; top: 0; left: 3px;  height: 20px"></div></x-87>`);
+	assert.eq(a.outerHTML, `<x-87><div style="width: 10px; top: 0; left: 3px;  height: 20px"></div></x-87>`);
 
 	a.styles = {};
-	assertEquals(a.outerHTML, `<x-87><div style="width: 10px;  height: 20px"></div></x-87>`);
+	assert.eq(a.outerHTML, `<x-87><div style="width: 10px;  height: 20px"></div></x-87>`);
 
 	a.styles = '';
-	assertEquals(a.outerHTML, `<x-87><div style="width: 10px;  height: 20px"></div></x-87>`);
+	assert.eq(a.outerHTML, `<x-87><div style="width: 10px;  height: 20px"></div></x-87>`);
 });
 
 Testimony.test('Refract.attributes._Set', () => {
@@ -824,10 +824,10 @@ Testimony.test('Refract.attributes._Set', () => {
 	}
 	eval(A.compile());
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-85><div class="one "></div></x-85>`);
+	assert.eq(a.outerHTML, `<x-85><div class="one "></div></x-85>`);
 
 	a.classes.add('two');
-	assertEquals(a.outerHTML, `<x-85><div class="one two"></div></x-85>`);
+	assert.eq(a.outerHTML, `<x-85><div class="one two"></div></x-85>`);
 
 }); // Fails b/c Watch doesn't intercept Set() methods, so we don't get called on add().
 
@@ -841,21 +841,21 @@ Testimony.test('Refract.attributes.attributeExpression', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-88 contenteditable=""></x-88>`);
+	assert.eq(a.outerHTML, `<x-88 contenteditable=""></x-88>`);
 
 	a.attr = 'disabled';
-	assertEquals(a.outerHTML, `<x-88 disabled=""></x-88>`);
+	assert.eq(a.outerHTML, `<x-88 disabled=""></x-88>`);
 
 
 	a.attr = 'style="color: red"';
-	assertEquals(a.outerHTML, `<x-88 style="color: red"></x-88>`);
+	assert.eq(a.outerHTML, `<x-88 style="color: red"></x-88>`);
 
 	a.attr = '';
-	assertEquals(a.outerHTML, `<x-88></x-88>`);
+	assert.eq(a.outerHTML, `<x-88></x-88>`);
 	a.attr = null;
-	assertEquals(a.outerHTML, `<x-88></x-88>`);
+	assert.eq(a.outerHTML, `<x-88></x-88>`);
 	a.attr = undefined;
-	assertEquals(a.outerHTML, `<x-88></x-88>`);
+	assert.eq(a.outerHTML, `<x-88></x-88>`);
 
 	// TODO: Test attribute expression with ${} embedded in string.
 
@@ -872,19 +872,19 @@ Testimony.test('Refract.loop.Push', () => {
 	eval(A.compile());
 	let a = new A();
 
-	assertEquals(a.childNodes.length, 2);
-	assertEquals(a.outerHTML, '<x-20>AppleBanana</x-20>');
+	assert.eq(a.childNodes.length, 2);
+	assert.eq(a.outerHTML, '<x-20>AppleBanana</x-20>');
 
 	Refract.elsCreated = [];
 	a.fruits.push('Cherry');
-	assertEquals(a.outerHTML, '<x-20>AppleBananaCherry</x-20>');
-	assertEquals(Refract.elsCreated, ['Cherry']);
+	assert.eq(a.outerHTML, '<x-20>AppleBananaCherry</x-20>');
+	assert.eq(Refract.elsCreated, ['Cherry']);
 
 
 	Refract.elsCreated = [];
 	a.fruits.pop();
-	assertEquals(a.outerHTML, '<x-20>AppleBanana</x-20>');
-	assertEquals(Refract.elsCreated, []);
+	assert.eq(a.outerHTML, '<x-20>AppleBanana</x-20>');
+	assert.eq(Refract.elsCreated, []);
 });
 
 Testimony.test('Refract.loop.Unshift', () => {
@@ -895,19 +895,19 @@ Testimony.test('Refract.loop.Unshift', () => {
 	}
 	eval(A.compile());
 	let a = new A();
-	assertEquals(a.childNodes.length, 2);
-	assertEquals(a.outerHTML, '<x-22>AppleBanana</x-22>');
+	assert.eq(a.childNodes.length, 2);
+	assert.eq(a.outerHTML, '<x-22>AppleBanana</x-22>');
 
 	Refract.elsCreated = [];
 	a.fruits.unshift('Cherry');
-	assertEquals(a.outerHTML, '<x-22>CherryAppleBanana</x-22>');
-	assertEquals(Refract.elsCreated, ['Cherry']);
+	assert.eq(a.outerHTML, '<x-22>CherryAppleBanana</x-22>');
+	assert.eq(Refract.elsCreated, ['Cherry']);
 
 
 	Refract.elsCreated = [];
 	a.fruits.shift();
-	assertEquals(a.outerHTML, '<x-22>AppleBanana</x-22>');
-	assertEquals(Refract.elsCreated, []);
+	assert.eq(a.outerHTML, '<x-22>AppleBanana</x-22>');
+	assert.eq(Refract.elsCreated, []);
 });
 
 Testimony.test('Refract.loop.Set', () => {
@@ -920,12 +920,12 @@ Testimony.test('Refract.loop.Set', () => {
 	let a = new A();
 
 	a.fruits[0] = 'Cherry';
-	assertEquals(a.outerHTML, '<x-23>CherryBanana</x-23>');
-	assertEquals(a.childNodes.length, 2);
+	assert.eq(a.outerHTML, '<x-23>CherryBanana</x-23>');
+	assert.eq(a.childNodes.length, 2);
 
 	a.fruits[1] = 'DragonFruit';
-	assertEquals(a.outerHTML, '<x-23>CherryDragonFruit</x-23>');
-	assertEquals(a.childNodes.length, 2);
+	assert.eq(a.outerHTML, '<x-23>CherryDragonFruit</x-23>');
+	assert.eq(a.childNodes.length, 2);
 });
 
 Testimony.test('Refract.loop.Pop', () => {
@@ -938,8 +938,8 @@ Testimony.test('Refract.loop.Pop', () => {
 	let a = new A();
 
 	a.fruits.pop();
-	assertEquals(a.outerHTML, '<x-25>Apple</x-25>');
-	assertEquals(a.childNodes.length, 1);
+	assert.eq(a.outerHTML, '<x-25>Apple</x-25>');
+	assert.eq(a.childNodes.length, 1);
 });
 
 Testimony.test('Refract.loop.Map', () => {
@@ -954,12 +954,12 @@ Testimony.test('Refract.loop.Map', () => {
 	eval(A.compile());
 	let a = new A();
 
-	assertEquals(a.outerHTML, '<x-26>AppleBanana</x-26>');
+	assert.eq(a.outerHTML, '<x-26>AppleBanana</x-26>');
 
 	Refract.elsCreated = [];
 	a.fruits.push('Cherry');
-	assertEquals(a.outerHTML, '<x-26>AppleBananaCherry</x-26>');
-	assertEquals(Refract.elsCreated, ['Cherry']);
+	assert.eq(a.outerHTML, '<x-26>AppleBananaCherry</x-26>');
+	assert.eq(Refract.elsCreated, ['Cherry']);
 });
 
 Testimony.test('Refract.loop.Map2', () => {
@@ -974,12 +974,12 @@ Testimony.test('Refract.loop.Map2', () => {
 	eval(A.compile());
 	let a = new A();
 
-	assertEquals(a.outerHTML, '<x-28><p>Apple</p><p>Banana</p></x-28>');
+	assert.eq(a.outerHTML, '<x-28><p>Apple</p><p>Banana</p></x-28>');
 
 	Refract.elsCreated = [];
 	a.fruits.push('Cherry');
-	assertEquals(a.outerHTML, '<x-28><p>Apple</p><p>Banana</p><p>Cherry</p></x-28>');
-	assertEquals(Refract.elsCreated, ['<p>', 'Cherry']);
+	assert.eq(a.outerHTML, '<x-28><p>Apple</p><p>Banana</p><p>Cherry</p></x-28>');
+	assert.eq(Refract.elsCreated, ['<p>', 'Cherry']);
 });
 
 Testimony.test('Refract.loop.RandomItems', () => {
@@ -1024,10 +1024,10 @@ Testimony.test('Refract.loop.MapAttributes', () => {
 	eval(A.compile());
 	let a = new A();
 
-	assertEquals(a.outerHTML, `<x-310><p title="Apple"></p><p title="Banana"></p></x-310>`);
+	assert.eq(a.outerHTML, `<x-310><p title="Apple"></p><p title="Banana"></p></x-310>`);
 
 	a.fruits.push('Cherry');
-	assertEquals(a.outerHTML, `<x-310><p title="Apple"></p><p title="Banana"></p><p title="Cherry"></p></x-310>`);
+	assert.eq(a.outerHTML, `<x-310><p title="Apple"></p><p title="Banana"></p><p title="Cherry"></p></x-310>`);
 
 });
 
@@ -1043,15 +1043,15 @@ Testimony.test('Refract.loop.MapTwoChilden', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, '<x-320>Hi <b>Apple</b>Hi <b>Banana</b></x-320>');
+	assert.eq(a.outerHTML, '<x-320>Hi <b>Apple</b>Hi <b>Banana</b></x-320>');
 
 	a.fruits.pop();
-	assertEquals(a.outerHTML, '<x-320>Hi <b>Apple</b></x-320>');
+	assert.eq(a.outerHTML, '<x-320>Hi <b>Apple</b></x-320>');
 
 	window.debug = true;
 
 	a.fruits.unshift('Cherry');
-	assertEquals(a.outerHTML, '<x-320>Hi <b>Cherry</b>Hi <b>Apple</b></x-320>');
+	assert.eq(a.outerHTML, '<x-320>Hi <b>Cherry</b>Hi <b>Apple</b></x-320>');
 
 });
 
@@ -1067,12 +1067,12 @@ Testimony.test('Refract.loop.MapBrace', () => { // Make sure attribute quotes ar
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-330>12</x-330>`);
+	assert.eq(a.outerHTML, `<x-330>12</x-330>`);
 
 	Refract.elsCreated = [];
 	a.items.push(3);
-	assertEquals(a.outerHTML, `<x-330>123</x-330>`);
-	assertEquals(Refract.elsCreated, ['3']);
+	assert.eq(a.outerHTML, `<x-330>123</x-330>`);
+	assert.eq(Refract.elsCreated, ['3']);
 });
 
 Testimony.test('Refract.loop.MapBrace2', () => { // Make sure attribute quotes are escaped.
@@ -1087,7 +1087,7 @@ Testimony.test('Refract.loop.MapBrace2', () => { // Make sure attribute quotes a
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-340>1a2a</x-340>`);
+	assert.eq(a.outerHTML, `<x-340>1a2a</x-340>`);
 });
 
 Testimony.test('Refract.loop.ItemProps', () => {
@@ -1103,31 +1103,31 @@ Testimony.test('Refract.loop.ItemProps', () => {
 	}
 	eval(A.compile());
 	let a = new A();
-	assertEquals(a.outerHTML, '<x-350><p>Apple</p><p>Banana</p></x-350>');
+	assert.eq(a.outerHTML, '<x-350><p>Apple</p><p>Banana</p></x-350>');
 
 	// Change object
 	Refract.elsCreated = [];
 	a.fruits[1].name = 'Banana Split';
-	assertEquals(a.outerHTML, '<x-350><p>Apple</p><p>Banana Split</p></x-350>');
-	assertEquals(Refract.elsCreated, ['Banana Split']);
+	assert.eq(a.outerHTML, '<x-350><p>Apple</p><p>Banana Split</p></x-350>');
+	assert.eq(Refract.elsCreated, ['Banana Split']);
 
 	// Add object
 	Refract.elsCreated = [];
 	a.fruits.push({name: 'Cherry', order: 3});
-	assertEquals(a.outerHTML, '<x-350><p>Apple</p><p>Banana Split</p><p>Cherry</p></x-350>');
-	assertEquals(Refract.elsCreated, ['<p>', 'Cherry']);
+	assert.eq(a.outerHTML, '<x-350><p>Apple</p><p>Banana Split</p><p>Cherry</p></x-350>');
+	assert.eq(Refract.elsCreated, ['<p>', 'Cherry']);
 
 	// Change added object
 	Refract.elsCreated = [];
 	a.fruits[2].name = 'Cherry Pie';
-	assertEquals(a.outerHTML, '<x-350><p>Apple</p><p>Banana Split</p><p>Cherry Pie</p></x-350>');
-	assertEquals(Refract.elsCreated, ['Cherry Pie']);
+	assert.eq(a.outerHTML, '<x-350><p>Apple</p><p>Banana Split</p><p>Cherry Pie</p></x-350>');
+	assert.eq(Refract.elsCreated, ['Cherry Pie']);
 
 	// Remove object
 	Refract.elsCreated = [];
 	a.fruits.shift();
-	assertEquals(a.outerHTML, '<x-350><p>Banana Split</p><p>Cherry Pie</p></x-350>');
-	assertEquals(Refract.elsCreated, []);
+	assert.eq(a.outerHTML, '<x-350><p>Banana Split</p><p>Cherry Pie</p></x-350>');
+	assert.eq(Refract.elsCreated, []);
 
 });
 
@@ -1144,31 +1144,31 @@ Testimony.test('Refract.loop.ItemProps2', () => {
 	}
 	eval(A.compile());
 	let a = new A();
-	assertEquals(a.outerHTML, '<x-355><p>Apple</p><p>Banana</p></x-355>');
+	assert.eq(a.outerHTML, '<x-355><p>Apple</p><p>Banana</p></x-355>');
 
 	// Change item
 	Refract.elsCreated = [];
 	a.fruits[1][0] = 'Banana Split';
-	assertEquals(a.outerHTML, '<x-355><p>Apple</p><p>Banana Split</p></x-355>');
-	assertEquals(Refract.elsCreated, ['Banana Split']);
+	assert.eq(a.outerHTML, '<x-355><p>Apple</p><p>Banana Split</p></x-355>');
+	assert.eq(Refract.elsCreated, ['Banana Split']);
 
 	// Add item
 	Refract.elsCreated = [];
 	a.fruits.push(['Cherry']);
-	assertEquals(a.outerHTML, '<x-355><p>Apple</p><p>Banana Split</p><p>Cherry</p></x-355>');
-	assertEquals(Refract.elsCreated, ['<p>', 'Cherry']);
+	assert.eq(a.outerHTML, '<x-355><p>Apple</p><p>Banana Split</p><p>Cherry</p></x-355>');
+	assert.eq(Refract.elsCreated, ['<p>', 'Cherry']);
 
 	// Change added item
 	Refract.elsCreated = [];
 	a.fruits[2][0] = 'Cherry Pie';
-	assertEquals(a.outerHTML, '<x-355><p>Apple</p><p>Banana Split</p><p>Cherry Pie</p></x-355>');
-	assertEquals(Refract.elsCreated, ['Cherry Pie']);
+	assert.eq(a.outerHTML, '<x-355><p>Apple</p><p>Banana Split</p><p>Cherry Pie</p></x-355>');
+	assert.eq(Refract.elsCreated, ['Cherry Pie']);
 
 	// Remove item
 	Refract.elsCreated = [];
 	a.fruits.shift();
-	assertEquals(a.outerHTML, '<x-355><p>Banana Split</p><p>Cherry Pie</p></x-355>');
-	assertEquals(Refract.elsCreated, []);
+	assert.eq(a.outerHTML, '<x-355><p>Banana Split</p><p>Cherry Pie</p></x-355>');
+	assert.eq(Refract.elsCreated, []);
 
 });
 
@@ -1186,13 +1186,13 @@ Testimony.test('Refract.loop.ItemProps3', () => {
 	eval(A.compile());
 	let a = new A();
 
-	assertEquals(a.outerHTML, '<x-40><p>1 Apple</p><p>2 Banana</p></x-40>');
+	assert.eq(a.outerHTML, '<x-40><p>1 Apple</p><p>2 Banana</p></x-40>');
 
 	// Change object
 	Refract.elsCreated = [];
 	a.fruits[1].name = 'Banana Split';
-	assertEquals(a.outerHTML, '<x-40><p>1 Apple</p><p>2 Banana Split</p></x-40>');
-	assertEquals(Refract.elsCreated, ['Banana Split']);
+	assert.eq(a.outerHTML, '<x-40><p>1 Apple</p><p>2 Banana Split</p></x-40>');
+	assert.eq(Refract.elsCreated, ['Banana Split']);
 });
 
 Testimony.test('Refract.loop.PrimitiveToArray', () => { // Test changing a primitive property to an array.
@@ -1207,13 +1207,13 @@ Testimony.test('Refract.loop.PrimitiveToArray', () => { // Test changing a primi
 	eval(A.compile());
 	let a = new A();
 
-	assertEquals(a.outerHTML, '<x-45><p>Apple</p><p>Banana</p></x-45>');
+	assert.eq(a.outerHTML, '<x-45><p>Apple</p><p>Banana</p></x-45>');
 
 	// Replace primitive with array.
 	Refract.elsCreated = [];
 	a.fruits[0] = ['Apple Pie', 'Apple Cake'];
-	assertEquals(a.outerHTML, '<x-45><p>Apple PieApple Cake</p><p>Banana</p></x-45>');
-	assertEquals(Refract.elsCreated, ['<p>', 'Apple Pie', 'Apple Cake']);
+	assert.eq(a.outerHTML, '<x-45><p>Apple PieApple Cake</p><p>Banana</p></x-45>');
+	assert.eq(Refract.elsCreated, ['<p>', 'Apple Pie', 'Apple Cake']);
 });
 
 // Two loops within the same parent
@@ -1230,32 +1230,32 @@ Testimony.test('Refract.loop.double', () => {
 	//document.body.append(a.debugRender());
 
 	// 1. Initial Checks
-	assertEquals(a.childNodes.length, 4);
-	assertEquals(a.outerHTML, '<x-60>AppleBananaCatDog</x-60>');
+	assert.eq(a.childNodes.length, 4);
+	assert.eq(a.outerHTML, '<x-60>AppleBananaCatDog</x-60>');
 
 	// 2. Push item to first list.
 	Refract.elsCreated = [];
 	a.fruits.push('Cherry');
-	assertEquals(a.outerHTML, '<x-60>AppleBananaCherryCatDog</x-60>');
-	assertEquals(Refract.elsCreated, ['Cherry']);
+	assert.eq(a.outerHTML, '<x-60>AppleBananaCherryCatDog</x-60>');
+	assert.eq(Refract.elsCreated, ['Cherry']);
 
 	// 2. Shift item to second list.
 	Refract.elsCreated = [];
 	a.pets.unshift('Bird');
-	assertEquals(a.outerHTML, '<x-60>AppleBananaCherryBirdCatDog</x-60>');
-	assertEquals(Refract.elsCreated, ['Bird']);
+	assert.eq(a.outerHTML, '<x-60>AppleBananaCherryBirdCatDog</x-60>');
+	assert.eq(Refract.elsCreated, ['Bird']);
 
 	// 3. Splice item from first list.
 	Refract.elsCreated = [];
 	a.fruits.splice(1, 1);
-	assertEquals(a.outerHTML, '<x-60>AppleCherryBirdCatDog</x-60>');
-	assertEquals(Refract.elsCreated, []);
+	assert.eq(a.outerHTML, '<x-60>AppleCherryBirdCatDog</x-60>');
+	assert.eq(Refract.elsCreated, []);
 
 	// 3. Splice item from second list.
 	Refract.elsCreated = [];
 	a.pets.splice(1, 1);
-	assertEquals(a.outerHTML, '<x-60>AppleCherryBirdDog</x-60>');
-	assertEquals(Refract.elsCreated, []);
+	assert.eq(a.outerHTML, '<x-60>AppleCherryBirdDog</x-60>');
+	assert.eq(Refract.elsCreated, []);
 });
 
 Testimony.test('Refract.loop.Constant', () => {
@@ -1270,7 +1270,7 @@ Testimony.test('Refract.loop.Constant', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-65><p>1</p><p>1</p></x-65>`);
+	assert.eq(a.outerHTML, `<x-65><p>1</p><p>1</p></x-65>`);
 });
 
 Testimony.test('Refract.loop.nested', () => {
@@ -1289,29 +1289,29 @@ Testimony.test('Refract.loop.nested', () => {
 
 	let a = new A();
 
-	assertEquals(a.outerHTML, `<x-70><p>Apple Cat</p><p>Apple Dog</p><p>Banana Cat</p><p>Banana Dog</p></x-70>`);
+	assert.eq(a.outerHTML, `<x-70><p>Apple Cat</p><p>Apple Dog</p><p>Banana Cat</p><p>Banana Dog</p></x-70>`);
 
 	a.fruits.shift();
-	assertEquals(a.outerHTML, `<x-70><p>Banana Cat</p><p>Banana Dog</p></x-70>`);
+	assert.eq(a.outerHTML, `<x-70><p>Banana Cat</p><p>Banana Dog</p></x-70>`);
 
 	a.fruits.unshift('Cherry');
-	assertEquals(a.outerHTML, `<x-70><p>Cherry Cat</p><p>Cherry Dog</p><p>Banana Cat</p><p>Banana Dog</p></x-70>`);
+	assert.eq(a.outerHTML, `<x-70><p>Cherry Cat</p><p>Cherry Dog</p><p>Banana Cat</p><p>Banana Dog</p></x-70>`);
 
 	a.pets.pop();
-	assertEquals(a.outerHTML, `<x-70><p>Cherry Cat</p><p>Banana Cat</p></x-70>`);
+	assert.eq(a.outerHTML, `<x-70><p>Cherry Cat</p><p>Banana Cat</p></x-70>`);
 
 
 	// The second sub-array VExpression has its receiveNotification() called before the first,
 	// Due to the order they were previously added and removed.
 	a.pets.unshift('Bird');
-	assertEquals(a.outerHTML, `<x-70><p>Cherry Bird</p><p>Cherry Cat</p><p>Banana Bird</p><p>Banana Cat</p></x-70>`);
+	assert.eq(a.outerHTML, `<x-70><p>Cherry Bird</p><p>Cherry Cat</p><p>Banana Bird</p><p>Banana Cat</p></x-70>`);
 
 
 	a.pets.pop();
-	assertEquals(a.outerHTML, `<x-70><p>Cherry Bird</p><p>Banana Bird</p></x-70>`);
+	assert.eq(a.outerHTML, `<x-70><p>Cherry Bird</p><p>Banana Bird</p></x-70>`);
 
 	a.pets.pop();
-	assertEquals(a.outerHTML, `<x-70></x-70>`);
+	assert.eq(a.outerHTML, `<x-70></x-70>`);
 
 });
 
@@ -1341,41 +1341,41 @@ Testimony.test('Refract.loop.nested2', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-72><p>Cat will Sleep.</p><p>Cat will Eat.</p><p>Cat will Pur.</p><p>Dog will Frolic.</p><p>Dog will Fetch.</p></x-72>`);
+	assert.eq(a.outerHTML, `<x-72><p>Cat will Sleep.</p><p>Cat will Eat.</p><p>Cat will Pur.</p><p>Dog will Frolic.</p><p>Dog will Fetch.</p></x-72>`);
 
 
 	Refract.elsCreated = [];
 	a.pets[0].activities.splice(1, 1);
-	assertEquals(a.outerHTML, `<x-72><p>Cat will Sleep.</p><p>Cat will Pur.</p><p>Dog will Frolic.</p><p>Dog will Fetch.</p></x-72>`);
-	assertEquals(Refract.elsCreated, []); // Elements were only removed.  None should've been created.
+	assert.eq(a.outerHTML, `<x-72><p>Cat will Sleep.</p><p>Cat will Pur.</p><p>Dog will Frolic.</p><p>Dog will Fetch.</p></x-72>`);
+	assert.eq(Refract.elsCreated, []); // Elements were only removed.  None should've been created.
 
 
 	Refract.elsCreated = [];
 	a.pets.push({name: 'Fish', activities: []});
-	assertEquals(a.outerHTML, `<x-72><p>Cat will Sleep.</p><p>Cat will Pur.</p><p>Dog will Frolic.</p><p>Dog will Fetch.</p></x-72>`);
-	assertEquals(Refract.elsCreated, []);
+	assert.eq(a.outerHTML, `<x-72><p>Cat will Sleep.</p><p>Cat will Pur.</p><p>Dog will Frolic.</p><p>Dog will Fetch.</p></x-72>`);
+	assert.eq(Refract.elsCreated, []);
 
 	Refract.elsCreated = [];
 	a.pets[2].activities.push('Swim');
-	assertEquals(a.outerHTML, `<x-72><p>Cat will Sleep.</p><p>Cat will Pur.</p><p>Dog will Frolic.</p><p>Dog will Fetch.</p><p>Fish will Swim.</p></x-72>`);
-	assertEquals(Refract.elsCreated, ["<p>", "Fish", " will ", "Swim", "."]);
+	assert.eq(a.outerHTML, `<x-72><p>Cat will Sleep.</p><p>Cat will Pur.</p><p>Dog will Frolic.</p><p>Dog will Fetch.</p><p>Fish will Swim.</p></x-72>`);
+	assert.eq(Refract.elsCreated, ["<p>", "Fish", " will ", "Swim", "."]);
 
 	Refract.elsCreated = [];
 	a.pets.splice(1, 1);
-	assertEquals(a.outerHTML, `<x-72><p>Cat will Sleep.</p><p>Cat will Pur.</p><p>Fish will Swim.</p></x-72>`);
-	assertEquals(Refract.elsCreated, []);
+	assert.eq(a.outerHTML, `<x-72><p>Cat will Sleep.</p><p>Cat will Pur.</p><p>Fish will Swim.</p></x-72>`);
+	assert.eq(Refract.elsCreated, []);
 
 	// Change pet name.
 	Refract.elsCreated = [];
 	a.pets[0].name = 'Bird';
-	assertEquals(a.outerHTML, `<x-72><p>Bird will Sleep.</p><p>Bird will Pur.</p><p>Fish will Swim.</p></x-72>`);
-	assertEquals(Refract.elsCreated, ['Bird', 'Bird']);
+	assert.eq(a.outerHTML, `<x-72><p>Bird will Sleep.</p><p>Bird will Pur.</p><p>Fish will Swim.</p></x-72>`);
+	assert.eq(Refract.elsCreated, ['Bird', 'Bird']);
 
 	// Change name of pet activity.
 	Refract.elsCreated = [];
 	a.pets[0].activities[1] = 'Tweet';
-	assertEquals(a.outerHTML, `<x-72><p>Bird will Sleep.</p><p>Bird will Tweet.</p><p>Fish will Swim.</p></x-72>`);
-	assertEquals(Refract.elsCreated, ["<p>", "Bird", " will ", "Tweet", "."]);
+	assert.eq(a.outerHTML, `<x-72><p>Bird will Sleep.</p><p>Bird will Tweet.</p><p>Fish will Swim.</p></x-72>`);
+	assert.eq(Refract.elsCreated, ["<p>", "Bird", " will ", "Tweet", "."]);
 });
 
 Testimony.test('Refract.loop.nested3', () => {
@@ -1405,12 +1405,12 @@ Testimony.test('Refract.loop.nested3', () => {
 	let a = new A();
 	Refract.elsCreated = [];
 	a.pets[0].activities[0].name = 'Purr';
-	assertEquals(Refract.elsCreated, ['Purr']);
+	assert.eq(Refract.elsCreated, ['Purr']);
 
 	Refract.elsCreated = [];
 	a.verb = "won't";
-	assertEquals(a.outerHTML, `<x-740><p>Cat won't Purr.</p><p>Cat won't Eat.</p><p>Dog won't Frolic.</p></x-740>`);
-	assertEquals(Refract.elsCreated, ["won't", "won't", "won't"]);
+	assert.eq(a.outerHTML, `<x-740><p>Cat won't Purr.</p><p>Cat won't Eat.</p><p>Dog won't Frolic.</p></x-740>`);
+	assert.eq(Refract.elsCreated, ["won't", "won't", "won't"]);
 });
 
 Testimony.test('Refract.loop.grid', () => {
@@ -1526,14 +1526,14 @@ Testimony.test('Refract.loop.Slice', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-755>ab</x-755>`);
+	assert.eq(a.outerHTML, `<x-755>ab</x-755>`);
 
 	a.items[0] = 'c';
-	assertEquals(a.outerHTML, `<x-755>cb</x-755>`);
+	assert.eq(a.outerHTML, `<x-755>cb</x-755>`);
 
 
 	a.items = ['d', 'e'];
-	assertEquals(a.outerHTML, `<x-755>de</x-755>`);
+	assert.eq(a.outerHTML, `<x-755>de</x-755>`);
 });
 
 Testimony.test('Refract.loop.Expr', () => {
@@ -1548,10 +1548,10 @@ Testimony.test('Refract.loop.Expr', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-757>AppleApple</x-757>`);
+	assert.eq(a.outerHTML, `<x-757>AppleApple</x-757>`);
 
 	a.fruits.push('Banana');
-	assertEquals(a.outerHTML, `<x-757>AppleAppleBananaBanana</x-757>`);
+	assert.eq(a.outerHTML, `<x-757>AppleAppleBananaBanana</x-757>`);
 });
 
 Testimony.test('Refract.loop.Expr2', () => {
@@ -1566,7 +1566,7 @@ Testimony.test('Refract.loop.Expr2', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-760>a&gt;bc&lt;d&amp;e</x-760>`);
+	assert.eq(a.outerHTML, `<x-760>a&gt;bc&lt;d&amp;e</x-760>`);
 });
 
 Testimony.test('Refract.loop.Expr3', () => { // Make sure attribute quotes are escaped.
@@ -1581,7 +1581,7 @@ Testimony.test('Refract.loop.Expr3', () => { // Make sure attribute quotes are e
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-765><div title="&quot;">"</div><div title="'">'</div></x-765>`);
+	assert.eq(a.outerHTML, `<x-765><div title="&quot;">"</div><div title="'">'</div></x-765>`);
 });
 
 Testimony.test('Refract.loop.Expr4', () => {
@@ -1642,7 +1642,7 @@ Testimony.test('Refract.loop.Expr5', () => {
 
 	let a = new A();
 	assert.eq(a.outerHTML, '<a-767>2</a-767>');
-	assertEquals(a.childNodes.length, 1);
+	assert.eq(a.childNodes.length, 1);
 });
 
 
@@ -1662,14 +1662,14 @@ Testimony.test('Refract.loop.attributeExpr', () => { // Make sure loop scope is 
 	let a = new A();
 
 	a.files[0].selected = 'yes';
-	assertEquals(a.outerHTML, `<x-768><div class="yes">one</div></x-768>`);
+	assert.eq(a.outerHTML, `<x-768><div class="yes">one</div></x-768>`);
 
 	let file = {selected: 'no'};
 	a.files.push(file);
-	assertEquals(a.outerHTML, `<x-768><div class="yes">one</div><div class="no">one</div></x-768>`);
+	assert.eq(a.outerHTML, `<x-768><div class="yes">one</div><div class="no">one</div></x-768>`);
 
 	file.selected = 'yes';
-	assertEquals(a.outerHTML, `<x-768><div class="yes">one</div><div class="yes">one</div></x-768>`);
+	assert.eq(a.outerHTML, `<x-768><div class="yes">one</div><div class="yes">one</div></x-768>`);
 });
 
 Testimony.test('Refract.loop.If', () => {
@@ -1684,24 +1684,24 @@ Testimony.test('Refract.loop.If', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-770>Apple</x-770>`);
+	assert.eq(a.outerHTML, `<x-770>Apple</x-770>`);
 
 	a.fruits.push('Cherry');
-	assertEquals(a.outerHTML, `<x-770>Apple</x-770>`);
+	assert.eq(a.outerHTML, `<x-770>Apple</x-770>`);
 
 	a.fruits.push('Avacado');
-	assertEquals(a.outerHTML, `<x-770>AppleAvacado</x-770>`);
+	assert.eq(a.outerHTML, `<x-770>AppleAvacado</x-770>`);
 
 
 	a.fruits.shift();
-	assertEquals(a.outerHTML, `<x-770>Avacado</x-770>`);
+	assert.eq(a.outerHTML, `<x-770>Avacado</x-770>`);
 
 	a.fruits.unshift('Applesauce');
-	assertEquals(a.outerHTML, `<x-770>ApplesauceAvacado</x-770>`);
+	assert.eq(a.outerHTML, `<x-770>ApplesauceAvacado</x-770>`);
 
 	a.fruits[1] = 'Dragonfruit';
-	assertEquals(a.fruits.slice(), ['Applesauce', 'Dragonfruit', 'Cherry', 'Avacado']);
-	assertEquals(a.outerHTML, `<x-770>ApplesauceAvacado</x-770>`);
+	assert.eq(a.fruits.slice(), ['Applesauce', 'Dragonfruit', 'Cherry', 'Avacado']);
+	assert.eq(a.outerHTML, `<x-770>ApplesauceAvacado</x-770>`);
 });
 
 Testimony.test('Refract.loop.IfNested', () => {
@@ -1731,17 +1731,17 @@ Testimony.test('Refract.loop.IfNested', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<x-790><p>Cat will Sleep.</p><p>Dog will Frolic.</p><p>Dog will Fetch.</p></x-790>`);
+	assert.eq(a.outerHTML, `<x-790><p>Cat will Sleep.</p><p>Dog will Frolic.</p><p>Dog will Fetch.</p></x-790>`);
 
 	Refract.elsCreated = [];
 	a.pets[0].activities[0] = 'Doze'; // Less than 5 characters.
-	assertEquals(a.outerHTML, `<x-790><p>Dog will Frolic.</p><p>Dog will Fetch.</p></x-790>`);
-	assertEquals(Refract.elsCreated, []);
+	assert.eq(a.outerHTML, `<x-790><p>Dog will Frolic.</p><p>Dog will Fetch.</p></x-790>`);
+	assert.eq(Refract.elsCreated, []);
 
 	Refract.elsCreated = [];
 	a.pets[0].activities[0] = 'Slumber';
-	assertEquals(a.outerHTML, `<x-790><p>Cat will Slumber.</p><p>Dog will Frolic.</p><p>Dog will Fetch.</p></x-790>`);
-	assertEquals(Refract.elsCreated, ["<p>", "Cat", " will ", "Slumber", "."]);
+	assert.eq(a.outerHTML, `<x-790><p>Cat will Slumber.</p><p>Dog will Frolic.</p><p>Dog will Fetch.</p></x-790>`);
+	assert.eq(Refract.elsCreated, ["<p>", "Cat", " will ", "Slumber", "."]);
 });
 
 Testimony.test('Refract.loop.ifNested2', () => {
@@ -1770,18 +1770,18 @@ Testimony.test('Refract.loop.ifNested2', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<a-800><p>Cat will Sleep.</p><p>Cat will Eat.</p></a-800>`);
+	assert.eq(a.outerHTML, `<a-800><p>Cat will Sleep.</p><p>Cat will Eat.</p></a-800>`);
 
 	Refract.elsCreated = [];
 	a.pets[1].name='Cat2';
-	assertEquals(a.outerHTML, `<a-800><p>Cat will Sleep.</p><p>Cat will Eat.</p><p>Cat2 will Frolic.</p></a-800>`);
-	assertEquals(Refract.elsCreated, ["<p>", "Cat2 will Frolic."]);
+	assert.eq(a.outerHTML, `<a-800><p>Cat will Sleep.</p><p>Cat will Eat.</p><p>Cat2 will Frolic.</p></a-800>`);
+	assert.eq(Refract.elsCreated, ["<p>", "Cat2 will Frolic."]);
 
 	a.pets[0].name = 'Bird';
-	assertEquals(a.outerHTML, `<a-800><p>Cat2 will Frolic.</p></a-800>`);
+	assert.eq(a.outerHTML, `<a-800><p>Cat2 will Frolic.</p></a-800>`);
 
 	// It recreates the whole thing because it has to re-evaluate the pet.name.startsWith('C') expression.
-	assertEquals(Refract.elsCreated, ['<p>', 'Cat2 will Frolic.']);
+	assert.eq(Refract.elsCreated, ['<p>', 'Cat2 will Frolic.']);
 });
 
 // Nested
@@ -1805,7 +1805,7 @@ Testimony.test('Refract.nested.basic', () => {
 
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<a-90><b-90 name="Apple">Apple</b-90></a-90>`);
+	assert.eq(a.outerHTML, `<a-90><b-90 name="Apple">Apple</b-90></a-90>`);
 });
 
 Testimony.test('Refract.nested.passOBj', () => {
@@ -1828,24 +1828,24 @@ Testimony.test('Refract.nested.passOBj', () => {
 
 	let a = new A();
 
-	assertEquals(a.outerHTML, `<a-95><x-b95 fruits="Apple Banana">AppleBanana</x-b95></a-95>`);
+	assert.eq(a.outerHTML, `<a-95><x-b95 fruits="Apple Banana">AppleBanana</x-b95></a-95>`);
 
 	// Make sure the child refr watches the parent's array.
 	Refract.elsCreated = [];
 	a.fruits.push('Cherry');
-	assertEquals(a.outerHTML, `<a-95><x-b95 fruits="Apple Banana Cherry">AppleBananaCherry</x-b95></a-95>`);
-	assertEquals(Refract.elsCreated, ['Cherry']);
+	assert.eq(a.outerHTML, `<a-95><x-b95 fruits="Apple Banana Cherry">AppleBananaCherry</x-b95></a-95>`);
+	assert.eq(Refract.elsCreated, ['Cherry']);
 
 
 	Refract.elsCreated = [];
 	a.fruits.push('DragonFruit');
-	assertEquals(a.outerHTML, `<a-95><x-b95 fruits="Apple Banana Cherry DragonFruit">AppleBananaCherryDragonFruit</x-b95></a-95>`);
-	assertEquals(Refract.elsCreated, ['DragonFruit']);
+	assert.eq(a.outerHTML, `<a-95><x-b95 fruits="Apple Banana Cherry DragonFruit">AppleBananaCherryDragonFruit</x-b95></a-95>`);
+	assert.eq(Refract.elsCreated, ['DragonFruit']);
 
 	Refract.elsCreated = [];
 	a.fruits.shift();
-	assertEquals(a.outerHTML, `<a-95><x-b95 fruits="Banana Cherry DragonFruit">BananaCherryDragonFruit</x-b95></a-95>`);
-	assertEquals(Refract.elsCreated, []);
+	assert.eq(a.outerHTML, `<a-95><x-b95 fruits="Banana Cherry DragonFruit">BananaCherryDragonFruit</x-b95></a-95>`);
+	assert.eq(Refract.elsCreated, []);
 });
 
 Testimony.test('Refract.nested.passSelf', "Pass a parent's 'this' reference to a child.", () => {
@@ -1899,13 +1899,13 @@ Testimony.test('Refract.nested.loop', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<a-100><x-b100 fruit="Apple"><b>Apple</b></x-b100><x-b100 fruit="Banana"><b>Banana</b></x-b100></a-100>`);
+	assert.eq(a.outerHTML, `<a-100><x-b100 fruit="Apple"><b>Apple</b></x-b100><x-b100 fruit="Banana"><b>Banana</b></x-b100></a-100>`);
 
 	a.fruits.push('Cherry');
-	assertEquals(a.outerHTML, `<a-100><x-b100 fruit="Apple"><b>Apple</b></x-b100><x-b100 fruit="Banana"><b>Banana</b></x-b100><x-b100 fruit="Cherry"><b>Cherry</b></x-b100></a-100>`);
+	assert.eq(a.outerHTML, `<a-100><x-b100 fruit="Apple"><b>Apple</b></x-b100><x-b100 fruit="Banana"><b>Banana</b></x-b100><x-b100 fruit="Cherry"><b>Cherry</b></x-b100></a-100>`);
 
 	a.fruits.splice(1, 1);
-	assertEquals(a.outerHTML, `<a-100><x-b100 fruit="Apple"><b>Apple</b></x-b100><x-b100 fruit="Cherry"><b>Cherry</b></x-b100></a-100>`);
+	assert.eq(a.outerHTML, `<a-100><x-b100 fruit="Apple"><b>Apple</b></x-b100><x-b100 fruit="Cherry"><b>Cherry</b></x-b100></a-100>`);
 });
 
 Testimony.test('Refract.nested.childProp', () => {
@@ -1928,10 +1928,10 @@ Testimony.test('Refract.nested.childProp', () => {
 
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<a-102><b-102 id="b" name="Apple">Apple</b-102>Apple</a-102>`);
+	assert.eq(a.outerHTML, `<a-102><b-102 id="b" name="Apple">Apple</b-102>Apple</a-102>`);
 
 	a.b.name = 'Banana'; // [below] name attribute doesn't change b/c it was a static value passed to the constructor
-	assertEquals(a.outerHTML, `<a-102><b-102 id="b" name="Apple">Banana</b-102>Banana</a-102>`);
+	assert.eq(a.outerHTML, `<a-102><b-102 id="b" name="Apple">Banana</b-102>Banana</a-102>`);
 });
 
 Testimony.test('Refract.nested.childProp2', () => {
@@ -1972,10 +1972,10 @@ Testimony.test('Refract.nested._recursive', () => {
 	// See the code in VElement.apply() where we keep looping through different names calling customElements.define()
 	// until we can create one.
 	let div = createEl(`<a-105><a-105></a-105></a-105>`);
-	assertEquals(div.outerHTML, '<a-105 title="c"><slot><a-105_1 title="c"><slot></slot>b</a-105_1></slot>b</a-105>');
+	assert.eq(div.outerHTML, '<a-105 title="c"><slot><a-105_1 title="c"><slot></slot>b</a-105_1></slot>b</a-105>');
 
 	div = createEl(`<a-105><a-105><a-105></a-105></a-105></a-105>`);
-	assertEquals(div.outerHTML, '<a-105 title="c"><slot><a-105_1 title="c"><slot><a-105_1 title="c"><slot></slot>b</a-105_1></slot>b</a-105_1></slot>b</a-105>');
+	assert.eq(div.outerHTML, '<a-105 title="c"><slot><a-105_1 title="c"><slot><a-105_1 title="c"><slot></slot>b</a-105_1></slot>b</a-105_1></slot>b</a-105>');
 });
 
 
@@ -2001,10 +2001,10 @@ Testimony.test('Refract.nested._childPropForwardReference', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.outerHTML, `<a-107>Apple<b-107 id="b" name="Apple">Apple</b-107></a-107>`);
+	assert.eq(a.outerHTML, `<a-107>Apple<b-107 id="b" name="Apple">Apple</b-107></a-107>`);
 
 	a.b.name = 'Banana';
-	assertEquals(a.outerHTML, `<a-107>Banana<b-107 id="b" name="Apple">Banana</b-107></a-107>`);
+	assert.eq(a.outerHTML, `<a-107>Banana<b-107 id="b" name="Apple">Banana</b-107></a-107>`);
 });
 
 
@@ -2018,16 +2018,16 @@ Testimony.test('Refract.form.inputExpr', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.input.value, 'Apple');
+	assert.eq(a.input.value, 'Apple');
 
 	// Set class value.
 	a.value = 'Banana';
-	assertEquals(a.input.value, 'Banana');
+	assert.eq(a.input.value, 'Banana');
 
 	// Set input value
 	a.input.value = 'Cherry';
 	a.input.dispatchEvent(new Event('input'));
-	assertEquals(a.value, 'Cherry');
+	assert.eq(a.value, 'Cherry');
 });
 
 Testimony.test('Refract.form.inputExprUndefined', () => {
@@ -2039,16 +2039,16 @@ Testimony.test('Refract.form.inputExprUndefined', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.input.value, '');
+	assert.eq(a.input.value, '');
 
 	// Set class value.
 	a.form.value = 'Banana';
-	assertEquals(a.input.value, 'Banana');
+	assert.eq(a.input.value, 'Banana');
 
 	// Set input value
 	a.input.value = 'Cherry';
 	a.input.dispatchEvent(new Event('input'));
-	assertEquals(a.form.value, 'Cherry');
+	assert.eq(a.form.value, 'Cherry');
 });
 
 Testimony.test('Refract.form.inputEvent', () => {
@@ -2060,14 +2060,14 @@ Testimony.test('Refract.form.inputEvent', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.input.value, 'Apple Pie');
+	assert.eq(a.input.value, 'Apple Pie');
 
 	a.value = 'Banana';
-	assertEquals(a.input.value, 'Banana Pie');
+	assert.eq(a.input.value, 'Banana Pie');
 
 	a.input.value = 'Cherry Pie';
 	a.input.dispatchEvent(new Event('input'));
-	assertEquals(a.value, 'Cherry');
+	assert.eq(a.value, 'Cherry');
 });
 
 Testimony.test('Refract.form.inputValueOnInputExpr', () => {
@@ -2079,14 +2079,14 @@ Testimony.test('Refract.form.inputValueOnInputExpr', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.input.value, 'Apple Pie');
+	assert.eq(a.input.value, 'Apple Pie');
 
 	a.value = 'Banana';
-	assertEquals(a.input.value, 'Banana Pie');
+	assert.eq(a.input.value, 'Banana Pie');
 
 	a.input.value = 'Cherry Pie';
 	a.input.dispatchEvent(new Event('input'));
-	assertEquals(a.value, 'Cherry');
+	assert.eq(a.value, 'Cherry');
 });
 
 Testimony.test('Refract.form.inputExprDereference', () => {
@@ -2102,18 +2102,18 @@ Testimony.test('Refract.form.inputExprDereference', () => {
 
 	a.input.value = 'two';
 	a.input.dispatchEvent(new Event('input'));
-	assertEquals(a.values[0], 'two');
+	assert.eq(a.values[0], 'two');
 
 
 	a.values[0] = 'three';
-	assertEquals(a.input.value, 'three');
+	assert.eq(a.input.value, 'three');
 
 	a.index = 1;
-	assertEquals(a.input.value, 'one');
+	assert.eq(a.input.value, 'one');
 
 	a.input.value = 'four';
 	a.input.dispatchEvent(new Event('input'));
-	assertEquals(a.values[1], 'four');
+	assert.eq(a.values[1], 'four');
 });
 
 
@@ -2144,7 +2144,7 @@ Testimony.test('Refract.form._inputExprComplex', () => {
 	a.firstElementChild.value = 'cherry';
 	a.firstElementChild.dispatchEvent(new Event('input'));
 	console.log(a.values);
-	//assertEquals(a.values.name, 'cherry');
+	//assert.eq(a.values.name, 'cherry');
 });
 
 
@@ -2167,7 +2167,7 @@ Testimony.test('Refract.form._inputExprComplex2', () => {
 	a.firstElementChild.value = 'cherry';
 	a.firstElementChild.dispatchEvent(new Event('input'));
 	console.log(a.values);
-	//assertEquals(a.values.name, 'cherry');
+	//assert.eq(a.values.name, 'cherry');
 });
 
 Testimony.test('Refract.form._inputExprComplex3', () => {
@@ -2191,7 +2191,7 @@ Testimony.test('Refract.form._inputExprComplex3', () => {
 	a.firstElementChild.value = 'cherry';
 	a.firstElementChild.dispatchEvent(new Event('input'));
 	console.log(a.values);
-	//assertEquals(a.values.name, 'cherry');
+	//assert.eq(a.values.name, 'cherry');
 });
 
 
@@ -2215,15 +2215,15 @@ Testimony.test('Refract.form.select', () => {
 	// document.body.append(a);
 	// window.a = a;
 
-	assertEquals(a.select.value, 'two');
+	assert.eq(a.select.value, 'two');
 
 	a.select.selectedIndex = 0;
 	a.select.dispatchEvent(new Event('change'));
-	assertEquals(a.value, 'one');
-	assertEquals(a.select.value, 'one');
+	assert.eq(a.value, 'one');
+	assert.eq(a.select.value, 'one');
 
 	a.value = 'two';
-	assertEquals(a.select.value, 'two');
+	assert.eq(a.select.value, 'two');
 
 });
 
@@ -2245,17 +2245,17 @@ Testimony.test('Refract.form.SelectMultiple', () => {
 
 	a.select.children[0].selected = true;
 	a.select.dispatchEvent(new Event('change'));
-	assertEquals(a.value, ['one', 'two']);
+	assert.eq(a.value, ['one', 'two']);
 
 	a.value = ['two'];
-	assertEquals(a.select.value, 'two');
-	assertEquals(a.select.children[0].selected, false);
-	assertEquals(a.select.children[1].selected, true);
+	assert.eq(a.select.value, 'two');
+	assert.eq(a.select.children[0].selected, false);
+	assert.eq(a.select.children[1].selected, true);
 
 	a.value = ['one', 'two'];
-	assertEquals(a.select.value, 'one'); // Value will only have the first one.
-	assertEquals(a.select.children[0].selected, true);
-	assertEquals(a.select.children[1].selected, true);
+	assert.eq(a.select.value, 'one'); // Value will only have the first one.
+	assert.eq(a.select.children[0].selected, true);
+	assert.eq(a.select.children[1].selected, true);
 });
 
 Testimony.test('Refract.form.contenteditable', () => {
@@ -2267,16 +2267,16 @@ Testimony.test('Refract.form.contenteditable', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.input.textContent, 'Apple');
+	assert.eq(a.input.textContent, 'Apple');
 
 	// Set class value.
 	a.value = 'Banana';
-	assertEquals(a.input.textContent, 'Banana');
+	assert.eq(a.input.textContent, 'Banana');
 
 	// Set input value
 	a.input.textContent = 'Cherry';
 	a.input.dispatchEvent(new Event('input'));
-	assertEquals(a.value, 'Cherry');
+	assert.eq(a.value, 'Cherry');
 });
 
 Testimony.test('Refract.form.contenteditableExpr', () => {
@@ -2296,7 +2296,7 @@ Testimony.test('Refract.form.contenteditableExpr', () => {
 		err = e;
 	}
 	assert(err);
-	assertEquals(err.message.includes('templates as children'), true);
+	assert.eq(err.message.includes('templates as children'), true);
 
 });
 
@@ -2321,9 +2321,9 @@ Testimony.test('Refract.events.basic', () => {
 	let e = new E();
 	e.btn.dispatchEvent(new MouseEvent('click', {view: window, bubbles: true, cancelable: true}));
 
-	assertEquals(count, 1);
-	assertEquals(clicked.event.type, 'click')
-	assertEquals(clicked.el, e.btn);
+	assert.eq(count, 1);
+	assert.eq(clicked.event.type, 'click')
+	assert.eq(clicked.el, e.btn);
 });
 
 
@@ -2350,9 +2350,9 @@ Testimony.test('Refract.events.Loop', () => {
 	let e = new E();
 	e.children[1].dispatchEvent(new MouseEvent('click', {view: window, bubbles: true, cancelable: true}));
 
-	assertEquals(clicked.event.type, 'click')
-	assertEquals(clicked.el, e.children[1]);
-	assertEquals(clicked.fruit, 'Banana');
+	assert.eq(clicked.event.type, 'click')
+	assert.eq(clicked.el, e.children[1]);
+	assert.eq(clicked.fruit, 'Banana');
 });
 
 // Same as above, but as an expression instead of a parsed loop.
@@ -2378,9 +2378,9 @@ Testimony.test('Refract.events._Loop2', () => {
 	let e = new E();
 	e.children[1].dispatchEvent(new MouseEvent('click', {view: window, bubbles: true, cancelable: true}));
 
-	assertEquals(clicked.event.type, 'click')
-	assertEquals(clicked.el, e.children[1]);
-	assertEquals(clicked.fruit, 'Banana');
+	assert.eq(clicked.event.type, 'click')
+	assert.eq(clicked.el, e.children[1]);
+	assert.eq(clicked.fruit, 'Banana');
 });
 
 Testimony.test('Refract.shadow.basic', () => {
@@ -2391,8 +2391,8 @@ Testimony.test('Refract.shadow.basic', () => {
 
 	let s = new S();
 	assert(s.shadowRoot);
-	assertEquals(s.shadowRoot.firstChild.tagName, 'DIV');
-	assertEquals(s.shadowRoot.innerHTML, '<div>hi</div>');
+	assert.eq(s.shadowRoot.firstChild.tagName, 'DIV');
+	assert.eq(s.shadowRoot.innerHTML, '<div>hi</div>');
 });
 
 Testimony.test('Refract.shadow.text', () => {
@@ -2403,7 +2403,7 @@ Testimony.test('Refract.shadow.text', () => {
 
 	let s = new S();
 	assert(s.shadowRoot);
-	assertEquals(s.shadowRoot.innerHTML, '<div>hi</div> ');
+	assert.eq(s.shadowRoot.innerHTML, '<div>hi</div> ');
 });
 
 Testimony.test('Refract.slot.basic', () => {
@@ -2417,7 +2417,7 @@ Testimony.test('Refract.slot.basic', () => {
 	eval(A.compile());
 
 	let a = createEl(`<a-400>test</a-400>`);
-	assertEquals(a.outerHTML, '<a-400><p><slot>test</slot></p></a-400>');
+	assert.eq(a.outerHTML, '<a-400><p><slot>test</slot></p></a-400>');
 });
 
 Testimony.test('Refract.slot.Eval', () => {
@@ -2432,7 +2432,7 @@ Testimony.test('Refract.slot.Eval', () => {
 	eval(A.compile());
 
 	let a = createEl('<a-402>${this.item}</a-402>');
-	assertEquals(a.outerHTML, '<a-402><p><slot>3</slot></p></a-402>');
+	assert.eq(a.outerHTML, '<a-402><p><slot>3</slot></p></a-402>');
 });
 
 Testimony.test('Refract.slot.Loop', () => {
@@ -2449,7 +2449,7 @@ Testimony.test('Refract.slot.Loop', () => {
 	eval(A.compile());
 
 	let a = createEl('<a-404>${x}</a-404>');
-	assertEquals(a.outerHTML, '<a-404><slot>A</slot><slot>B</slot><slot>C</slot></a-404>');
+	assert.eq(a.outerHTML, '<a-404><slot>A</slot><slot>B</slot><slot>C</slot></a-404>');
 });
 
 Testimony.test('Refract.slot.multiple', () => {
@@ -2459,7 +2459,7 @@ Testimony.test('Refract.slot.multiple', () => {
 	eval(A.compile());
 
 	let a = createEl(`<a-415>test</a-415>`);
-	assertEquals(a.outerHTML,
+	assert.eq(a.outerHTML,
 		`<a-415><p><slot>test</slot></p><slot>test</slot></a-415>`);
 });
 
@@ -2475,8 +2475,8 @@ Testimony.test('Refract.slot.nested', () => {
 	eval(A.compile());
 
 	let a = createEl(`<a-420></a-420>`);
-	assertEquals(a.innerHTML, ``);
-	assertEquals(a.shadowRoot.innerHTML, `<b-420><slot><div>apple</div></slot></b-420>`);
+	assert.eq(a.innerHTML, ``);
+	assert.eq(a.shadowRoot.innerHTML, `<b-420><slot><div>apple</div></slot></b-420>`);
 });
 
 
@@ -2527,7 +2527,7 @@ Testimony.test('Refract.slot._named', () => {
 	eval(A.compile());
 
 	let a = createEl(`<a-425><div slot="slot1">content</div></a-425>`);
-	assertEquals(a.outerHTML, '<a-425>begin<slot name="slot1">content</slot>end</a-425>');
+	assert.eq(a.outerHTML, '<a-425>begin<slot name="slot1">content</slot>end</a-425>');
 });
 
 Testimony.test('Refract._debugRender', () => {
@@ -2575,16 +2575,16 @@ Testimony.test('Refract.misc.formInputDeep', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.input.value, 'Apple');
+	assert.eq(a.input.value, 'Apple');
 
 	// Set class value
 	a.deep.value = 'Banana';
-	assertEquals(a.input.value, 'Banana');
+	assert.eq(a.input.value, 'Banana');
 
 	// Set input value
 	a.input.value = 'Cherry';
 	a.input.dispatchEvent(new Event('input'));
-	assertEquals(a.deep.value, 'Cherry');
+	assert.eq(a.deep.value, 'Cherry');
 
 	window.a = a;
 });
@@ -2599,13 +2599,13 @@ Testimony.test('Refract.misc.TwoVars', () => {
 	eval(A.compile());
 
 	let a = new A();
-	assertEquals(a.innerHTML, '3');
+	assert.eq(a.innerHTML, '3');
 
 	a.b = 3;
-	assertEquals(a.innerHTML, '4');
+	assert.eq(a.innerHTML, '4');
 
 	a.a = 2;
-	assertEquals(a.innerHTML, '5');
+	assert.eq(a.innerHTML, '5');
 });
 
 
@@ -2638,6 +2638,6 @@ Testimony.test('Refract.benchmark.10kOptions', () => {
 	let time = new Date() - start;
 	console.log(time);
 
-	assertEquals(a.select.childNodes.length, num);
+	assert.eq(a.select.childNodes.length, num);
 
 });
