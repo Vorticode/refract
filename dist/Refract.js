@@ -1607,7 +1607,10 @@ fregex.capture = (...rules) => {
 		result.debug = 'and(' + rules.map(r => r.debug || r).join(', ') + ')';
 	//#ENDIF
 	return result;
+};
 
+fregex.captureName = name => {
+	return new CaptureName(name);
 };
 
 /**
@@ -1737,24 +1740,24 @@ fregex.oneOrMore = (...rules) => fregex.xOrMore(1, ...rules);
  * @param pattern {*[]|function(tokens:*[]):int|bool}
  * @param haystack {array}
  * @param startIndex {int}
- * @param capture
  * @return {*[]} A slice of the items in haystack that match.
  *     with an added index property designating the index of the match within the haystack array. */
 fregex.matchFirst = (pattern, haystack, startIndex=0, capture=[]) => {
-	let result = fregex.matchAll(pattern, haystack, 1, startIndex, capture);
+	let result = fregex.matchAll(pattern, haystack, 1, startIndex);
 	return result.length ? result[0] : null;
 };
 
-fregex.matchAll = (pattern, haystack, limit=Infinity, startIndex=0, capture=[]) => {
+fregex.matchAll = (pattern, haystack, limit=Infinity, startIndex=0) => {
 	if (Array.isArray(pattern))
 		pattern = fregex(pattern);
 	let result = [];
 
 	// Iterate through each offset in haystack looking for strings of tokens that match pattern.
 	for (let i = startIndex; i < haystack.length && result.length < limit; i++) {
+		let capture = [];
 		let count = pattern(haystack.slice(i), capture);
 		if (count !== false)
-			result.push(Object.assign(haystack.slice(i, i + count), {index: i}));
+			result.push(Object.assign(haystack.slice(i, i + count), {index: i, capture}));
 	}
 	return result;
 };
@@ -1762,6 +1765,9 @@ fregex.matchAll = (pattern, haystack, limit=Infinity, startIndex=0, capture=[]) 
 /**
  * Starting with the first token, this function finds all tokens until it encounters the string specified by `isEnd`,
  * but it uses `isIncrement` and `isDecrement` to avoid finding `isEnd` within a scope.
+ *
+ * TODO: Does this duplicate some of ArrayUtil.find() ?
+ *
  * @param {object[]} tokens
  * @param {string | array | object | function} isEnd
  * @param {string | array | object | function} [isIncrement] Accepts the string of tokens and returns the number of tokens consumed.
@@ -1789,9 +1795,8 @@ fregex.munch = (tokens, isEnd, isIncrement = null, isDecrement = null, includeEn
 
 		if (!scope) {
 			const count = isEnd(next);
-			if (count !== false) {
+			if (count !== false)
 				return tokens.slice(0, includeEnd ? i + count : i);
-			}
 		}
 
 		if (isIncrement) {
@@ -1881,7 +1886,7 @@ var prepareRule = rule => {
 		return tokens => {
 			for (let name in rule)
 				// noinspection EqualityComparisonWithCoercionJS
-				if (tokens[0][name] != rule[name]) // TODO: What if tokens is an empty array and [0] is undefined?
+				if (!tokens[0] || (tokens[0][name] != rule[name])) // TODO: What if tokens is an empty array and [0] is undefined?
 					return false;
 
 			return 1; // Advance 1 token.
@@ -2789,8 +2794,8 @@ var Html = {
 
 	},
 
-	encode(text, quotes='') {
-		text = utils.toString(text) // TODO: This changes 0 to ''
+	encode(text, quotes='"') {
+		text = (text === null || text === undefined ? '' : text+'')
 			.replace(/&/g, '&amp;')
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;')
@@ -2883,7 +2888,7 @@ class VText {
 	//#ENDIF
 
 	static styleReplace_(text, rTag, styleId) {
-		return text.replace(new RegExp(rTag+'|:host', 'g'), rTag + '[data-style="' +  styleId + '"]')
+		return text.replace(/:host(?=[^a-z0-9_])/gi, rTag + '[data-style="' +  styleId + '"]')
 	}
 }
 
@@ -3878,22 +3883,28 @@ class VElement {
 			if (oldEl) {  // Replacing existing element
 				oldEl.parentNode.insertBefore(newEl, oldEl);
 				oldEl.remove();
-			} else {// if (parent)
+			}
+
+			else {// if (parent)
 
 				if (!oldEl) {
+
 					let p2 = parent.shadowRoot || parent;
 
 					// Insert into slot if it has one.  TODO: How to handle named slots here?
-					if (p2 !== this.refr_ && p2.tagName && p2.tagName.includes('-') && newEl.tagName !== 'SLOT')
-						p2 = p2.querySelector('slot') || p2;
+					if (p2 !== this.refr_ && p2.tagName && p2.tagName.includes('-') && newEl.tagName !== 'SLOT') {
+
+						if (this.attributes_.slot)
+							p2 = p2.querySelector(`slot[name="${this.attributes_.slot[0]}"]`) || p2.querySelector('slot') || p2;
+						else
+							p2 = p2.querySelector('slot') || p2;
+					}
 					p2.insertBefore(newEl, p2.childNodes[this.startIndex_]);
 				}
 			}
 
-
 			//Refract.virtualElements.set(newEl, this);
 			this.el = newEl;
-
 
 			Globals.currentVElement_ = null;
 
@@ -3934,7 +3945,7 @@ class VElement {
 		// 5. Attributes (besides shadow)
 		for (let name in this.attributes_) {
 			let value = this.attributes_[name];
-			for (let attrPart of value)
+			for (let attrPart of value || [])
 				if (attrPart instanceof VExpression) {
 					let expr = attrPart;
 					expr.parent_ = this.el;
@@ -3992,7 +4003,7 @@ class VElement {
 
 		// 6. Form field two-way binding.
 		// Listening for user to type in form field.
-		let hasValue = (('value' in this.attributes_)&& tagName !== 'option');
+		let hasValue = (('value' in this.attributes_) && tagName !== 'option');
 		if (hasValue) {
 			let valueExprs = this.attributes_.value;
 			let isSimpleExpr = valueExprs.length === 1 && (valueExprs[0] instanceof VExpression) && valueExprs[0].type === 'simple';
@@ -4134,7 +4145,9 @@ class VElement {
 
 
 	/**
-	 * TODO: Reduce shared logic between this and evalVAttribute
+	 * TODO: Reduce shared logic between this and evalVAttribute.
+	 * This one is used only by SelectBox.
+	 *
 	 * If a solitary VExpression, return whatever object it evaluates to.
 	 * Otherwise merge all pieces into a string and return that.
 	 * value="${'one'}" becomes 'one'
@@ -4152,8 +4165,7 @@ class VElement {
 		// If it's a single value, return that.
 		if (result.length === 1)
 			return result[0];
-
-		return result.flat().map(utils.toString).join('');
+		return result;
 	}
 
 	/**
@@ -4163,7 +4175,7 @@ class VElement {
 	 * @return {string} */
 	static evalVAttributeAsString_(refr, attrParts, scope={}) {
 		let result = [];
-		for (let attrPart of attrParts) {
+		for (let attrPart of attrParts || []) {
 			if (attrPart instanceof VExpression) {
 				let val = attrPart.exec_.apply(refr, Object.values(scope));
 				if (Array.isArray(val) || (val instanceof Set))
@@ -4522,6 +4534,7 @@ class Compiler {
 
 		// This code runs after the call to super() and after all the other properties are initialized.
 
+
 		// Turn autoRender into a property if it's not a property already.
 		// It might be a property if we inherit from another Refract class.
 		let preInitVal = (() => {
@@ -4546,7 +4559,9 @@ class Compiler {
 			if (this.__autoRender)
 				this.render();
 
-			if (this.init) {
+			// Ensure constructor is only called on self, not an extra time from inheriting classes.
+			let status = this.tagName === '%tagName%'; // fails if inlined, but why?!
+			if (this.init && status) {
 				let args = this.parentElement
 					? this.constructor.compiler.populateArgsFromAttribs(this, this.constructor.getInitArgs_())
 					: this.constructorArgs2_;
@@ -4559,12 +4574,18 @@ class Compiler {
 		// New path.
 		if (self.prototype.html) {
 			result.tagName = Parse.htmlFunctionTagName_(self.prototype.html.toString());
+			preInitCode = preInitCode.replace('%tagName%', result.tagName.toUpperCase());
+
+			// Not supported in Safari as of March 2023.  When it is we can maybe stop requiring this be added manually:
+			// https://caniuse.com/mdn-javascript_classes_static_initialization_blocks
+			//preInitCode += `;static { eval(${self.name}.compile()) }`
+
 			result.code = self.toString().slice(0, -1) + preInitCode + '}';
 		}
 
 		// Old path.  All of this will go away eventually:
 		//#IFDEV
-		else {
+		else if (!self.prototype.html) {
 
 			function removeComments(tokens) {
 				let result = [];
@@ -4862,6 +4883,7 @@ class Refract extends HTMLElement {
 
 
 	__connected = false;
+	__connectedBefore = false;
 	__connectedCallbacks = [];
 	__firstConnectedCallbacks = [];
 	__disconnectedCallbacks = [];
@@ -5041,7 +5063,7 @@ class Refract extends HTMLElement {
 	}
 
 	onDisconnect(callback) {
-		if (this.__connected)
+		if (!this.__connected && this.__connectedBefore)
 			callback();
 		this.__disconnectedCallbacks.push(callback);
 	}
@@ -5050,7 +5072,7 @@ class Refract extends HTMLElement {
 	 * This function is called automatically by the browser.
 	 * If you override it, onConnect() and onFirstConnect() won't work. */
 	connectedCallback() {
-		this.__connected = true;
+		this.__connected = this.__connectedBefore = true;
 		for (let cb of this.__connectedCallbacks)
 			cb();
 		for (let cb of this.__firstConnectedCallbacks)

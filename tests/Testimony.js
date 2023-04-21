@@ -227,7 +227,7 @@ var HtmlRenderer = {
 						:host #enableCB:after { content: '\xa0'; color: #55f; font-weight: bold; text-shadow: 1px 0 0 #55f }
 						:host #enableCB:checked:after { content: 'x' }						
 						:host #status { line-height: 1; display: inline-block; width: 7.7px }
-						:host #childTests { padding-left: ${test.name.length ? '30.8' : '15.4'}px }
+						:host #childTests { padding-left: ${test.name.length ? '38.5' : '15.4'}px }
 					</style>					
 					<div>
 						${test.name.length ? 
@@ -379,7 +379,7 @@ class Test {
 		// A test to run.
 		if (this.fn && this.enabled) {
 			let result = true;
-			if (Testimony.throwOnFail) {
+			if (Testimony.throwOnError) {
 				result = this.fn();
 				if (result instanceof Promise)
 					result = await result;
@@ -387,7 +387,7 @@ class Test {
 					this.status = true;
 			} else {
 				try {
-					result = this.fn();
+					result = await this.fn();
 					if (result instanceof Promise)
 						await result;
 					if (result !== false)
@@ -402,15 +402,24 @@ class Test {
 		if (!this.fn) {
 			// TODO: Run in parallel?
 			this.status = true;
+			let hasPassingChild = false;
 			for (let child of Object.values(this.children)) {
 				await child.run();
-				if (child.status === false || child.status instanceof Error)
-					this.status = false;
+				if (child.enabled) {
+					if (child.status === false || child.status instanceof Error)
+						this.status = false;
 
-				else if (child.status === null && this.status !== false)
-					this.status = null;
+					else if (child.status === null && this.status !== false)
+						this.status = null;
 
+					else if (child.status === true)
+						hasPassingChild = true;
+				}
 			}
+
+			// Must have at least one child green checkmark to have a green checkmark.
+			if (this.status === true && !hasPassingChild)
+				this.status = null;
 		}
 	}
 
@@ -427,8 +436,8 @@ class Test {
 var Testimony = {
 
 	debugOnAssertFail: false,
-	throwOnFail: false, // throw from original location on assert fail or error.
-	expandLevel: 2,
+	throwOnError: false, // throw from original location on assert fail or error.
+	expandLevel: 1,
 
 	/** @type {Test} */
 	rootTest: new Test(),
@@ -455,7 +464,6 @@ var Testimony = {
 
 			// Run tests
 			await Testimony.rootTest.run();
-
 
 			// Update the status.
 			renderer.render(Testimony.rootTest);
@@ -561,13 +569,24 @@ var Testimony = {
 	},
 
 	/**
+	 * TODO: This doesn't wor0 because there's no DOMRect.
+	 * I should conslut the jsdom docs and mabye try the "Executing scripts" section
+	 * to run the tests inside the jsdom document?
+	 *
 	 * Used only when running from the command line.
 	 * Define document object to allow us to run all modules from the command line.  */
 	async enableJsDom() {
 		if (!globalThis.document) {
 			await (async () => {
 				let { default: jsdom} = await import('https://dev.jspm.io/jsdom');
-				globalThis.document = new jsdom.JSDOM(`<!DOCTYPE html>`).window.document;
+				let dom = new jsdom.JSDOM(`<!DOCTYPE html>`, {
+					pretendToBeVisual: true,
+					resources: 'usable'
+				});
+				let window = dom.window;
+
+				for (let name in window)
+					globalThis[name] = window[name];
 
 				/*let module =*/ /*import('https://deno.land/std@0.73.0/testing/asserts.ts');*/
 
@@ -576,10 +595,8 @@ var Testimony = {
 			})()
 		}
 	},
-
 }
 await Testimony.enableJsDom();
-
 
 export default Testimony;
 export {assert, Testimony, TextRenderer, HtmlRenderer};

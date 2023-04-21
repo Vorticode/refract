@@ -218,22 +218,28 @@ export default class VElement {
 			if (oldEl) {  // Replacing existing element
 				oldEl.parentNode.insertBefore(newEl, oldEl);
 				oldEl.remove();
-			} else {// if (parent)
+			}
+
+			else {// if (parent)
 
 				if (!oldEl) {
+
 					let p2 = parent.shadowRoot || parent;
 
 					// Insert into slot if it has one.  TODO: How to handle named slots here?
-					if (p2 !== this.refr_ && p2.tagName && p2.tagName.includes('-') && newEl.tagName !== 'SLOT')
-						p2 = p2.querySelector('slot') || p2;
+					if (p2 !== this.refr_ && p2.tagName && p2.tagName.includes('-') && newEl.tagName !== 'SLOT') {
+
+						if (this.attributes_.slot)
+							p2 = p2.querySelector(`slot[name="${this.attributes_.slot[0]}"]`) || p2.querySelector('slot') || p2;
+						else
+							p2 = p2.querySelector('slot') || p2;
+					}
 					p2.insertBefore(newEl, p2.childNodes[this.startIndex_]);
 				}
 			}
 
-
 			//Refract.virtualElements.set(newEl, this);
 			this.el = newEl;
-
 
 			Globals.currentVElement_ = null;
 
@@ -274,7 +280,7 @@ export default class VElement {
 		// 5. Attributes (besides shadow)
 		for (let name in this.attributes_) {
 			let value = this.attributes_[name];
-			for (let attrPart of value)
+			for (let attrPart of value || [])
 				if (attrPart instanceof VExpression) {
 					let expr = attrPart;
 					expr.parent_ = this.el;
@@ -332,7 +338,7 @@ export default class VElement {
 
 		// 6. Form field two-way binding.
 		// Listening for user to type in form field.
-		let hasValue = (('value' in this.attributes_)&& tagName !== 'option');
+		let hasValue = (('value' in this.attributes_) && tagName !== 'option');
 		if (hasValue) {
 			let valueExprs = this.attributes_.value;
 			let isSimpleExpr = valueExprs.length === 1 && (valueExprs[0] instanceof VExpression) && valueExprs[0].type === 'simple';
@@ -474,7 +480,9 @@ export default class VElement {
 
 
 	/**
-	 * TODO: Reduce shared logic between this and evalVAttribute
+	 * TODO: Reduce shared logic between this and evalVAttribute.
+	 * This one is used only by SelectBox.
+	 *
 	 * If a solitary VExpression, return whatever object it evaluates to.
 	 * Otherwise merge all pieces into a string and return that.
 	 * value="${'one'}" becomes 'one'
@@ -492,8 +500,7 @@ export default class VElement {
 		// If it's a single value, return that.
 		if (result.length === 1)
 			return result[0];
-
-		return result.flat().map(Utils.toString).join('');
+		return result;
 	}
 
 	/**
@@ -503,7 +510,7 @@ export default class VElement {
 	 * @return {string} */
 	static evalVAttributeAsString_(refr, attrParts, scope={}) {
 		let result = [];
-		for (let attrPart of attrParts) {
+		for (let attrPart of attrParts || []) {
 			if (attrPart instanceof VExpression) {
 				let val = attrPart.exec_.apply(refr, Object.values(scope));
 				if (Array.isArray(val) || (val instanceof Set))

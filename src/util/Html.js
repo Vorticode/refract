@@ -25,8 +25,8 @@ export default {
 
 	},
 
-	encode(text, quotes='') {
-		text = Utils.toString(text) // TODO: This changes 0 to ''
+	encode(text, quotes='"') {
+		text = (text === null || text === undefined ? '' : text+'')
 			.replace(/&/g, '&amp;')
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;')

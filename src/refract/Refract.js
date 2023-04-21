@@ -82,6 +82,7 @@ export default class Refract extends HTMLElement {
 
 
 	__connected = false;
+	__connectedBefore = false;
 	__connectedCallbacks = [];
 	__firstConnectedCallbacks = [];
 	__disconnectedCallbacks = [];
@@ -261,7 +262,7 @@ export default class Refract extends HTMLElement {
 	}
 
 	onDisconnect(callback) {
-		if (this.__connected)
+		if (!this.__connected && this.__connectedBefore)
 			callback();
 		this.__disconnectedCallbacks.push(callback);
 	}
@@ -270,7 +271,7 @@ export default class Refract extends HTMLElement {
 	 * This function is called automatically by the browser.
 	 * If you override it, onConnect() and onFirstConnect() won't work. */
 	connectedCallback() {
-		this.__connected = true;
+		this.__connected = this.__connectedBefore = true;
 		for (let cb of this.__connectedCallbacks)
 			cb();
 		for (let cb of this.__firstConnectedCallbacks)

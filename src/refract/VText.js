@@ -82,6 +82,6 @@ export default class VText {
 	//#ENDIF
 
 	static styleReplace_(text, rTag, styleId) {
-		return text.replace(new RegExp(rTag+'|:host', 'g'), rTag + '[data-style="' +  styleId + '"]')
+		return text.replace(/:host(?=[^a-z0-9_])/gi, rTag + '[data-style="' +  styleId + '"]')
 	}
 }

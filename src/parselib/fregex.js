@@ -71,7 +71,10 @@ fregex.capture = (...rules) => {
 		result.debug = 'and(' + rules.map(r => r.debug || r).join(', ') + ')';
 	//#ENDIF
 	return result;
+}
 
+fregex.captureName = name => {
+	return new CaptureName(name);
 }
 
 /**
@@ -201,24 +204,24 @@ fregex.oneOrMore = (...rules) => fregex.xOrMore(1, ...rules);
  * @param pattern {*[]|function(tokens:*[]):int|bool}
  * @param haystack {array}
  * @param startIndex {int}
- * @param capture
  * @return {*[]} A slice of the items in haystack that match.
  *     with an added index property designating the index of the match within the haystack array. */
 fregex.matchFirst = (pattern, haystack, startIndex=0, capture=[]) => {
-	let result = fregex.matchAll(pattern, haystack, 1, startIndex, capture);
+	let result = fregex.matchAll(pattern, haystack, 1, startIndex);
 	return result.length ? result[0] : null;
 }
 
-fregex.matchAll = (pattern, haystack, limit=Infinity, startIndex=0, capture=[]) => {
+fregex.matchAll = (pattern, haystack, limit=Infinity, startIndex=0) => {
 	if (Array.isArray(pattern))
 		pattern = fregex(pattern);
 	let result = [];
 
 	// Iterate through each offset in haystack looking for strings of tokens that match pattern.
 	for (let i = startIndex; i < haystack.length && result.length < limit; i++) {
+		let capture = [];
 		let count = pattern(haystack.slice(i), capture);
 		if (count !== false)
-			result.push(Object.assign(haystack.slice(i, i + count), {index: i}));
+			result.push(Object.assign(haystack.slice(i, i + count), {index: i, capture}));
 	}
 	return result;
 }
@@ -226,6 +229,9 @@ fregex.matchAll = (pattern, haystack, limit=Infinity, startIndex=0, capture=[]) 
 /**
  * Starting with the first token, this function finds all tokens until it encounters the string specified by `isEnd`,
  * but it uses `isIncrement` and `isDecrement` to avoid finding `isEnd` within a scope.
+ *
+ * TODO: Does this duplicate some of ArrayUtil.find() ?
+ *
  * @param {object[]} tokens
  * @param {string | array | object | function} isEnd
  * @param {string | array | object | function} [isIncrement] Accepts the string of tokens and returns the number of tokens consumed.
@@ -253,9 +259,8 @@ fregex.munch = (tokens, isEnd, isIncrement = null, isDecrement = null, includeEn
 
 		if (!scope) {
 			const count = isEnd(next);
-			if (count !== false) {
+			if (count !== false)
 				return tokens.slice(0, includeEnd ? i + count : i);
-			}
 		}
 
 		if (isIncrement) {
@@ -345,7 +350,7 @@ var prepareRule = rule => {
 		return tokens => {
 			for (let name in rule)
 				// noinspection EqualityComparisonWithCoercionJS
-				if (tokens[0][name] != rule[name]) // TODO: What if tokens is an empty array and [0] is undefined?
+				if (!tokens[0] || (tokens[0][name] != rule[name])) // TODO: What if tokens is an empty array and [0] is undefined?
 					return false;
 
 			return 1; // Advance 1 token.

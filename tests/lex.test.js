@@ -341,13 +341,10 @@ Testimony.test('lex.badHtml1', () => {
 });
 
 Testimony.test('lex.badHtml2', () => {
-
 	let code = "a = `Template <$3}>`;";
 	let tokens = lex(lexHtmlJs, code, 'js');
 	tokens = tokensToText(tokens);
 	console.log(tokens); // TODO
-
-
 });
 
 Testimony.test('lex.badHtml3', () => {

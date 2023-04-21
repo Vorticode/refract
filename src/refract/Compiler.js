@@ -210,6 +210,7 @@ export class Compiler {
 
 		// This code runs after the call to super() and after all the other properties are initialized.
 
+
 		// Turn autoRender into a property if it's not a property already.
 		// It might be a property if we inherit from another Refract class.
 		let preInitVal = (() => {
@@ -234,7 +235,9 @@ export class Compiler {
 			if (this.__autoRender)
 				this.render();
 
-			if (this.init) {
+			// Ensure constructor is only called on self, not an extra time from inheriting classes.
+			let status = this.tagName === '%tagName%'; // fails if inlined, but why?!
+			if (this.init && status) {
 				let args = this.parentElement
 					? this.constructor.compiler.populateArgsFromAttribs(this, this.constructor.getInitArgs_())
 					: this.constructorArgs2_;
@@ -247,12 +250,18 @@ export class Compiler {
 		// New path.
 		if (self.prototype.html) {
 			result.tagName = Parse.htmlFunctionTagName_(self.prototype.html.toString());
+			preInitCode = preInitCode.replace('%tagName%', result.tagName.toUpperCase());
+
+			// Not supported in Safari as of March 2023.  When it is we can maybe stop requiring this be added manually:
+			// https://caniuse.com/mdn-javascript_classes_static_initialization_blocks
+			//preInitCode += `;static { eval(${self.name}.compile()) }`
+
 			result.code = self.toString().slice(0, -1) + preInitCode + '}';
 		}
 
 		// Old path.  All of this will go away eventually:
 		//#IFDEV
-		else {
+		else if (!self.prototype.html) {
 
 			function removeComments(tokens) {
 				let result = [];
