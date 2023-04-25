@@ -90,7 +90,7 @@ export default class VElement {
 
 				else if (token.type === 'attribute') {
 					attrName = token.text;
-					this.attributes_[attrName] = []; // Attribute w/o value, or without value yet.
+					this.attributes_[attrName] = null; // Attribute w/o value, or without value yet.
 				}
 
 				// Attribute value string or expression
@@ -265,7 +265,7 @@ export default class VElement {
 		}
 
 		// 4. Recurse through children
-		let isText = this.el.tagName === 'TEXTAREA' || this.attributes_['contenteditable'] && (this.attributes_['contenteditable']+'') !== 'false';
+		let isText = this.el.tagName === 'TEXTAREA' || (('contenteditable' in this.attributes_) && (this.attributes_['contenteditable']+'') !== 'false');
 		for (let vChild of this.vChildren_) {
 			if (isText && (vChild instanceof VExpression))
 				throw new Error("textarea and contenteditable can't have templates as children. Use value=${this.variable} instead.");
@@ -403,12 +403,16 @@ export default class VElement {
 		result.vParent_ = vParent;
 
 		for (let attrName in this.attributes_) {
-			result.attributes_[attrName] = [];
-			for (let piece of this.attributes_[attrName]) {
-				if (piece instanceof VExpression)
-					result.attributes_[attrName].push(piece.clone_(result.refr_, this))
-				else
-					result.attributes_[attrName].push(piece);
+			if (this.attributes_[attrName] === null)
+				result.attributes_[attrName] = null;
+			else {
+				result.attributes_[attrName] = [];
+				for (let piece of this.attributes_[attrName]) {
+					if (piece instanceof VExpression)
+						result.attributes_[attrName].push(piece.clone_(result.refr_, this))
+					else
+						result.attributes_[attrName].push(piece);
+				}
 			}
 		}
 		for (let expr of this.attributeExpressions_) // Expresions that create one or more attributes.
@@ -429,15 +433,19 @@ export default class VElement {
 	getAttrib_(name) {
 		let lname = name.toLowerCase();
 		let val = name in this.attributes_ ? this.attributes_[name] : this.attributes_[lname];
-		if (val === undefined || val === null)
+		if (val === undefined)
 			return val;
 
 		// A solitary VExpression.
 		if (val && val.length === 1 && val[0] instanceof VExpression)
 			return val[0].exec_.apply(this.refr_, Object.values(this.scope_));
 
-		// Attribute with no value.
+
 		if (Array.isArray(val) && !val.length)
+			return '';
+
+		// Attribute with no value.
+		if (val === null)
 			return true;
 
 		// Else evaluate as JSON, or as a string.
@@ -481,7 +489,7 @@ export default class VElement {
 
 	/**
 	 * TODO: Reduce shared logic between this and evalVAttribute.
-	 * This one is used only by SelectBox.
+	 * This is used only by <select> and custom form inputs with a value property.
 	 *
 	 * If a solitary VExpression, return whatever object it evaluates to.
 	 * Otherwise merge all pieces into a string and return that.
@@ -493,14 +501,16 @@ export default class VElement {
 	 * @param scope {object}
 	 * @return {*|string} */
 	static evalVAttribute_(refr, attrParts, scope={}) {
+
+		// Return object
+		if (attrParts.length === 1 && attrParts[0] instanceof VExpression)
+			return attrParts[0].exec_.apply(refr, Object.values(scope));
+
+		// Return string
 		let result = attrParts.map(expr =>
 			expr instanceof VExpression ? expr.exec_.apply(refr, Object.values(scope)) : expr
 		);
-
-		// If it's a single value, return that.
-		if (result.length === 1)
-			return result[0];
-		return result;
+		return Html.decode(result.flat().map(Utils.toString).join(''));
 	}
 
 	/**

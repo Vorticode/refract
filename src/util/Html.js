@@ -1,5 +1,3 @@
-import Utils from "../refract/utils.js";
-
 var div = document.createElement('div');
 var decodeCache_ = {};
 
