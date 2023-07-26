@@ -49,13 +49,8 @@ export default class VElement {
 	//staticCode = null;
 
 	/**
-	 * @deprecated for scope3
-	 * @type {Object<string, string>} */
-	scope_ = {};
-
-	/**
 	 * Stores a map from local variable names, to their value and their path from the root Refract object. */
-	scope3_ = new Scope();
+	scope_ = new Scope();
 
 	/** @type {int} DOM index of the first DOM child created by this VExpression within parent. */
 	startIndex_ = 0;
@@ -71,7 +66,7 @@ export default class VElement {
 		else if (parent) {
 			this.vParent_ = parent;
 			this.refr_ = parent.refr_;
-			this.scope3_ = parent.scope3_.clone_();
+			this.scope_ = parent.scope_.clone_();
 		}
 
 		//#IFDEV
@@ -255,9 +250,9 @@ export default class VElement {
 		let count = 0;
 		if (tagName === 'slot') {
 
-			let slotChildren = VElement.fromHtml_(this.refr_.slotHtml, [...this.scope3_.keys()], this, this.refr_);
+			let slotChildren = VElement.fromHtml_(this.refr_.slotHtml, [...this.scope_.keys()], this, this.refr_);
 			for (let vChild of slotChildren) {
-				vChild.scope3_ = this.scope3_.clone_();
+				vChild.scope_ = this.scope_.clone_();
 				vChild.startIndex_ = count;
 				count += vChild.apply_(this.el);
 			}
@@ -269,7 +264,7 @@ export default class VElement {
 			if (isText && (vChild instanceof VExpression))
 				throw new Error("textarea and contenteditable can't have templates as children. Use value=${this.variable} instead.");
 
-			vChild.scope3_ = this.scope3_.clone_();
+			vChild.scope_ = this.scope_.clone_();
 			vChild.refr_ = this.refr_;
 			vChild.startIndex_ = count;
 			count += vChild.apply_(this.el);
@@ -282,20 +277,20 @@ export default class VElement {
 				if (attrPart instanceof VExpression) {
 					let expr = attrPart;
 					expr.parent_ = this.el;
-					expr.scope3_ = this.scope3_.clone_(); // Share scope with attributes.
+					expr.scope_ = this.scope_.clone_(); // Share scope with attributes.
 					expr.watch_(() => {
 						if (name === 'value')
-							setInputValue_(this.refr_, this.el, value, this.scope3_);
+							setInputValue_(this.refr_, this.el, value, this.scope_);
 
 						else {
-							let value2 = VElement.evalVAttributeAsString_(this.refr_, value, this.scope3_);
+							let value2 = VElement.evalVAttributeAsString_(this.refr_, value, this.scope_);
 							this.el.setAttribute(name, value2);
 						}
 					});
 				}
 
 			// TODO: This happens again for inputs in step 5 below:
-			let value2 = VElement.evalVAttributeAsString_(this.refr_, value, this.scope3_);
+			let value2 = VElement.evalVAttributeAsString_(this.refr_, value, this.scope_);
 			this.el.setAttribute(name, value2);
 
 
@@ -315,16 +310,16 @@ export default class VElement {
 				let code = this.el.getAttribute(name);
 				this.el.removeAttribute(name); // Prevent original attribute being executed, without `this` and `el` in scope.
 				this.el.addEventListener(name.slice(2),  event => { // e.g. el.onclick = ...
-					let args = ['event', 'el', ...this.scope3_.keys()];
+					let args = ['event', 'el', ...this.scope_.keys()];
 					let func = createFunction(...args, code).bind(this.refr_); // Create in same scope as parent class.
-					func(event, this.el, ...this.scope3_.getValues());
+					func(event, this.el, ...this.scope_.getValues());
 				});
 			}
 		}
 
 		// Attribute expressions
 		for (let expr of this.attributeExpressions_) {
-			expr.scope3_ = this.scope3_.clone_();
+			expr.scope_ = this.scope_.clone_();
 			expr.apply_(this.el)
 			expr.watch_(() => {
 				expr.apply_(this.el);
@@ -342,12 +337,12 @@ export default class VElement {
 			// Don't grab value from input if we can't reverse the expression.
 			if (isSimpleExpr) {
 				let createFunction = ((this.refr_ && this.refr_.constructor) || window.RefractCurrentClass).createFunction;
-				let assignFunc = createFunction(...this.scope3_.keys(), 'val', valueExprs[0].code + '=val;').bind(this.refr_);
+				let assignFunc = createFunction(...this.scope_.keys(), 'val', valueExprs[0].code + '=val;').bind(this.refr_);
 
 				// Update the value when the input changes:
 				Utils.watchInput_(this.el, (val, e) => {
 					Globals.currentEvent_ = e;
-					assignFunc(...this.scope3_.getValues(), val);
+					assignFunc(...this.scope_.getValues(), val);
 					Globals.currentEvent_ = null;
 				});
 			}
@@ -378,7 +373,7 @@ export default class VElement {
 		// https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#input_types
 		if (hasValue) // This should happen after the children are added, e.g. for select <options>
 			// TODO: Do we only need to do this for select boxes b/c we're waiting for their children?  Other input types are handled above in step 2.
-			setInputValue_(this.refr_, this.el, this.attributes_.value, this.scope3_);
+			setInputValue_(this.refr_, this.el, this.attributes_.value, this.scope_);
 
 
 		if (tagName === 'svg')
@@ -437,7 +432,7 @@ export default class VElement {
 
 		// A solitary VExpression.
 		if (val && val.length === 1 && val[0] instanceof VExpression) {
-			return val[0].exec_.apply(this.refr_, this.scope3_.getValues());
+			return val[0].exec_.apply(this.refr_, this.scope_.getValues());
 		}
 
 
@@ -449,7 +444,7 @@ export default class VElement {
 			return true;
 
 		// Else evaluate as JSON, or as a string.
-		let result = VElement.evalVAttributeAsString_(this.refr_, (val || []), this.scope3_);
+		let result = VElement.evalVAttributeAsString_(this.refr_, (val || []), this.scope_);
 		try {
 			result = JSON.parse(result);
 		} catch (e) {

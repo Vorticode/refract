@@ -94,7 +94,7 @@ export default class VExpression {
 
 	/**
 	 * Stores a map from local variable names, to their value and their path from the root Refract object. */
-	scope3_ = new Scope();
+	scope_ = new Scope();
 
 	/** @type {int} DOM index of the first DOM child created by this VExpression within parent. */
 	startIndex_ = 0;
@@ -133,7 +133,7 @@ export default class VExpression {
 				assert(this.refr_);
 			//#ENDIF
 
-			this.scope3_ = vParent.scope3_.clone_();
+			this.scope_ = vParent.scope_.clone_();
 		}
 
 		if (tokens) {
@@ -337,7 +337,7 @@ export default class VExpression {
 		result.startIndex_ = this.startIndex_;
 		result.childCount_ = this.childCount_;
 
-		result.scope3_ = this.scope3_.clone_();
+		result.scope_ = this.scope_.clone_();
 
 		result.isHash = this.isHash;
 
@@ -349,7 +349,7 @@ export default class VExpression {
 	/**
 	 * @return {string|string[]} */
 	evaluate_() {
-		return this.exec_.apply(this.refr_, this.scope3_.getValues());
+		return this.exec_.apply(this.refr_, this.scope_.getValues());
 	}
 
 	/**
@@ -385,7 +385,7 @@ export default class VExpression {
 			if (this.isHash) // #{...} template
 				result = [htmls.map(html => new VText(html, this.refr_))]; // We don't join all the text nodes b/c it creates index issues.
 			else {
-				let scopeVarNames = [...this.scope3_.keys()];
+				let scopeVarNames = [...this.scope_.keys()];
 				for (let html of htmls) {
 					if (html instanceof HTMLElement) {
 						result.push(html); // not a VElement[], but a full HTMLElement
@@ -431,7 +431,7 @@ export default class VExpression {
 	 * @param index {int}
 	 */
 	setScope_(vel, params, index) {
-		vel.scope3_ = this.scope3_.clone_();
+		vel.scope_ = this.scope_.clone_();
 
 		// Assign values to the parameters of the function given to .map() that's used to loop.
 		// If this.type !== 'loop', then loopParamNames will be an empty array.
@@ -439,8 +439,8 @@ export default class VExpression {
 
 			// Path to the loop param variable:
 			let path = [...this.watchPaths_[0], index + '']; // VExpression loops always have one watchPath.
-			let fullPath = this.scope3_.getFullPath_(path);
-			vel.scope3_.set(this.loopParamNames_[j], new ScopeItem(fullPath, params[j])); // scope3[name] = value
+			let fullPath = this.scope_.getFullPath_(path);
+			vel.scope_.set(this.loopParamNames_[j], new ScopeItem(fullPath, params[j])); // scope3[name] = value
 		}
 	}
 
@@ -701,16 +701,16 @@ export default class VExpression {
 
 
 			// Allow paths into the current scope to be watched.
-			else if (path.length > 1 && this.scope3_.has(path[0])) {
+			else if (path.length > 1 && this.scope_.has(path[0])) {
 
 				// Resolve root to the path of the scope.
-				root = this.scope3_.get(path[0]).value;
+				root = this.scope_.get(path[0]).value;
 				path = path.slice(1);
 			}
 
 			// If a path of length 1, subscribe to the parent array or object instead.
 			// The 100k options benchmark is about 30% faster if I replace this brance with a continue statement.
-			else if (scope = this.scope3_.get(path[0])) {
+			else if (scope = this.scope_.get(path[0])) {
 
 				// Only watch this path if it's an array or object, not a primitive.
 				let obj = ObjectUtil.delve(root, scope.path.slice(1), ObjectUtil.delveDontCreate, true);

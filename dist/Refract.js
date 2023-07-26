@@ -3235,7 +3235,7 @@ class VExpression {
 
 	/**
 	 * Stores a map from local variable names, to their value and their path from the root Refract object. */
-	scope3_ = new Scope();
+	scope_ = new Scope();
 
 	/** @type {int} DOM index of the first DOM child created by this VExpression within parent. */
 	startIndex_ = 0;
@@ -3274,7 +3274,7 @@ class VExpression {
 				assert(this.refr_);
 			//#ENDIF
 
-			this.scope3_ = vParent.scope3_.clone_();
+			this.scope_ = vParent.scope_.clone_();
 		}
 
 		if (tokens) {
@@ -3478,7 +3478,7 @@ class VExpression {
 		result.startIndex_ = this.startIndex_;
 		result.childCount_ = this.childCount_;
 
-		result.scope3_ = this.scope3_.clone_();
+		result.scope_ = this.scope_.clone_();
 
 		result.isHash = this.isHash;
 
@@ -3490,7 +3490,7 @@ class VExpression {
 	/**
 	 * @return {string|string[]} */
 	evaluate_() {
-		return this.exec_.apply(this.refr_, this.scope3_.getValues());
+		return this.exec_.apply(this.refr_, this.scope_.getValues());
 	}
 
 	/**
@@ -3526,7 +3526,7 @@ class VExpression {
 			if (this.isHash) // #{...} template
 				result = [htmls.map(html => new VText(html, this.refr_))]; // We don't join all the text nodes b/c it creates index issues.
 			else {
-				let scopeVarNames = [...this.scope3_.keys()];
+				let scopeVarNames = [...this.scope_.keys()];
 				for (let html of htmls) {
 					if (html instanceof HTMLElement) {
 						result.push(html); // not a VElement[], but a full HTMLElement
@@ -3572,7 +3572,7 @@ class VExpression {
 	 * @param index {int}
 	 */
 	setScope_(vel, params, index) {
-		vel.scope3_ = this.scope3_.clone_();
+		vel.scope_ = this.scope_.clone_();
 
 		// Assign values to the parameters of the function given to .map() that's used to loop.
 		// If this.type !== 'loop', then loopParamNames will be an empty array.
@@ -3580,8 +3580,8 @@ class VExpression {
 
 			// Path to the loop param variable:
 			let path = [...this.watchPaths_[0], index + '']; // VExpression loops always have one watchPath.
-			let fullPath = this.scope3_.getFullPath_(path);
-			vel.scope3_.set(this.loopParamNames_[j], new ScopeItem(fullPath, params[j])); // scope3[name] = value
+			let fullPath = this.scope_.getFullPath_(path);
+			vel.scope_.set(this.loopParamNames_[j], new ScopeItem(fullPath, params[j])); // scope3[name] = value
 		}
 	}
 
@@ -3842,16 +3842,16 @@ class VExpression {
 
 
 			// Allow paths into the current scope to be watched.
-			else if (path.length > 1 && this.scope3_.has(path[0])) {
+			else if (path.length > 1 && this.scope_.has(path[0])) {
 
 				// Resolve root to the path of the scope.
-				root = this.scope3_.get(path[0]).value;
+				root = this.scope_.get(path[0]).value;
 				path = path.slice(1);
 			}
 
 			// If a path of length 1, subscribe to the parent array or object instead.
 			// The 100k options benchmark is about 30% faster if I replace this brance with a continue statement.
-			else if (scope = this.scope3_.get(path[0])) {
+			else if (scope = this.scope_.get(path[0])) {
 
 				// Only watch this path if it's an array or object, not a primitive.
 				let obj = ObjectUtil.delve(root, scope.path.slice(1), ObjectUtil.delveDontCreate, true);
@@ -3919,13 +3919,8 @@ class VElement {
 	//staticCode = null;
 
 	/**
-	 * @deprecated for scope3
-	 * @type {Object<string, string>} */
-	scope_ = {};
-
-	/**
 	 * Stores a map from local variable names, to their value and their path from the root Refract object. */
-	scope3_ = new Scope();
+	scope_ = new Scope();
 
 	/** @type {int} DOM index of the first DOM child created by this VExpression within parent. */
 	startIndex_ = 0;
@@ -3941,7 +3936,7 @@ class VElement {
 		else if (parent) {
 			this.vParent_ = parent;
 			this.refr_ = parent.refr_;
-			this.scope3_ = parent.scope3_.clone_();
+			this.scope_ = parent.scope_.clone_();
 		}
 
 		//#IFDEV
@@ -4125,9 +4120,9 @@ class VElement {
 		let count = 0;
 		if (tagName === 'slot') {
 
-			let slotChildren = VElement.fromHtml_(this.refr_.slotHtml, [...this.scope3_.keys()], this, this.refr_);
+			let slotChildren = VElement.fromHtml_(this.refr_.slotHtml, [...this.scope_.keys()], this, this.refr_);
 			for (let vChild of slotChildren) {
-				vChild.scope3_ = this.scope3_.clone_();
+				vChild.scope_ = this.scope_.clone_();
 				vChild.startIndex_ = count;
 				count += vChild.apply_(this.el);
 			}
@@ -4139,7 +4134,7 @@ class VElement {
 			if (isText && (vChild instanceof VExpression))
 				throw new Error("textarea and contenteditable can't have templates as children. Use value=${this.variable} instead.");
 
-			vChild.scope3_ = this.scope3_.clone_();
+			vChild.scope_ = this.scope_.clone_();
 			vChild.refr_ = this.refr_;
 			vChild.startIndex_ = count;
 			count += vChild.apply_(this.el);
@@ -4152,20 +4147,20 @@ class VElement {
 				if (attrPart instanceof VExpression) {
 					let expr = attrPart;
 					expr.parent_ = this.el;
-					expr.scope3_ = this.scope3_.clone_(); // Share scope with attributes.
+					expr.scope_ = this.scope_.clone_(); // Share scope with attributes.
 					expr.watch_(() => {
 						if (name === 'value')
-							setInputValue_(this.refr_, this.el, value, this.scope3_);
+							setInputValue_(this.refr_, this.el, value, this.scope_);
 
 						else {
-							let value2 = VElement.evalVAttributeAsString_(this.refr_, value, this.scope3_);
+							let value2 = VElement.evalVAttributeAsString_(this.refr_, value, this.scope_);
 							this.el.setAttribute(name, value2);
 						}
 					});
 				}
 
 			// TODO: This happens again for inputs in step 5 below:
-			let value2 = VElement.evalVAttributeAsString_(this.refr_, value, this.scope3_);
+			let value2 = VElement.evalVAttributeAsString_(this.refr_, value, this.scope_);
 			this.el.setAttribute(name, value2);
 
 
@@ -4185,16 +4180,16 @@ class VElement {
 				let code = this.el.getAttribute(name);
 				this.el.removeAttribute(name); // Prevent original attribute being executed, without `this` and `el` in scope.
 				this.el.addEventListener(name.slice(2),  event => { // e.g. el.onclick = ...
-					let args = ['event', 'el', ...this.scope3_.keys()];
+					let args = ['event', 'el', ...this.scope_.keys()];
 					let func = createFunction(...args, code).bind(this.refr_); // Create in same scope as parent class.
-					func(event, this.el, ...this.scope3_.getValues());
+					func(event, this.el, ...this.scope_.getValues());
 				});
 			}
 		}
 
 		// Attribute expressions
 		for (let expr of this.attributeExpressions_) {
-			expr.scope3_ = this.scope3_.clone_();
+			expr.scope_ = this.scope_.clone_();
 			expr.apply_(this.el);
 			expr.watch_(() => {
 				expr.apply_(this.el);
@@ -4212,12 +4207,12 @@ class VElement {
 			// Don't grab value from input if we can't reverse the expression.
 			if (isSimpleExpr) {
 				let createFunction = ((this.refr_ && this.refr_.constructor) || window.RefractCurrentClass).createFunction;
-				let assignFunc = createFunction(...this.scope3_.keys(), 'val', valueExprs[0].code + '=val;').bind(this.refr_);
+				let assignFunc = createFunction(...this.scope_.keys(), 'val', valueExprs[0].code + '=val;').bind(this.refr_);
 
 				// Update the value when the input changes:
 				utils.watchInput_(this.el, (val, e) => {
 					Globals.currentEvent_ = e;
-					assignFunc(...this.scope3_.getValues(), val);
+					assignFunc(...this.scope_.getValues(), val);
 					Globals.currentEvent_ = null;
 				});
 			}
@@ -4248,7 +4243,7 @@ class VElement {
 		// https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#input_types
 		if (hasValue) // This should happen after the children are added, e.g. for select <options>
 			// TODO: Do we only need to do this for select boxes b/c we're waiting for their children?  Other input types are handled above in step 2.
-			setInputValue_(this.refr_, this.el, this.attributes_.value, this.scope3_);
+			setInputValue_(this.refr_, this.el, this.attributes_.value, this.scope_);
 
 
 		if (tagName === 'svg')
@@ -4307,7 +4302,7 @@ class VElement {
 
 		// A solitary VExpression.
 		if (val && val.length === 1 && val[0] instanceof VExpression) {
-			return val[0].exec_.apply(this.refr_, this.scope3_.getValues());
+			return val[0].exec_.apply(this.refr_, this.scope_.getValues());
 		}
 
 
@@ -4319,7 +4314,7 @@ class VElement {
 			return true;
 
 		// Else evaluate as JSON, or as a string.
-		let result = VElement.evalVAttributeAsString_(this.refr_, (val || []), this.scope3_);
+		let result = VElement.evalVAttributeAsString_(this.refr_, (val || []), this.scope_);
 		try {
 			result = JSON.parse(result);
 		} catch (e) {
