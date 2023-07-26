@@ -133,10 +133,7 @@ export default class VExpression {
 				assert(this.refr_);
 			//#ENDIF
 
-
-			this.scope_ = {...vParent.scope_};
 			this.scope3_ = vParent.scope3_.clone_();
-			//console.log(this.code, this.scope)
 		}
 
 		if (tokens) {
@@ -340,7 +337,6 @@ export default class VExpression {
 		result.startIndex_ = this.startIndex_;
 		result.childCount_ = this.childCount_;
 
-		result.scope_ = {...this.scope_};
 		result.scope3_ = this.scope3_.clone_();
 
 		result.isHash = this.isHash;
@@ -435,13 +431,11 @@ export default class VExpression {
 	 * @param index {int}
 	 */
 	setScope_(vel, params, index) {
-		vel.scope_ = {...this.scope_}
 		vel.scope3_ = this.scope3_.clone_();
 
 		// Assign values to the parameters of the function given to .map() that's used to loop.
 		// If this.type !== 'loop', then loopParamNames will be an empty array.
 		for (let j in this.loopParamNames_) {  // Benchmarking shows this loop is about 2% faster than for...in.
-			vel.scope_[this.loopParamNames_[j]] = params[j];
 
 			// Path to the loop param variable:
 			let path = [...this.watchPaths_[0], index + '']; // VExpression loops always have one watchPath.

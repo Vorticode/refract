@@ -71,7 +71,6 @@ export default class VElement {
 		else if (parent) {
 			this.vParent_ = parent;
 			this.refr_ = parent.refr_;
-			this.scope_ = {...parent.scope_};
 			this.scope3_ = parent.scope3_.clone_();
 		}
 
@@ -258,7 +257,6 @@ export default class VElement {
 
 			let slotChildren = VElement.fromHtml_(this.refr_.slotHtml, [...this.scope3_.keys()], this, this.refr_);
 			for (let vChild of slotChildren) {
-				vChild.scope_ = {...this.scope_}
 				vChild.scope3_ = this.scope3_.clone_();
 				vChild.startIndex_ = count;
 				count += vChild.apply_(this.el);
@@ -271,7 +269,6 @@ export default class VElement {
 			if (isText && (vChild instanceof VExpression))
 				throw new Error("textarea and contenteditable can't have templates as children. Use value=${this.variable} instead.");
 
-			vChild.scope_ = {...this.scope_} // copy
 			vChild.scope3_ = this.scope3_.clone_();
 			vChild.refr_ = this.refr_;
 			vChild.startIndex_ = count;
@@ -285,8 +282,7 @@ export default class VElement {
 				if (attrPart instanceof VExpression) {
 					let expr = attrPart;
 					expr.parent_ = this.el;
-					expr.scope_ = this.scope_; // Share scope with attributes.
-					expr.scope3_ = this.scope3_.clone_();
+					expr.scope3_ = this.scope3_.clone_(); // Share scope with attributes.
 					expr.watch_(() => {
 						if (name === 'value')
 							setInputValue_(this.refr_, this.el, value, this.scope3_);
@@ -328,7 +324,6 @@ export default class VElement {
 
 		// Attribute expressions
 		for (let expr of this.attributeExpressions_) {
-			expr.scope_ = this.scope_;
 			expr.scope3_ = this.scope3_.clone_();
 			expr.apply_(this.el)
 			expr.watch_(() => {
