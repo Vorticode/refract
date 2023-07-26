@@ -178,7 +178,7 @@ var functionize = grammar => {
 			// This removes them recursively in case of something like newVal=[Proxy(obj)].
 			let oldVal = obj[field];
 
-			newVal = utils.removeProxies(newVal);
+			newVal = Utils.removeProxies(newVal);
 
 			// New:
 			if (oldVal === newVal)
@@ -290,17 +290,17 @@ var functionize = grammar => {
 					Object.defineProperty(proxy, 'indexOf', {
 						enumerable: false,
 						get: () => // Regular indexOf won't work if some of the items are proxied.
-							item => obj.findIndex(a => utils.removeProxy(a) === utils.removeProxy(item))
+							item => obj.findIndex(a => Utils.removeProxy(a) === Utils.removeProxy(item))
 					});
 					Object.defineProperty(proxy, 'lastIndexOf', {
 						enumerable: false,
 						get: () => // Regular lastIndexOf won't work if some of the items are proxied.
-							item => obj.findLastIndex(a => utils.removeProxy(a) === utils.removeProxy(item))
+							item => obj.findLastIndex(a => Utils.removeProxy(a) === Utils.removeProxy(item))
 					});
 					Object.defineProperty(proxy, 'includes', {
 						enumerable: false,
 						get: () => // Regular includes won't work if some of the items are proxied.
-							item => obj.findIndex(a => utils.removeProxy(a) === utils.removeProxy(item)) !== -1
+							item => obj.findIndex(a => Utils.removeProxy(a) === Utils.removeProxy(item)) !== -1
 					});
 
 					/*
@@ -949,8 +949,8 @@ class WatchProperties {
 				let subPath = name.slice(cpath.length > 0 ? cpath.length + 1 : cpath.length); // +1 for ','
 				let oldSubPath = JSON.parse('[' + subPath + ']');
 
-				let oldSubVal = utils.removeProxy(ObjectUtil.delve(oldVal, oldSubPath, ObjectUtil.delveDontCreate, true));
-				let newSubVal = utils.removeProxy(ObjectUtil.delve(newVal, oldSubPath, ObjectUtil.delveDontCreate, true));
+				let oldSubVal = Utils.removeProxy(ObjectUtil.delve(oldVal, oldSubPath, ObjectUtil.delveDontCreate, true));
+				let newSubVal = Utils.removeProxy(ObjectUtil.delve(newVal, oldSubPath, ObjectUtil.delveDontCreate, true));
 
 				if (oldSubVal !== newSubVal) {
 					let callbacks = this.subs_[name];
@@ -1052,7 +1052,7 @@ class WatchProperties {
 				// If the loop tries to remove every child at once the complexity is O(n^2) because each child must search every key in this.subs_.
 				// We need to find a faster way.
 				let propCpath = csv([path[0]]);
-				if (!utils.hasKeyStartingWith_(this.subs_, propCpath)) {
+				if (!Utils.hasKeyStartingWith_(this.subs_, propCpath)) {
 
 					// If it wasn't deleted already.  But how would that happen?
 					if (path[0] in this.obj_) {
@@ -1131,7 +1131,7 @@ var Watch = {
 		//#IFDEV
 		assert(path.length);
 		//#ENDIF
-		obj = utils.removeProxy(obj);
+		obj = Utils.removeProxy(obj);
 
 		// Keep only one WatchProperties per watched object.
 		var wp = Watch.objects.get(obj);
@@ -1147,7 +1147,7 @@ var Watch = {
 	 * @param path {string|string[]}
 	 * @param callback {function=} If not specified, all callbacks will be unsubscribed. */
 	remove(obj, path, callback) {
-		obj = utils.removeProxy(obj);
+		obj = Utils.removeProxy(obj);
 		var wp = Watch.objects.get(obj);
 
 		if (wp) {
@@ -1181,7 +1181,7 @@ var assert = expr => {
 //#ENDIF
 
 
-var utils = {
+var Utils = {
 
 	/**
 	 * Return a slice from the beginning of the string up until any item from limiters is found.
@@ -1569,7 +1569,7 @@ var isObj = obj => obj && typeof obj === 'object'; // Make sure it's not null, s
 				let matches = code.match(regex);
 				if (matches) {
 					let result = matches[0];
-					result = utils.unescapeTemplate_(result);
+					result = Utils.unescapeTemplate_(result);
 					//result = Object.assign(result, {originalLength: matches[0].length});
 					// if (result.length !== matches[0].length)
 					// 	debugger;
@@ -1595,7 +1595,7 @@ var isObj = obj => obj && typeof obj === 'object'; // Make sure it's not null, s
 				let matches = code.match(/^( |\r|\n|\t|\v|\f|\xa0|\\r|\\n|\\t|\\v|\\f|\\xa0)+/);
 				if (matches) {
 					let result = matches[0];
-					result = utils.unescapeTemplate_(result);
+					result = Utils.unescapeTemplate_(result);
 					//result = Object.assign(result, {originalLength: matches[0].length});
 					return [result, undefined, matches[0].length];
 				}
@@ -2760,10 +2760,10 @@ var Parse = {
 			.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, '')  // remove js comments - stackoverflow.com/a/15123777/
 			.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*|<!--[\s\S]*?-->$/); // remove html comments.
 
-		code = utils.munchUntil_(code, '{');
-		code = utils.munchUntil_(code, 'return'); // Return is optional.  munchUntil() will return the same string if not found.
-		code = utils.munchUntil_(code, ['`', `"`, "'"]);
-		code = utils.munchUntil_(code, ['<']);
+		code = Utils.munchUntil_(code, '{');
+		code = Utils.munchUntil_(code, 'return'); // Return is optional.  munchUntil() will return the same string if not found.
+		code = Utils.munchUntil_(code, ['`', `"`, "'"]);
+		code = Utils.munchUntil_(code, ['<']);
 		let match = code.match(/<(\w+-[\w-]+)/);
 		return match[1]; // 1 to get part in parenthesees.
 	},
@@ -3071,7 +3071,7 @@ class VText {
 			}
 
 			if (Refract.elsCreated)
-				Refract.elsCreated.push(utils.toString(text));
+				Refract.elsCreated.push(Utils.toString(text));
 		}
 
 		return 1;
@@ -3605,7 +3605,7 @@ class VExpression {
 		// Path 1:  If modifying a property on a single array item.
 		// -2 because we're modifying not a loop item child, but a property of it.
 		// Path 1:  If modifying a property on a single array item.
-		if (this.type==='loop' && path.length > 2 && utils.arrayStartsWith_(path.slice(0, -2), this.watchPaths_[0].slice(1))) {
+		if (this.type==='loop' && path.length > 2 && Utils.arrayStartsWith_(path.slice(0, -2), this.watchPaths_[0].slice(1))) {
 			// Do nothing, because the watch should trigger on the child VExpression instead of this one.
 			return;
 		}
@@ -3628,7 +3628,7 @@ class VExpression {
 
 			// If the array is one of our watched paths:
 			// TODO: watchPaths besides 0?  Or only go this way if there's only one watchPath?
-			if (Array.isArray(array) && utils.arrayEq_(this.watchPaths_[0].slice(1), arrayPath)) {
+			if (Array.isArray(array) && Utils.arrayEq_(this.watchPaths_[0].slice(1), arrayPath)) {
 
 				let index = parseInt(path[path.length - 1]);
 				if (action === 'remove') { // TODO: Combine with remove step below used for set.
@@ -3875,6 +3875,506 @@ class VExpression {
 			}
 		}
 	}
+}
+
+/**
+ * Utility functions used internally by Refract for setting up a Refract class. */
+class Compiler {
+
+
+	//#IFDEV
+
+	debugRender() {
+		// .map() for objects.
+		let omap = (o, cb) => { // Like .map() but for objects.
+			let result = [];
+			for (let name in o)
+				result.push(cb(name, o[name]));
+			return result;
+		};
+
+		let renderPaths = watchPaths => watchPaths.map(path => "'" + path.join('.') + "'").join(', ');
+
+		/**
+		 *
+		 * @param child {(VExpression|VElement|string)[]|VExpression|VElement|string}
+		 * @param inlineText {string}
+		 * @return {string} */
+		let renderItem = (child, inlineText) => {
+
+			if (Array.isArray(child)) {
+				let result = [];
+				for (let child2 of child)
+					result.push(renderItem(child2, inlineText));
+				return result.join('');
+			}
+			if (child instanceof VExpression)
+				return renderVExpr(child);
+			if (child instanceof VElement) {
+				return renderVEl(child);
+
+			}
+
+			// String
+			let text = child.text;
+			if (!text.trim().length)
+				text = text.replace(/\s/g, '&nbsp;');
+
+			let tag = inlineText === true ? 'span' : 'div';
+			return `
+				
+				<${tag}><span style="color: #8888" title="startIndex">[${child.startIndex}] </span><span title="Text node" style="background: #a643; color: #a66">${text}</span></${tag}>`;
+		};
+
+		/**
+		 * @param ve {VElement}
+		 * @return {string} */
+		let renderVEl = ve =>
+			`<div style="color: #f40">
+				<div>
+					<span>&lt;${ve.tagName}</span
+					>${omap(ve.attributes_, (name, val) => ` <span>${name}="${renderItem(val, true)}"</span>`).join('')}&gt;
+				</div>
+				<div style="padding-left: 4ex">
+					${ve.vChildren_.map(renderItem).join('')}
+				</div>
+				<div>&lt;/${ve.tagName}&gt;</div>			
+			</div>`;
+
+		/**
+		 * @param vexpr {VExpression}
+		 * @return {string} */
+		let renderVExpr = vexpr => {
+			if (vexpr.type === 'loop')
+				return `
+					<div style="color: #08f">	
+						<div style="background: #222">				
+							<span style="color: #8888" title="startIndex">[${vexpr.startIndex_}]</span>
+							${renderPaths(vexpr.watchPaths_)}.map(${vexpr.loopParamName} => 
+							
+							<span style="color: #8888" title="watchPaths">
+								[${renderPaths(vexpr.watchPaths_)}] => ${vexpr.loopParamName}
+							</span>
+						</div>
+					
+						<div style="padding-left: 4ex">
+							<div title="loopItemEls" style="background: #222">${vexpr.loopItemEls_.map(renderItem).join('')}</div>
+							${vexpr.vChildren_.map(renderItem).join('')}
+						</div>
+						) 
+					</div>`;
+
+			return `
+				<div style="background: #222">
+					<span style="color: #8888" title="startIndex">[${vexpr.startIndex_}]</span>
+					<span style="color: #60f" title="VExpression">${vexpr.code}</span>
+					<span style="color: #8888" title="watchPaths">
+						[${renderPaths(vexpr.watchPaths_)}]
+					</span>
+				</div>
+				${vexpr.vChildren_.map(renderItem).join('')}`;
+		};
+
+
+		return createEl(renderVEl(this.virtualElement));
+	}
+
+	/**
+	 * Create an html element that shows how this Refract is built, for debugging.
+	 * @return HTMLElement */
+	static debugRender() {
+
+		let omap = (o, cb) => { // Like .map() but for objects.
+			let result = [];
+			for (let name in o)
+				result.push(cb(name, o[name]));
+			return result;
+		};
+
+
+		let renderPaths = watchPaths => watchPaths.map(path => "'" + path.join('.') + "'").join(', ');
+
+		/**
+		 *
+		 * @param child {(VExpression|VElement|string)[]|VExpression|VElement|string}
+		 * @param inlineText {string}
+		 * @return {string} */
+		let renderItem = (child, inlineText) => {
+			if (Array.isArray(child)) {
+				let result = [];
+				for (let child2 of child)
+					result.push(renderItem(child2, inlineText));
+				return result.join('');
+			}
+			if (child instanceof VExpression)
+				return renderVExpr(child);
+			if (child instanceof VElement)
+				return renderVEl(child);
+
+			// VText or attribute.
+			let text = child.text || child;
+			if (!text.trim().length)
+				text = text.replace(/\s/g, '&nbsp;');
+
+			let tag = inlineText === true ? 'span' : 'div';
+			let style = inlineText !== true ? 'display: table;' : '';
+			return `<${tag} title="Text node" style="${style} background-color: rgba(192, 96, 64, .2); color: #a66">${text}</${tag}>`;
+		};
+
+		/**
+		 * @param ve {VElement}
+		 * @return {string} */
+		let renderVEl = ve =>
+			`<div style="color: #f40">
+				<div>
+					<span>&lt;${ve.tagName}</span
+					>${omap(ve.attributes_, (name, val) => ` <span>${name}="${renderItem(val, true)}"</span>`).join('')}&gt;
+				</div>
+				<div style="padding-left: 4ex">
+					${ve.vChildren_.map(renderItem).join('')}		
+				</div>
+				<div>&lt;/${ve.tagName}&gt;</div>			
+			</div>`;
+
+		/**
+		 * @param vexpr {VExpression}
+		 * @return {string} */
+		let renderVExpr = vexpr => {
+			if (vexpr.type === 'loop')
+				return `
+					<div style="color: #08f">${renderPaths(vexpr.watchPaths_)}.map(${vexpr.loopParamName} => 
+						
+						<span style="color: #8888" title="watchPaths">
+							[${renderPaths(vexpr.watchPaths_)}] => ${vexpr.loopParamName}
+						</span>
+					
+						<div style="padding-left: 4ex">
+							${vexpr.loopItemEls_.map(renderItem).join('')}
+						</div>
+						) 
+					</div>`;
+
+			return `<span style="color: #60f">${vexpr.code}</span>
+				<span style="color: #8888" title="watchPaths">
+					[${renderPaths(vexpr.watchPaths_)}]
+				</span>`;
+		};
+
+
+		return createEl(renderVEl(this.virtualElement));
+	}
+
+	//#ENDIF
+
+	/**
+	 * Evaluate a string found in an attribute.
+	 * Try to parse the string as JSON or a ${...} expression.
+	 * @param string
+	 * @returns {*} */
+	static evalStringAttrib(string) {
+		try {
+			return JSON.parse(string);
+		} catch (e) {
+
+			// A code expression
+			if (string.startsWith('${') && string.endsWith('}')) // Try evaluating as code if it's surrounded with ${}
+				try {
+					return eval('(' + string.slice(2, -1) + ')')
+				} catch(e) {}
+		}
+		return string;
+	}
+
+	/**
+	 * Create a version of the class
+	 * @param self
+	 * @returns {{}}
+	 */
+	static createModifiedClass(self) {
+		let result = {};
+		result.originalClass_ = self;
+
+		// This code runs after the call to super() and after all the other properties are initialized.
+
+
+		// Turn autoRender into a property if it's not a property already.
+		// It might be a property if we inherit from another Refract class.
+		let preInitVal = (() => {
+
+			if ('autoRender' in this)
+				this.__autoRender = this.autoRender;
+			else if (!('__autoRender' in this))
+				this.__autoRender = true;
+
+			if (Object.getOwnPropertyDescriptor(this, 'autoRender')?.configurable !== false)
+				Object.defineProperty(this, 'autoRender', {
+					get() {
+						return this.__autoRender
+					},
+					set(val) {
+						this.__autoRender = val;
+						if (val)
+							this.render();
+					}
+				});
+
+			if (this.__autoRender)
+				this.render();
+
+			// Ensure constructor is only called on self, not an extra time from inheriting classes.
+			let status = this.tagName === '%tagName%'; // fails if inlined, but why?!
+			if (this.init && status) {
+				let args = this.parentElement
+					? this.constructor.compiler.populateArgsFromAttribs(this, this.constructor.getInitArgs_())
+					: this.constructorArgs2_;
+				this.init(...args);
+			}
+		}).toString();
+		let preInitCode = `
+			__preInit = (${preInitVal})()`;
+
+		// New path.
+		if (self.prototype.html) {
+			result.tagName = Parse.htmlFunctionTagName_(self.prototype.html.toString());
+			preInitCode = preInitCode.replace('%tagName%', result.tagName.toUpperCase());
+
+			// Not supported in Safari as of March 2023.  When it is we can maybe stop requiring this be added manually:
+			// https://caniuse.com/mdn-javascript_classes_static_initialization_blocks
+			//preInitCode += `;static { eval(${self.name}.compile()) }`
+
+			result.code = self.toString().slice(0, -1) + preInitCode + '}';
+		}
+
+		// Old path.  All of this will go away eventually:
+		//#IFDEV
+		else if (!self.prototype.html) {
+
+			function removeComments(tokens) {
+				let result = [];
+				for (let token of tokens) {
+					if (token.type !== 'comment')
+						result.push(token);
+					if (token.tokens)
+						token.tokens = removeComments(token.tokens);
+				}
+				return result;
+			}
+
+
+			// 1. Parse into tokens
+			let code = self.toString();
+			//let old = htmljs.allowUnknownTagTokens;
+			//htmljs.allowUnknownTagTokens = true;
+			let tokens = [...lex(lexHtmlJs, code)];
+
+			//htmljs.allowUnknownTagTokens = old;
+			tokens = removeComments(tokens);
+			let htmlIdx = 0, constructorIdx = 0;
+
+
+			// 2. Get the constructorArgs and inject new code.
+			{
+				let constr = fregex.matchFirst(['constructor', Parse.ws, '('], tokens, constructorIdx);
+
+				// Modify existing constructor
+				if (constr) { // is null if no match found.
+					// Find arguments
+					let argTokens = tokens.slice(constr.index + constr.length, Parse.findGroupEnd_(tokens, constr.index + constr.length));
+					result.constructorArgs = Parse.findFunctionArgNames_(argTokens);
+
+					// Find super call in constructor body
+					let sup = fregex.matchFirst(
+						['super', Parse.ws, '('],
+						tokens,
+						constr.index + constr.length + argTokens.length);
+
+					let supEnd = Parse.findGroupEnd_(tokens, sup.index + sup.length) + 1;
+					let e = fregex(Parse.ws, ';')(tokens.slice(supEnd));
+					supEnd += e;
+
+					let s = sup.index;
+					sup = tokens.slice(sup.index, supEnd);
+					sup.index = s;
+
+					if (!sup)
+						throw new Error(`Class ${self.name} constructor() { ... } is missing call to super().`);
+
+
+					let injectIndex = sup.index + sup.length;
+					let nextToken = tokens[injectIndex];
+					let injectLines = [
+						(nextToken == ',' ? ',' : ';'),
+						`(()=>{`, // We wrap this in a function b/c some minifiers will strangely rewrite the super call into another expression.
+						...result.constructorArgs.map(argName => [`\t${argName} = this.getAttrib_('${argName}', ${argName});`]),
+						`})()`
+					];
+					let injectCode = '\r\n\t\t' + [
+							'//Begin Refract injected code.',
+							...injectLines,
+							'//End Refract injected code.'
+						].join('\r\n\t\t')
+						+ '\r\n';
+
+					// This final line return is needed to prevent minifiers from breaking it.
+					tokens.splice(injectIndex, 0, injectCode);
+				}
+			}
+
+
+			// 3. Parse html property
+			{
+				// A. Find html template token
+				// Make sure we're finding html = ` and the constructor at the top level, and not inside a function.
+				// This search is also faster than if we use matchFirst() from the first token.
+				// TODO: Use ObjectUtil.find() ?
+				let braceDepth = 0;
+				let i = 0;
+				for (let token of tokens) {
+					if (token.text === '{' || token.text === '(') // Don't find things within function argument lists, or function bodies.
+						braceDepth++;
+					else if (token.text === '}' || token.text === ')')
+						braceDepth--;
+					else if (braceDepth === 1) {
+						if (!htmlIdx && token.text == 'html')
+							htmlIdx = i;
+						else if (!constructorIdx && token.text == 'constructor')
+							constructorIdx = i;
+					}
+
+					if (htmlIdx && constructorIdx)
+						break;
+					i++;
+				}
+
+
+				let htmlMatch = fregex.matchFirst([
+					'html', Parse.ws, '=', Parse.ws,
+					fregex.or({type: 'template'}, {type: 'string'}),
+					Parse.ws,
+					fregex.zeroOrOne(';')
+				], tokens, htmlIdx);
+
+				if (!htmlMatch && !self.prototype.html)
+					throw new Error(`Class ${self.name} is missing an html property with a template value.`);
+
+				// Remove the html property, so that when classes are constructed it's not evaluated as a regular template string.
+				let htmlAssign = tokens.splice(htmlMatch.index, htmlMatch.length);
+				let template = htmlAssign.filter(t => t.tokens || t.type === 'string')[0]; // only the template token has sub-tokens.
+
+				// B. Parse html
+
+				// B1 Template
+				if (template.tokens)
+					var innerTokens = template.tokens.slice(1, -1);
+
+				// b2 Non-template
+				else { // TODO: Is there better a way to unescape "'hello \'everyone'" type strings than eval() ?
+					let code = eval(template + '');
+					innerTokens = lex(lexHtmlJs, code, 'template');
+				}
+
+				if (innerTokens[0].type === 'text' && !Utils.unescapeTemplate_(innerTokens[0].text).trim().length)
+					innerTokens = innerTokens.slice(1); // Skip initial whitespace.
+
+				result.htmlTokens = innerTokens;
+				for (let token of innerTokens) {
+					if (token.type === 'openTag') {
+						result.tagName = token.tokens[0].text.slice(1); // Get '<open-tag' w/o first character.
+						break;
+					}
+				}
+			}
+
+			// 4.  Insert a property at the very end of the class, to call render().
+			// This allows render() to be called after super() and after the other properties are setup,
+			// but before the rest of the code in the constructor().
+			let lastBrace = null;
+			for (let i = tokens.length - 1; true; i--)
+				if (tokens[i].text === '}') {
+					lastBrace = i;
+					break;
+				}
+
+			tokens.splice(lastBrace, 0, preInitCode);
+
+			result.code = tokens.join('');
+		}
+		//#ENDIF
+
+		return result;
+	}
+
+	static decorateAndRegister(NewClass, compiled) {
+
+		// 1. Set Properties
+		NewClass.tagName = compiled.tagName;
+
+
+		NewClass.constructorArgs = compiled.constructorArgs;
+		NewClass.htmlTokens = compiled.htmlTokens;
+
+		// 2. Copy methods and fields from old class to new class, so that debugging within them will still work.
+		for (let name of Object.getOwnPropertyNames(compiled.originalClass_.prototype))
+			if (name !== 'constructor')
+				NewClass.prototype[name] = compiled.originalClass_.prototype[name];
+
+		// 3. Copy static methods and fields, so that debugging within them will still work.
+		for (let staticField of Object.getOwnPropertyNames(compiled.originalClass_))
+			if (!(staticField in Refract)) // If not inherited
+				NewClass[staticField] = compiled.originalClass_[staticField];
+
+
+		// Re-evaluate static functions so that any references to its own class points to the new instance and not the old one.
+		// TODO: This doesn't get the arguments of the function.
+		// TODO: Does this need to be done for non-static methos also?
+		// TODO: Can this be combined with step 3 above?
+		/*
+		for (let name of Refract.ownKeys(NewClass))
+			if ((typeof NewClass[name] === 'function') && name !== 'createFunction') {
+				let code = NewClass[name].toString();
+				code = code.slice(code.indexOf('{')+1, code.lastIndexOf('}'));
+				NewClass[name] = NewClass.createFunction(code);
+			}
+		*/
+
+		// 4. Register the class as an html element.
+		customElements.define(compiled.tagName, NewClass);
+	}
+
+	/**
+	 * Get the arguments to the init function from the attributes.
+	 * @param el {Refract|VElement} Call getAttrib() on this object.
+	 * @param argNames {(string|Object)[]} An array returned from ParsedFunction.getArgNames().
+	 * @returns {*[]} */
+	static populateArgsFromAttribs(el, argNames) {
+
+		/**
+		 * Handle cases where the arguments are object.  For example:
+		 * function init({name: null, value: null}) {} */
+		const populateObject = (obj, maxDepth=5) => {
+
+			if (maxDepth && obj && (Array.isArray(obj) || typeof obj === 'object') && !(obj instanceof HTMLElement))
+				for (let name in obj)
+					if (obj[name]) {
+						// If this function causes a stack overflow, comment out this line.  That way, we
+						// only populate object arguments one level deep, because sometimes we end up with infinite recursion.
+						populateObject(obj[name], maxDepth-1);
+					}
+					else
+						obj[name] = el.getAttrib_(name);
+			return obj;
+		};
+
+		let result = [];
+		for (let arg of argNames)
+			if (typeof arg === 'string')
+				result.push(el.getAttrib_(arg));
+			else
+				result.push(populateObject(arg));
+
+		return result;
+	}
+
 }
 
 lexHtmlJs.allowHashTemplates = true;
@@ -4210,7 +4710,7 @@ class VElement {
 				let assignFunc = createFunction(...this.scope_.keys(), 'val', valueExprs[0].code + '=val;').bind(this.refr_);
 
 				// Update the value when the input changes:
-				utils.watchInput_(this.el, (val, e) => {
+				Utils.watchInput_(this.el, (val, e) => {
 					Globals.currentEvent_ = e;
 					assignFunc(...this.scope_.getValues(), val);
 					Globals.currentEvent_ = null;
@@ -4288,7 +4788,7 @@ class VElement {
 
 	/**
 	 * Get the value of an attribute to use as a constructor argument.
-	 * TODO: This is almost identical to Refract.getAttrib_()
+	 * See also Refract.getAttrib_() which can also handle attributes from the real DOM tree.
 	 * @param name {string}
 	 * @return {*} */
 	getAttrib_(name) {
@@ -4305,27 +4805,19 @@ class VElement {
 			return val[0].exec_.apply(this.refr_, this.scope_.getValues());
 		}
 
-
+		// <div attribute="">
 		if (Array.isArray(val) && !val.length)
 			return '';
 
-		// Attribute with no value.
+		// <div attribute>
 		if (val === null)
-			return true;
+			return ''; // This used to eval to true, but we return empty string to
 
-		// Else evaluate as JSON, or as a string.
+		// Combine one or more vexpressions into a single string.
 		let result = VElement.evalVAttributeAsString_(this.refr_, (val || []), this.scope_);
-		try {
-			result = JSON.parse(result);
-		} catch (e) {
 
-			// A code expression
-			if (result.startsWith('${') && result.endsWith('}')) // Try evaluating as code if it's surrounded with ${}
-				try {
-					result = eval('(' + result.slice(2, -1) + ')');
-				} catch(e) {}
-		}
-		return result;
+		// As JSON or an expression.
+		return Compiler.evalStringAttrib(result);
 	}
 
 	remove_() {
@@ -4363,34 +4855,32 @@ class VElement {
 	 * value="${['one', 'two']}three" becomes ['onetwothree']
 	 * @param refr {Refract}
 	 * @param attrParts {(VExpression|string)[]}
-	 * @param scope {object}
+	 * @param scope {Scope}
 	 * @return {*|string} */
 	static evalVAttribute_(refr, attrParts, scope={}) {
 
 		// Return object
 		if (attrParts.length === 1 && attrParts[0] instanceof VExpression)
-			return attrParts[0].exec_.apply(refr, Object.values(scope));
+			return attrParts[0].exec_.apply(refr, scope.getValues());
 
 		// Return string
 		let result = attrParts.map(expr =>
-			expr instanceof VExpression ? expr.exec_.apply(refr, Object.values(scope)) : expr
+			expr instanceof VExpression ? expr.exec_.apply(refr, scope.getValues()) : expr
 		);
-		return Html.decode(result.flat().map(utils.toString).join(''));
+		return Html.decode(result.flat().map(Utils.toString).join(''));
 	}
 
 	/**
 	 * @param refr {Refract}
 	 * @param attrParts {(VExpression|string)[]}
-	 * @param scope {object}
+	 * @param scope {Scope}
 	 * @return {string} */
-	static evalVAttributeAsString_(refr, attrParts, scope={}) {
+	static evalVAttributeAsString_(refr, attrParts, scope=null) {
 		let result = [];
-
-		let scope2 = scope instanceof Scope ? scope.getValues() : Object.values(scope);
 
 		for (let attrPart of attrParts || []) {
 			if (attrPart instanceof VExpression) {
-				let val = attrPart.exec_.apply(refr, scope2);
+				let val = attrPart.exec_.apply(refr, scope ? scope.getValues() : []);
 				if (Array.isArray(val) || (val instanceof Set))
 					val = Array.from(val).join(' '); // Useful for classes.
 				else if (val && typeof val === 'object') { // style attribute
@@ -4404,13 +4894,13 @@ class VElement {
 			else
 				result.push(Html.decode(attrPart)); // decode because this will be passed to setAttribute()
 		}
-		return result.map(utils.toString).join('');
+		return result.map(Utils.toString).join('');
 	}
 
 	/**
 	 * Convert html to an array of child elements.
 	 * @param html {string|string[]} Tokens will be removed from the beginning of the array as they're processed.
-	 * @param scopeVars {string[]}
+	 * @param scopeVars {string[]} Names of variables.
 	 * @param vParent {VElement|VExpression}
 	 * @param Class
 	 * @return {(VElement|VExpression|string)[]} */
@@ -4544,488 +5034,6 @@ function setInputValue_(ref, el, value, scope) {
 		else // Some custom elements can accept object or array for the value property:
 			el.value = values;
 	}
-}
-
-/**
- * Utility functions used internally by Refract for setting up a Refract class. */
-class Compiler {
-
-
-	//#IFDEV
-
-	debugRender() {
-		// .map() for objects.
-		let omap = (o, cb) => { // Like .map() but for objects.
-			let result = [];
-			for (let name in o)
-				result.push(cb(name, o[name]));
-			return result;
-		};
-
-		let renderPaths = watchPaths => watchPaths.map(path => "'" + path.join('.') + "'").join(', ');
-
-		/**
-		 *
-		 * @param child {(VExpression|VElement|string)[]|VExpression|VElement|string}
-		 * @param inlineText {string}
-		 * @return {string} */
-		let renderItem = (child, inlineText) => {
-
-			if (Array.isArray(child)) {
-				let result = [];
-				for (let child2 of child)
-					result.push(renderItem(child2, inlineText));
-				return result.join('');
-			}
-			if (child instanceof VExpression)
-				return renderVExpr(child);
-			if (child instanceof VElement) {
-				return renderVEl(child);
-
-			}
-
-			// String
-			let text = child.text;
-			if (!text.trim().length)
-				text = text.replace(/\s/g, '&nbsp;');
-
-			let tag = inlineText === true ? 'span' : 'div';
-			return `
-				
-				<${tag}><span style="color: #8888" title="startIndex">[${child.startIndex}] </span><span title="Text node" style="background: #a643; color: #a66">${text}</span></${tag}>`;
-		};
-
-		/**
-		 * @param ve {VElement}
-		 * @return {string} */
-		let renderVEl = ve =>
-			`<div style="color: #f40">
-				<div>
-					<span>&lt;${ve.tagName}</span
-					>${omap(ve.attributes_, (name, val) => ` <span>${name}="${renderItem(val, true)}"</span>`).join('')}&gt;
-				</div>
-				<div style="padding-left: 4ex">
-					${ve.vChildren_.map(renderItem).join('')}
-				</div>
-				<div>&lt;/${ve.tagName}&gt;</div>			
-			</div>`;
-
-		/**
-		 * @param vexpr {VExpression}
-		 * @return {string} */
-		let renderVExpr = vexpr => {
-			if (vexpr.type === 'loop')
-				return `
-					<div style="color: #08f">	
-						<div style="background: #222">				
-							<span style="color: #8888" title="startIndex">[${vexpr.startIndex_}]</span>
-							${renderPaths(vexpr.watchPaths_)}.map(${vexpr.loopParamName} => 
-							
-							<span style="color: #8888" title="watchPaths">
-								[${renderPaths(vexpr.watchPaths_)}] => ${vexpr.loopParamName}
-							</span>
-						</div>
-					
-						<div style="padding-left: 4ex">
-							<div title="loopItemEls" style="background: #222">${vexpr.loopItemEls_.map(renderItem).join('')}</div>
-							${vexpr.vChildren_.map(renderItem).join('')}
-						</div>
-						) 
-					</div>`;
-
-			return `
-				<div style="background: #222">
-					<span style="color: #8888" title="startIndex">[${vexpr.startIndex_}]</span>
-					<span style="color: #60f" title="VExpression">${vexpr.code}</span>
-					<span style="color: #8888" title="watchPaths">
-						[${renderPaths(vexpr.watchPaths_)}]
-					</span>
-				</div>
-				${vexpr.vChildren_.map(renderItem).join('')}`;
-		};
-
-
-		return createEl(renderVEl(this.virtualElement));
-	}
-
-	/**
-	 * Create an html element that shows how this Refract is built, for debugging.
-	 * @return HTMLElement */
-	static debugRender() {
-
-		let omap = (o, cb) => { // Like .map() but for objects.
-			let result = [];
-			for (let name in o)
-				result.push(cb(name, o[name]));
-			return result;
-		};
-
-
-		let renderPaths = watchPaths => watchPaths.map(path => "'" + path.join('.') + "'").join(', ');
-
-		/**
-		 *
-		 * @param child {(VExpression|VElement|string)[]|VExpression|VElement|string}
-		 * @param inlineText {string}
-		 * @return {string} */
-		let renderItem = (child, inlineText) => {
-			if (Array.isArray(child)) {
-				let result = [];
-				for (let child2 of child)
-					result.push(renderItem(child2, inlineText));
-				return result.join('');
-			}
-			if (child instanceof VExpression)
-				return renderVExpr(child);
-			if (child instanceof VElement)
-				return renderVEl(child);
-
-			// VText or attribute.
-			let text = child.text || child;
-			if (!text.trim().length)
-				text = text.replace(/\s/g, '&nbsp;');
-
-			let tag = inlineText === true ? 'span' : 'div';
-			let style = inlineText !== true ? 'display: table;' : '';
-			return `<${tag} title="Text node" style="${style} background-color: rgba(192, 96, 64, .2); color: #a66">${text}</${tag}>`;
-		};
-
-		/**
-		 * @param ve {VElement}
-		 * @return {string} */
-		let renderVEl = ve =>
-			`<div style="color: #f40">
-				<div>
-					<span>&lt;${ve.tagName}</span
-					>${omap(ve.attributes_, (name, val) => ` <span>${name}="${renderItem(val, true)}"</span>`).join('')}&gt;
-				</div>
-				<div style="padding-left: 4ex">
-					${ve.vChildren_.map(renderItem).join('')}		
-				</div>
-				<div>&lt;/${ve.tagName}&gt;</div>			
-			</div>`;
-
-		/**
-		 * @param vexpr {VExpression}
-		 * @return {string} */
-		let renderVExpr = vexpr => {
-			if (vexpr.type === 'loop')
-				return `
-					<div style="color: #08f">${renderPaths(vexpr.watchPaths_)}.map(${vexpr.loopParamName} => 
-						
-						<span style="color: #8888" title="watchPaths">
-							[${renderPaths(vexpr.watchPaths_)}] => ${vexpr.loopParamName}
-						</span>
-					
-						<div style="padding-left: 4ex">
-							${vexpr.loopItemEls_.map(renderItem).join('')}
-						</div>
-						) 
-					</div>`;
-
-			return `<span style="color: #60f">${vexpr.code}</span>
-				<span style="color: #8888" title="watchPaths">
-					[${renderPaths(vexpr.watchPaths_)}]
-				</span>`;
-		};
-
-
-		return createEl(renderVEl(this.virtualElement));
-	}
-
-	//#ENDIF
-
-
-	/**
-	 * Create a version of the class
-	 * @param self
-	 * @returns {{}}
-	 */
-	static createModifiedClass(self) {
-		let result = {};
-		result.originalClass_ = self;
-
-		// This code runs after the call to super() and after all the other properties are initialized.
-
-
-		// Turn autoRender into a property if it's not a property already.
-		// It might be a property if we inherit from another Refract class.
-		let preInitVal = (() => {
-
-			if ('autoRender' in this)
-				this.__autoRender = this.autoRender;
-			else if (!('__autoRender' in this))
-				this.__autoRender = true;
-
-			if (Object.getOwnPropertyDescriptor(this, 'autoRender')?.configurable !== false)
-				Object.defineProperty(this, 'autoRender', {
-					get() {
-						return this.__autoRender
-					},
-					set(val) {
-						this.__autoRender = val;
-						if (val)
-							this.render();
-					}
-				});
-
-			if (this.__autoRender)
-				this.render();
-
-			// Ensure constructor is only called on self, not an extra time from inheriting classes.
-			let status = this.tagName === '%tagName%'; // fails if inlined, but why?!
-			if (this.init && status) {
-				let args = this.parentElement
-					? this.constructor.compiler.populateArgsFromAttribs(this, this.constructor.getInitArgs_())
-					: this.constructorArgs2_;
-				this.init(...args);
-			}
-		}).toString();
-		let preInitCode = `
-			__preInit = (${preInitVal})()`;
-
-		// New path.
-		if (self.prototype.html) {
-			result.tagName = Parse.htmlFunctionTagName_(self.prototype.html.toString());
-			preInitCode = preInitCode.replace('%tagName%', result.tagName.toUpperCase());
-
-			// Not supported in Safari as of March 2023.  When it is we can maybe stop requiring this be added manually:
-			// https://caniuse.com/mdn-javascript_classes_static_initialization_blocks
-			//preInitCode += `;static { eval(${self.name}.compile()) }`
-
-			result.code = self.toString().slice(0, -1) + preInitCode + '}';
-		}
-
-		// Old path.  All of this will go away eventually:
-		//#IFDEV
-		else if (!self.prototype.html) {
-
-			function removeComments(tokens) {
-				let result = [];
-				for (let token of tokens) {
-					if (token.type !== 'comment')
-						result.push(token);
-					if (token.tokens)
-						token.tokens = removeComments(token.tokens);
-				}
-				return result;
-			}
-
-
-			// 1. Parse into tokens
-			let code = self.toString();
-			//let old = htmljs.allowUnknownTagTokens;
-			//htmljs.allowUnknownTagTokens = true;
-			let tokens = [...lex(lexHtmlJs, code)];
-
-			//htmljs.allowUnknownTagTokens = old;
-			tokens = removeComments(tokens);
-			let htmlIdx = 0, constructorIdx = 0;
-
-
-			// 2. Get the constructorArgs and inject new code.
-			{
-				let constr = fregex.matchFirst(['constructor', Parse.ws, '('], tokens, constructorIdx);
-
-				// Modify existing constructor
-				if (constr) { // is null if no match found.
-					// Find arguments
-					let argTokens = tokens.slice(constr.index + constr.length, Parse.findGroupEnd_(tokens, constr.index + constr.length));
-					result.constructorArgs = Parse.findFunctionArgNames_(argTokens);
-
-					// Find super call in constructor body
-					let sup = fregex.matchFirst(
-						['super', Parse.ws, '('],
-						tokens,
-						constr.index + constr.length + argTokens.length);
-
-					let supEnd = Parse.findGroupEnd_(tokens, sup.index + sup.length) + 1;
-					let e = fregex(Parse.ws, ';')(tokens.slice(supEnd));
-					supEnd += e;
-
-					let s = sup.index;
-					sup = tokens.slice(sup.index, supEnd);
-					sup.index = s;
-
-					if (!sup)
-						throw new Error(`Class ${self.name} constructor() { ... } is missing call to super().`);
-
-
-					let injectIndex = sup.index + sup.length;
-					let nextToken = tokens[injectIndex];
-					let injectLines = [
-						(nextToken == ',' ? ',' : ';'),
-						`(()=>{`, // We wrap this in a function b/c some minifiers will strangely rewrite the super call into another expression.
-						...result.constructorArgs.map(argName => [`\t${argName} = this.getAttrib_('${argName}', ${argName});`]),
-						`})()`
-					];
-					let injectCode = '\r\n\t\t' + [
-							'//Begin Refract injected code.',
-							...injectLines,
-							'//End Refract injected code.'
-						].join('\r\n\t\t')
-						+ '\r\n';
-
-					// This final line return is needed to prevent minifiers from breaking it.
-					tokens.splice(injectIndex, 0, injectCode);
-				}
-			}
-
-
-			// 3. Parse html property
-			{
-				// A. Find html template token
-				// Make sure we're finding html = ` and the constructor at the top level, and not inside a function.
-				// This search is also faster than if we use matchFirst() from the first token.
-				// TODO: Use ObjectUtil.find() ?
-				let braceDepth = 0;
-				let i = 0;
-				for (let token of tokens) {
-					if (token.text === '{' || token.text === '(') // Don't find things within function argument lists, or function bodies.
-						braceDepth++;
-					else if (token.text === '}' || token.text === ')')
-						braceDepth--;
-					else if (braceDepth === 1) {
-						if (!htmlIdx && token.text == 'html')
-							htmlIdx = i;
-						else if (!constructorIdx && token.text == 'constructor')
-							constructorIdx = i;
-					}
-
-					if (htmlIdx && constructorIdx)
-						break;
-					i++;
-				}
-
-
-				let htmlMatch = fregex.matchFirst([
-					'html', Parse.ws, '=', Parse.ws,
-					fregex.or({type: 'template'}, {type: 'string'}),
-					Parse.ws,
-					fregex.zeroOrOne(';')
-				], tokens, htmlIdx);
-
-				if (!htmlMatch && !self.prototype.html)
-					throw new Error(`Class ${self.name} is missing an html property with a template value.`);
-
-				// Remove the html property, so that when classes are constructed it's not evaluated as a regular template string.
-				let htmlAssign = tokens.splice(htmlMatch.index, htmlMatch.length);
-				let template = htmlAssign.filter(t => t.tokens || t.type === 'string')[0]; // only the template token has sub-tokens.
-
-				// B. Parse html
-
-				// B1 Template
-				if (template.tokens)
-					var innerTokens = template.tokens.slice(1, -1);
-
-				// b2 Non-template
-				else { // TODO: Is there better a way to unescape "'hello \'everyone'" type strings than eval() ?
-					let code = eval(template + '');
-					innerTokens = lex(lexHtmlJs, code, 'template');
-				}
-
-				if (innerTokens[0].type === 'text' && !utils.unescapeTemplate_(innerTokens[0].text).trim().length)
-					innerTokens = innerTokens.slice(1); // Skip initial whitespace.
-
-				result.htmlTokens = innerTokens;
-				for (let token of innerTokens) {
-					if (token.type === 'openTag') {
-						result.tagName = token.tokens[0].text.slice(1); // Get '<open-tag' w/o first character.
-						break;
-					}
-				}
-			}
-
-			// 4.  Insert a property at the very end of the class, to call render().
-			// This allows render() to be called after super() and after the other properties are setup,
-			// but before the rest of the code in the constructor().
-			let lastBrace = null;
-			for (let i = tokens.length - 1; true; i--)
-				if (tokens[i].text === '}') {
-					lastBrace = i;
-					break;
-				}
-
-			tokens.splice(lastBrace, 0, preInitCode);
-
-			result.code = tokens.join('');
-		}
-		//#ENDIF
-
-		return result;
-	}
-
-	static decorateAndRegister(NewClass, compiled) {
-
-		// 1. Set Properties
-		NewClass.tagName = compiled.tagName;
-
-
-		NewClass.constructorArgs = compiled.constructorArgs;
-		NewClass.htmlTokens = compiled.htmlTokens;
-
-		// 2. Copy methods and fields from old class to new class, so that debugging within them will still work.
-		for (let name of Object.getOwnPropertyNames(compiled.originalClass_.prototype))
-			if (name !== 'constructor')
-				NewClass.prototype[name] = compiled.originalClass_.prototype[name];
-
-		// 3. Copy static methods and fields, so that debugging within them will still work.
-		for (let staticField of Object.getOwnPropertyNames(compiled.originalClass_))
-			if (!(staticField in Refract)) // If not inherited
-				NewClass[staticField] = compiled.originalClass_[staticField];
-
-
-		// Re-evaluate static functions so that any references to its own class points to the new instance and not the old one.
-		// TODO: This doesn't get the arguments of the function.
-		// TODO: Does this need to be done for non-static methos also?
-		// TODO: Can this be combined with step 3 above?
-		/*
-		for (let name of Refract.ownKeys(NewClass))
-			if ((typeof NewClass[name] === 'function') && name !== 'createFunction') {
-				let code = NewClass[name].toString();
-				code = code.slice(code.indexOf('{')+1, code.lastIndexOf('}'));
-				NewClass[name] = NewClass.createFunction(code);
-			}
-		*/
-
-		// 4. Register the class as an html element.
-		customElements.define(compiled.tagName, NewClass);
-	}
-
-	/**
-	 * Get the arguments to the init function from the attributes.
-	 * @param el {Refract|VElement} Call getAttrib() on this object.
-	 * @param argNames {(string|Object)[]} An array returned from ParsedFunction.getArgNames().
-	 * @returns {*[]} */
-	static populateArgsFromAttribs(el, argNames) {
-
-		/**
-		 * Handle cases where the arguments are object.  For example:
-		 * function init({name: null, value: null}) {} */
-		const populateObject = (obj, maxDepth=5) => {
-
-			if (maxDepth && obj && (Array.isArray(obj) || typeof obj === 'object') && !(obj instanceof HTMLElement))
-				for (let name in obj)
-					if (obj[name]) {
-						// If this function causes a stack overflow, comment out this line.  That way, we
-						// only populate object arguments one level deep, because sometimes we end up with infinite recursion.
-						populateObject(obj[name], maxDepth-1);
-					}
-					else
-						obj[name] = el.getAttrib_(name);
-			return obj;
-		};
-
-		let result = [];
-		for (let arg of argNames)
-			if (typeof arg === 'string')
-				result.push(el.getAttrib_(arg));
-			else
-				result.push(populateObject(arg));
-
-		return result;
-	}
-
 }
 
 lexHtmlJs.allowHashTemplates = true;
@@ -5184,7 +5192,7 @@ class Refract extends HTMLElement {
 
 	/**
 	 * Get the evaluated version of an attribute.
-	 * TODO: This is almost identical to VElement.getAttrib_()
+	 * See also VElement.getAttrib_()
 	 * @param name {string}
 	 * @param alt {*} Defaults to undefined because that's what we get if the argument isn't specified by the caller.
 	 * @return {*} */
@@ -5195,26 +5203,13 @@ class Refract extends HTMLElement {
 		}
 		else {
 			let hval = this.getAttribute(name);
-			if (hval === null)
+			if (hval === null) // attribute doesn't exist.
 				return alt;
 
 			let val = Html.decode(hval);
 
-			// As JSON
-			try {
-				return JSON.parse(val);
-			}
-			catch {}
-
-			// As an expression
-			if (val.startsWith('${') && val.endsWith('}'))
-				try { // Is it possible to eval() in the context of the calling function?
-					return eval('(' + val.slice(2, -1) + ')');
-				}
-				catch {}
-
-			// As a string
-			return val;
+			// As JSON or an expression.
+			return Compiler.evalStringAttrib(val);
 		}
 	}
 
@@ -5358,4 +5353,4 @@ window.refractHtmlEncode = Html.encode; // Used by #{} expressions.
 var h = (text, quotes=`"'`) => Html.encode(text, quotes);
 
 export default Refract;
-export { Globals, utils as Utils, Watch, fregex, h, lex, lexHtmlJs };
+export { Globals, Utils, Watch, fregex, h, lex, lexHtmlJs };

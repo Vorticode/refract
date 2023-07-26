@@ -162,7 +162,7 @@ export default class Refract extends HTMLElement {
 
 	/**
 	 * Get the evaluated version of an attribute.
-	 * TODO: This is almost identical to VElement.getAttrib_()
+	 * See also VElement.getAttrib_()
 	 * @param name {string}
 	 * @param alt {*} Defaults to undefined because that's what we get if the argument isn't specified by the caller.
 	 * @return {*} */
@@ -173,26 +173,13 @@ export default class Refract extends HTMLElement {
 		}
 		else {
 			let hval = this.getAttribute(name);
-			if (hval === null)
+			if (hval === null) // attribute doesn't exist.
 				return alt;
 
 			let val = Html.decode(hval);
 
-			// As JSON
-			try {
-				return JSON.parse(val);
-			}
-			catch {}
-
-			// As an expression
-			if (val.startsWith('${') && val.endsWith('}'))
-				try { // Is it possible to eval() in the context of the calling function?
-					return eval('(' + val.slice(2, -1) + ')');
-				}
-				catch {}
-
-			// As a string
-			return val;
+			// As JSON or an expression.
+			return Compiler.evalStringAttrib(val);
 		}
 	}
 

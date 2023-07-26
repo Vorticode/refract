@@ -198,6 +198,24 @@ export class Compiler {
 
 	//#ENDIF
 
+	/**
+	 * Evaluate a string found in an attribute.
+	 * Try to parse the string as JSON or a ${...} expression.
+	 * @param string
+	 * @returns {*} */
+	static evalStringAttrib(string) {
+		try {
+			return JSON.parse(string);
+		} catch (e) {
+
+			// A code expression
+			if (string.startsWith('${') && string.endsWith('}')) // Try evaluating as code if it's surrounded with ${}
+				try {
+					return eval('(' + string.slice(2, -1) + ')')
+				} catch(e) {}
+		}
+		return string;
+	}
 
 	/**
 	 * Create a version of the class

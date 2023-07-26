@@ -8,6 +8,7 @@ import Html, {div} from "../util/Html.js";
 import Utils, {assert} from "./utils.js";
 import Scope from "./Scope.js";
 import ObjectUtil from "../util/ObjectUtil.js";
+import {Compiler} from "./Compiler.js";
 
 /**
  * A virtual representation of an Element.
@@ -418,7 +419,7 @@ export default class VElement {
 
 	/**
 	 * Get the value of an attribute to use as a constructor argument.
-	 * TODO: This is almost identical to Refract.getAttrib_()
+	 * See also Refract.getAttrib_() which can also handle attributes from the real DOM tree.
 	 * @param name {string}
 	 * @return {*} */
 	getAttrib_(name) {
@@ -435,27 +436,19 @@ export default class VElement {
 			return val[0].exec_.apply(this.refr_, this.scope_.getValues());
 		}
 
-
+		// <div attribute="">
 		if (Array.isArray(val) && !val.length)
 			return '';
 
-		// Attribute with no value.
+		// <div attribute>
 		if (val === null)
-			return true;
+			return ''; // This used to eval to true, but we return empty string to
 
-		// Else evaluate as JSON, or as a string.
+		// Combine one or more vexpressions into a single string.
 		let result = VElement.evalVAttributeAsString_(this.refr_, (val || []), this.scope_);
-		try {
-			result = JSON.parse(result);
-		} catch (e) {
 
-			// A code expression
-			if (result.startsWith('${') && result.endsWith('}')) // Try evaluating as code if it's surrounded with ${}
-				try {
-					result = eval('(' + result.slice(2, -1) + ')')
-				} catch(e) {}
-		}
-		return result;
+		// As JSON or an expression.
+		return Compiler.evalStringAttrib(result);
 	}
 
 	remove_() {
@@ -493,17 +486,17 @@ export default class VElement {
 	 * value="${['one', 'two']}three" becomes ['onetwothree']
 	 * @param refr {Refract}
 	 * @param attrParts {(VExpression|string)[]}
-	 * @param scope {object}
+	 * @param scope {Scope}
 	 * @return {*|string} */
 	static evalVAttribute_(refr, attrParts, scope={}) {
 
 		// Return object
 		if (attrParts.length === 1 && attrParts[0] instanceof VExpression)
-			return attrParts[0].exec_.apply(refr, Object.values(scope));
+			return attrParts[0].exec_.apply(refr, scope.getValues());
 
 		// Return string
 		let result = attrParts.map(expr =>
-			expr instanceof VExpression ? expr.exec_.apply(refr, Object.values(scope)) : expr
+			expr instanceof VExpression ? expr.exec_.apply(refr, scope.getValues()) : expr
 		);
 		return Html.decode(result.flat().map(Utils.toString).join(''));
 	}
@@ -511,16 +504,14 @@ export default class VElement {
 	/**
 	 * @param refr {Refract}
 	 * @param attrParts {(VExpression|string)[]}
-	 * @param scope {object}
+	 * @param scope {Scope}
 	 * @return {string} */
-	static evalVAttributeAsString_(refr, attrParts, scope={}) {
+	static evalVAttributeAsString_(refr, attrParts, scope=null) {
 		let result = [];
-
-		let scope2 = scope instanceof Scope ? scope.getValues() : Object.values(scope)
 
 		for (let attrPart of attrParts || []) {
 			if (attrPart instanceof VExpression) {
-				let val = attrPart.exec_.apply(refr, scope2);
+				let val = attrPart.exec_.apply(refr, scope ? scope.getValues() : []);
 				if (Array.isArray(val) || (val instanceof Set))
 					val = Array.from(val).join(' '); // Useful for classes.
 				else if (val && typeof val === 'object') { // style attribute
@@ -540,7 +531,7 @@ export default class VElement {
 	/**
 	 * Convert html to an array of child elements.
 	 * @param html {string|string[]} Tokens will be removed from the beginning of the array as they're processed.
-	 * @param scopeVars {string[]}
+	 * @param scopeVars {string[]} Names of variables.
 	 * @param vParent {VElement|VExpression}
 	 * @param Class
 	 * @return {(VElement|VExpression|string)[]} */
