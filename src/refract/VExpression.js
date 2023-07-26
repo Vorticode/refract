@@ -353,7 +353,7 @@ export default class VExpression {
 	/**
 	 * @return {string|string[]} */
 	evaluate_() {
-		return this.exec_.apply(this.refr_, Object.values(this.scope_));
+		return this.exec_.apply(this.refr_, this.scope3_.getValues());
 	}
 
 	/**
@@ -389,7 +389,7 @@ export default class VExpression {
 			if (this.isHash) // #{...} template
 				result = [htmls.map(html => new VText(html, this.refr_))]; // We don't join all the text nodes b/c it creates index issues.
 			else {
-				let scopeVarNames = Object.keys(this.scope_);
+				let scopeVarNames = [...this.scope3_.keys()];
 				for (let html of htmls) {
 					if (html instanceof HTMLElement) {
 						result.push(html); // not a VElement[], but a full HTMLElement
@@ -446,7 +446,7 @@ export default class VExpression {
 			// Path to the loop param variable:
 			let path = [...this.watchPaths_[0], index + '']; // VExpression loops always have one watchPath.
 			let fullPath = this.scope3_.getFullPath_(path);
-			vel.scope3_.set(this.loopParamNames_[j], new ScopeItem(fullPath, [params[j]])); // scope3[name] = [path, value]
+			vel.scope3_.set(this.loopParamNames_[j], new ScopeItem(fullPath, params[j])); // scope3[name] = value
 		}
 	}
 
@@ -705,11 +705,12 @@ export default class VExpression {
 			if (path[0] === 'this')
 				path = path.slice(1);
 
+
 			// Allow paths into the current scope to be watched.
-			else if (path[0] in this.scope_ && path.length > 1) {
+			else if (path.length > 1 && this.scope3_.has(path[0])) {
 
 				// Resolve root to the path of the scope.
-				root = this.scope_[path[0]];
+				root = this.scope3_.get(path[0]).value;
 				path = path.slice(1);
 			}
 

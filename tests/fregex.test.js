@@ -2,6 +2,9 @@ import Testimony, {assert} from './Testimony.js';
 import fregex from '../src/parselib/fregex.js';
 import lexPhp from "../src/parselib/lex-php.js";
 import lex from "../src/parselib/lex.js";
+import {lexHtmlJs} from "../src/refract/Refract.js";
+
+fregex.debug = true;
 
 Testimony.test('fregex.sequence', () => {
 	let isMatch = fregex('a', '=', 'b');
@@ -25,7 +28,7 @@ Testimony.test('fregex.or', () => {
 	assert(!isMatch(['c']));
 });
 
-Testimony.test('fregexOr', () => {
+Testimony.test('fregex.Or1', () => {
 	let isMatch = fregex(
 		'a',
 		fregex.or('b1', 'b2'),
@@ -36,7 +39,7 @@ Testimony.test('fregexOr', () => {
 	assert.eq(isMatch(['a', 'b3', 'c']), false);
 });
 
-Testimony.test('fregexOr2', () => {
+Testimony.test('fregex.Or2', () => {
 	let isMatch = fregex(
 		fregex.or('a', 'b'),
 		'=',
@@ -257,18 +260,77 @@ Testimony.test('fregex.endOr', () => {
 	assert(!isMatch(['a', '=', '2']));
 });
 
-Testimony.test('fregex.munch', () => {
-	const code = '<?php $var = (function() { return "Apple";})(); // comment';
-	const tokens = lex(lexPhp, code)[0].tokens;
-	const result = fregex.munch(tokens, { text: ';' }, { text: '{' }, { text: '}' });
 
-	let code2 = '';
-	for (const token of result) {
-		code2 += token.text;
-	}
+Testimony.test('fregex.munch.1', () => {
+	const code = 'function(a, b=()=>{});console.log(1)';
+	let match = fregex(
+		'function',
+		fregex.munch('(', ')'),
+		';'
+	);
 
-	// Make sure it stops before the semicolon.
-	assert.eq(code2, '<?php $var = (function() { return "Apple";})()');
+	const tokens = lex(lexHtmlJs, code, 'js');
+	let len = match(tokens);
+	assert.eq(len, 14);
+});
+
+Testimony.test('fregex.munch.2', () => {
+	var parse = {};
+	parse.wscz = fregex.zeroOrMore(fregex.or({type: 'whitespace'}, {type: 'comment'}));
+
+	parse.blockSingleLine = fregex(
+		fregex.or('if', 'for', 'foreach', 'while'),
+		parse.wscz,
+		fregex.munch('(', ')'),
+		parse.wscz,
+		fregex.not(fregex.or(':', '{')),
+		fregex.zeroOrMore(
+			fregex.munch(fregex.or(['{', '(', '[']), fregex.or(['}', ')', ']'])),
+			fregex.not(';')
+		),
+		';'
+	)
+
+	parse.blockStart = fregex.or(
+		fregex(
+			fregex.or('if', 'for', 'foreach', 'switch', 'while', 'function'),
+			parse.wscz,
+			fregex.munch('(', ')'),
+			parse.wscz,
+			':'
+		),
+		fregex(
+			fregex.or('if', 'for', 'foreach', 'switch', 'while', 'function'),
+			parse.wscz,
+			fregex.munch('(', ')'),
+			parse.wscz,
+			'{'
+		),
+		'{'
+	);
+
+	parse.blockEnd = fregex.or(
+		'endif', 'endfor', 'endforeach', 'endswitch', 'endwhile',
+		'}'
+	);
+
+	parse.block = fregex.or(
+		parse.blockSingleLine,
+		fregex.munch(
+			parse.blockStart,
+			parse.blockEnd
+		)
+	)
+	const code = 'if (a===1) { if (b===2): console.log(b) endif; } console.log(3)';
+	//const code = 'if(){}console.log(3)';
+
+
+
+
+	const tokens = lex(lexHtmlJs, code, 'js');
+	let len = parse.block(tokens);
+	//assert.eq(matches, 14);
+	assert.eq(tokens.slice(0, len).map(t=>t.text).join(''), 'if (a===1) { if (b===2): console.log(b) endif; }');
 });
 
 Testimony.test('fregex.capture', () => {

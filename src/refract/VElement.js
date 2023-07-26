@@ -255,7 +255,8 @@ export default class VElement {
 		// 3. Slot content
 		let count = 0;
 		if (tagName === 'slot') {
-			let slotChildren = VElement.fromHtml_(this.refr_.slotHtml, Object.keys(this.scope_), this, this.refr_);
+
+			let slotChildren = VElement.fromHtml_(this.refr_.slotHtml, [...this.scope3_.keys()], this, this.refr_);
 			for (let vChild of slotChildren) {
 				vChild.scope_ = {...this.scope_}
 				vChild.scope3_ = this.scope3_.clone_();
@@ -288,17 +289,17 @@ export default class VElement {
 					expr.scope3_ = this.scope3_.clone_();
 					expr.watch_(() => {
 						if (name === 'value')
-							setInputValue_(this.refr_, this.el, value, this.scope_);
+							setInputValue_(this.refr_, this.el, value, this.scope3_);
 
 						else {
-							let value2 = VElement.evalVAttributeAsString_(this.refr_, value, this.scope_);
+							let value2 = VElement.evalVAttributeAsString_(this.refr_, value, this.scope3_);
 							this.el.setAttribute(name, value2);
 						}
 					});
 				}
 
 			// TODO: This happens again for inputs in step 5 below:
-			let value2 = VElement.evalVAttributeAsString_(this.refr_, value, this.scope_);
+			let value2 = VElement.evalVAttributeAsString_(this.refr_, value, this.scope3_);
 			this.el.setAttribute(name, value2);
 
 
@@ -318,9 +319,9 @@ export default class VElement {
 				let code = this.el.getAttribute(name);
 				this.el.removeAttribute(name); // Prevent original attribute being executed, without `this` and `el` in scope.
 				this.el.addEventListener(name.slice(2),  event => { // e.g. el.onclick = ...
-					let args = ['event', 'el', ...Object.keys(this.scope_)];
+					let args = ['event', 'el', ...this.scope3_.keys()];
 					let func = createFunction(...args, code).bind(this.refr_); // Create in same scope as parent class.
-					func(event, this.el, ...Object.values(this.scope_));
+					func(event, this.el, ...this.scope3_.getValues());
 				});
 			}
 		}
@@ -346,12 +347,12 @@ export default class VElement {
 			// Don't grab value from input if we can't reverse the expression.
 			if (isSimpleExpr) {
 				let createFunction = ((this.refr_ && this.refr_.constructor) || window.RefractCurrentClass).createFunction;
-				let assignFunc = createFunction(...Object.keys(this.scope_), 'val', valueExprs[0].code + '=val;').bind(this.refr_);
+				let assignFunc = createFunction(...this.scope3_.keys(), 'val', valueExprs[0].code + '=val;').bind(this.refr_);
 
 				// Update the value when the input changes:
 				Utils.watchInput_(this.el, (val, e) => {
 					Globals.currentEvent_ = e;
-					assignFunc(...Object.values(this.scope_), val);
+					assignFunc(...this.scope3_.getValues(), val);
 					Globals.currentEvent_ = null;
 				});
 			}
@@ -382,7 +383,7 @@ export default class VElement {
 		// https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#input_types
 		if (hasValue) // This should happen after the children are added, e.g. for select <options>
 			// TODO: Do we only need to do this for select boxes b/c we're waiting for their children?  Other input types are handled above in step 2.
-			setInputValue_(this.refr_, this.el, this.attributes_.value, this.scope_);
+			setInputValue_(this.refr_, this.el, this.attributes_.value, this.scope3_);
 
 
 		if (tagName === 'svg')
@@ -427,18 +428,22 @@ export default class VElement {
 
 	/**
 	 * Get the value of an attribute to use as a constructor argument.
-	 * TODO: Reduce shared logic between this and evalVAttribute()
+	 * TODO: This is almost identical to Refract.getAttrib_()
 	 * @param name {string}
 	 * @return {*} */
 	getAttrib_(name) {
+		//console.log('V')
+
+		// Also match lower-case versions of the attribute name.
 		let lname = name.toLowerCase();
 		let val = name in this.attributes_ ? this.attributes_[name] : this.attributes_[lname];
 		if (val === undefined)
 			return val;
 
 		// A solitary VExpression.
-		if (val && val.length === 1 && val[0] instanceof VExpression)
-			return val[0].exec_.apply(this.refr_, Object.values(this.scope_));
+		if (val && val.length === 1 && val[0] instanceof VExpression) {
+			return val[0].exec_.apply(this.refr_, this.scope3_.getValues());
+		}
 
 
 		if (Array.isArray(val) && !val.length)
@@ -449,7 +454,7 @@ export default class VElement {
 			return true;
 
 		// Else evaluate as JSON, or as a string.
-		let result = VElement.evalVAttributeAsString_(this.refr_, (val || []), this.scope_);
+		let result = VElement.evalVAttributeAsString_(this.refr_, (val || []), this.scope3_);
 		try {
 			result = JSON.parse(result);
 		} catch (e) {
@@ -457,7 +462,7 @@ export default class VElement {
 			// A code expression
 			if (result.startsWith('${') && result.endsWith('}')) // Try evaluating as code if it's surrounded with ${}
 				try {
-					result = eval(result.slice(2, -1))
+					result = eval('(' + result.slice(2, -1) + ')')
 				} catch(e) {}
 		}
 		return result;
@@ -520,9 +525,12 @@ export default class VElement {
 	 * @return {string} */
 	static evalVAttributeAsString_(refr, attrParts, scope={}) {
 		let result = [];
+
+		let scope2 = scope instanceof Scope ? scope.getValues() : Object.values(scope)
+
 		for (let attrPart of attrParts || []) {
 			if (attrPart instanceof VExpression) {
-				let val = attrPart.exec_.apply(refr, Object.values(scope));
+				let val = attrPart.exec_.apply(refr, scope2);
 				if (Array.isArray(val) || (val instanceof Set))
 					val = Array.from(val).join(' '); // Useful for classes.
 				else if (val && typeof val === 'object') { // style attribute

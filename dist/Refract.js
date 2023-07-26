@@ -1756,7 +1756,7 @@ var isObj = obj => obj && typeof obj === 'object'; // Make sure it's not null, s
  */
 function fregex(...rules) {
 	rules = prepare(rules);
-	let result = (tokens, capture=[], index=0) => {
+	let result = (tokens, capture=[], index=0) => { // index is used only for capture().
 		let i = 0;
 		for (let rule of rules) {
 			let used = rule(tokens.slice(i), capture, index + i);
@@ -1973,65 +1973,51 @@ fregex.matchAll = (pattern, haystack, limit=Infinity, startIndex=0) => {
 };
 
 /**
- * @deprecated for munch2()
- * Starting with the first token, this function finds all tokens until it encounters the string specified by `isEnd`,
- * but it uses `isIncrement` and `isDecrement` to avoid finding `isEnd` within a scope.
- *
- * TODO: Does this duplicate some of ArrayUtil.find() ?
- * TODO: Is there a version of this that can be plugged into another expression?
- * So we could match:
- * function(name='', value=()=>) {}
- * And it could count the open and close parens to match the whole function?
- *
- *
- * @param {object[]} tokens
- * @param {string | array | object | function} isEnd
- * @param {string | array | object | function} [isIncrement] Accepts the string of tokens and returns the number of tokens consumed.
- * @param {string | array | object | function} [isDecrement]
- * @param {boolean} [includeEnd=false]
- * @returns {object[] | null}
+ * Keep eating tokens until we find a matching close token,
+ * keeping track of how many open and close tokens in between.
+ * If the first token doesn't match isOpen, zero tokens will be munched.
+ * @param isOpen {fregex|function} Any fregex function or nested set of fregex functions.
+ * @param isClose {fregex|function}
  *
  * @example
- * const code = '<?php $var = (function() { return "Apple";})(); // comment';
- * const tokens = PhpFile.tokenize(code);
- * const result = Fregex.munch(tokens, {text: ';'}, {text: '{'}, {text: '}'});
- *
- * // prints  '<?php $var = (function() { return "Apple";})();'
- * result.forEach(token => console.log(Html.encode(token.text))); */
-fregex.munch = (tokens, isEnd, isIncrement = null, isDecrement = null, includeEnd = false) => {
-	isEnd = prepareRule(isEnd);
-	if (isIncrement)
-		isIncrement = prepareRule(isIncrement);
-	if (isDecrement)
-		isDecrement = prepareRule(isDecrement);
+ * let match = fregex.munch({text:'('}, {text:')'})
+ * let len = match(tokens); // If first token is {text:'('}, len will be the number of tokens
+ *     // until we encounter the *matching* close token of {text:')'}
+ */
+fregex.munch = (isOpen, isClose) => {
+	isOpen = prepareRule(isOpen);
+	isClose = prepareRule(isClose);
 
-	let scope = 0;
-	for (let i = 0; i < tokens.length; i++) {
-		const next = tokens.slice(i);
-
-		if (!scope) {
-			const count = isEnd(next);
-			if (count !== false)
-				return tokens.slice(0, includeEnd ? i + count : i);
-		}
-
-		if (isIncrement) {
-			const count = isIncrement(next);
-			if (count !== false) {
-				i += count - 1;
+	let result = (tokens, capture=[], index=0) => {
+		let scope = 0;
+		for (let i=0; i<tokens.length; i++) {
+			let nextTokens = tokens.slice(i);
+			let len = 0;
+			if (len = isOpen(nextTokens))
 				scope++;
-			}
-		}
-		if (isDecrement) {
-			const count = isDecrement(next);
-			if (count !== false) {
-				i += count - 1;
+			else if (len = isClose(nextTokens)) {
 				scope--;
-			}
-		}
-	}
 
-	return null;
+				if (scope === 0)
+					return i + len; // +1 to also include matched close token.
+			}
+
+			if (len !== false)
+				i += len - 1;
+
+			// Didn't start on an open tag.
+			if (scope === 0)
+				return i;
+		}
+		return 0;
+	};
+
+	//#IFDEV
+	if (fregex.debug)
+		result.debug = `munch2(${isOpen.debug || isOpen}, ${isClose.debug || isClose})`;
+	//#ENDIF
+
+	return result;
 };
 
 // Experimental
@@ -3134,6 +3120,7 @@ class ScopeItem {
 
 
 /**
+ * A Map from variable name to its path and value:
  * @extends {Map<string, ScopeItem>} */
 class Scope extends Map {
 
@@ -3159,6 +3146,11 @@ class Scope extends Map {
 			path = [...parentScope.path, ...path.slice(1)];
 		return path;
 	}
+
+	getValues() {
+		return [...this.values()].map(scopeItem => scopeItem.value);
+	}
+
 }
 
 /**
@@ -3502,7 +3494,7 @@ class VExpression {
 	/**
 	 * @return {string|string[]} */
 	evaluate_() {
-		return this.exec_.apply(this.refr_, Object.values(this.scope_));
+		return this.exec_.apply(this.refr_, this.scope3_.getValues());
 	}
 
 	/**
@@ -3538,7 +3530,7 @@ class VExpression {
 			if (this.isHash) // #{...} template
 				result = [htmls.map(html => new VText(html, this.refr_))]; // We don't join all the text nodes b/c it creates index issues.
 			else {
-				let scopeVarNames = Object.keys(this.scope_);
+				let scopeVarNames = [...this.scope3_.keys()];
 				for (let html of htmls) {
 					if (html instanceof HTMLElement) {
 						result.push(html); // not a VElement[], but a full HTMLElement
@@ -3595,7 +3587,7 @@ class VExpression {
 			// Path to the loop param variable:
 			let path = [...this.watchPaths_[0], index + '']; // VExpression loops always have one watchPath.
 			let fullPath = this.scope3_.getFullPath_(path);
-			vel.scope3_.set(this.loopParamNames_[j], new ScopeItem(fullPath, [params[j]])); // scope3[name] = [path, value]
+			vel.scope3_.set(this.loopParamNames_[j], new ScopeItem(fullPath, params[j])); // scope3[name] = value
 		}
 	}
 
@@ -3854,11 +3846,12 @@ class VExpression {
 			if (path[0] === 'this')
 				path = path.slice(1);
 
+
 			// Allow paths into the current scope to be watched.
-			else if (path[0] in this.scope_ && path.length > 1) {
+			else if (path.length > 1 && this.scope3_.has(path[0])) {
 
 				// Resolve root to the path of the scope.
-				root = this.scope_[path[0]];
+				root = this.scope3_.get(path[0]).value;
 				path = path.slice(1);
 			}
 
@@ -4138,7 +4131,8 @@ class VElement {
 		// 3. Slot content
 		let count = 0;
 		if (tagName === 'slot') {
-			let slotChildren = VElement.fromHtml_(this.refr_.slotHtml, Object.keys(this.scope_), this, this.refr_);
+
+			let slotChildren = VElement.fromHtml_(this.refr_.slotHtml, [...this.scope3_.keys()], this, this.refr_);
 			for (let vChild of slotChildren) {
 				vChild.scope_ = {...this.scope_};
 				vChild.scope3_ = this.scope3_.clone_();
@@ -4171,17 +4165,17 @@ class VElement {
 					expr.scope3_ = this.scope3_.clone_();
 					expr.watch_(() => {
 						if (name === 'value')
-							setInputValue_(this.refr_, this.el, value, this.scope_);
+							setInputValue_(this.refr_, this.el, value, this.scope3_);
 
 						else {
-							let value2 = VElement.evalVAttributeAsString_(this.refr_, value, this.scope_);
+							let value2 = VElement.evalVAttributeAsString_(this.refr_, value, this.scope3_);
 							this.el.setAttribute(name, value2);
 						}
 					});
 				}
 
 			// TODO: This happens again for inputs in step 5 below:
-			let value2 = VElement.evalVAttributeAsString_(this.refr_, value, this.scope_);
+			let value2 = VElement.evalVAttributeAsString_(this.refr_, value, this.scope3_);
 			this.el.setAttribute(name, value2);
 
 
@@ -4201,9 +4195,9 @@ class VElement {
 				let code = this.el.getAttribute(name);
 				this.el.removeAttribute(name); // Prevent original attribute being executed, without `this` and `el` in scope.
 				this.el.addEventListener(name.slice(2),  event => { // e.g. el.onclick = ...
-					let args = ['event', 'el', ...Object.keys(this.scope_)];
+					let args = ['event', 'el', ...this.scope3_.keys()];
 					let func = createFunction(...args, code).bind(this.refr_); // Create in same scope as parent class.
-					func(event, this.el, ...Object.values(this.scope_));
+					func(event, this.el, ...this.scope3_.getValues());
 				});
 			}
 		}
@@ -4229,12 +4223,12 @@ class VElement {
 			// Don't grab value from input if we can't reverse the expression.
 			if (isSimpleExpr) {
 				let createFunction = ((this.refr_ && this.refr_.constructor) || window.RefractCurrentClass).createFunction;
-				let assignFunc = createFunction(...Object.keys(this.scope_), 'val', valueExprs[0].code + '=val;').bind(this.refr_);
+				let assignFunc = createFunction(...this.scope3_.keys(), 'val', valueExprs[0].code + '=val;').bind(this.refr_);
 
 				// Update the value when the input changes:
 				utils.watchInput_(this.el, (val, e) => {
 					Globals.currentEvent_ = e;
-					assignFunc(...Object.values(this.scope_), val);
+					assignFunc(...this.scope3_.getValues(), val);
 					Globals.currentEvent_ = null;
 				});
 			}
@@ -4265,7 +4259,7 @@ class VElement {
 		// https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#input_types
 		if (hasValue) // This should happen after the children are added, e.g. for select <options>
 			// TODO: Do we only need to do this for select boxes b/c we're waiting for their children?  Other input types are handled above in step 2.
-			setInputValue_(this.refr_, this.el, this.attributes_.value, this.scope_);
+			setInputValue_(this.refr_, this.el, this.attributes_.value, this.scope3_);
 
 
 		if (tagName === 'svg')
@@ -4310,18 +4304,22 @@ class VElement {
 
 	/**
 	 * Get the value of an attribute to use as a constructor argument.
-	 * TODO: Reduce shared logic between this and evalVAttribute()
+	 * TODO: This is almost identical to Refract.getAttrib_()
 	 * @param name {string}
 	 * @return {*} */
 	getAttrib_(name) {
+		//console.log('V')
+
+		// Also match lower-case versions of the attribute name.
 		let lname = name.toLowerCase();
 		let val = name in this.attributes_ ? this.attributes_[name] : this.attributes_[lname];
 		if (val === undefined)
 			return val;
 
 		// A solitary VExpression.
-		if (val && val.length === 1 && val[0] instanceof VExpression)
-			return val[0].exec_.apply(this.refr_, Object.values(this.scope_));
+		if (val && val.length === 1 && val[0] instanceof VExpression) {
+			return val[0].exec_.apply(this.refr_, this.scope3_.getValues());
+		}
 
 
 		if (Array.isArray(val) && !val.length)
@@ -4332,7 +4330,7 @@ class VElement {
 			return true;
 
 		// Else evaluate as JSON, or as a string.
-		let result = VElement.evalVAttributeAsString_(this.refr_, (val || []), this.scope_);
+		let result = VElement.evalVAttributeAsString_(this.refr_, (val || []), this.scope3_);
 		try {
 			result = JSON.parse(result);
 		} catch (e) {
@@ -4340,7 +4338,7 @@ class VElement {
 			// A code expression
 			if (result.startsWith('${') && result.endsWith('}')) // Try evaluating as code if it's surrounded with ${}
 				try {
-					result = eval(result.slice(2, -1));
+					result = eval('(' + result.slice(2, -1) + ')');
 				} catch(e) {}
 		}
 		return result;
@@ -4403,9 +4401,12 @@ class VElement {
 	 * @return {string} */
 	static evalVAttributeAsString_(refr, attrParts, scope={}) {
 		let result = [];
+
+		let scope2 = scope instanceof Scope ? scope.getValues() : Object.values(scope);
+
 		for (let attrPart of attrParts || []) {
 			if (attrPart instanceof VExpression) {
-				let val = attrPart.exec_.apply(refr, Object.values(scope));
+				let val = attrPart.exec_.apply(refr, scope2);
 				if (Array.isArray(val) || (val instanceof Set))
 					val = Array.from(val).join(' '); // Useful for classes.
 				else if (val && typeof val === 'object') { // style attribute
@@ -5199,6 +5200,7 @@ class Refract extends HTMLElement {
 
 	/**
 	 * Get the evaluated version of an attribute.
+	 * TODO: This is almost identical to VElement.getAttrib_()
 	 * @param name {string}
 	 * @param alt {*} Defaults to undefined because that's what we get if the argument isn't specified by the caller.
 	 * @return {*} */

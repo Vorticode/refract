@@ -162,6 +162,7 @@ export default class Refract extends HTMLElement {
 
 	/**
 	 * Get the evaluated version of an attribute.
+	 * TODO: This is almost identical to VElement.getAttrib_()
 	 * @param name {string}
 	 * @param alt {*} Defaults to undefined because that's what we get if the argument isn't specified by the caller.
 	 * @return {*} */

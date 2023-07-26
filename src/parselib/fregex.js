@@ -11,7 +11,7 @@
  */
 export default function fregex(...rules) {
 	rules = prepare(rules);
-	let result = (tokens, capture=[], index=0) => {
+	let result = (tokens, capture=[], index=0) => { // index is used only for capture().
 		let i = 0;
 		for (let rule of rules) {
 			let used = rule(tokens.slice(i), capture, index + i);
@@ -228,65 +228,51 @@ fregex.matchAll = (pattern, haystack, limit=Infinity, startIndex=0) => {
 }
 
 /**
- * @deprecated for munch2()
- * Starting with the first token, this function finds all tokens until it encounters the string specified by `isEnd`,
- * but it uses `isIncrement` and `isDecrement` to avoid finding `isEnd` within a scope.
- *
- * TODO: Does this duplicate some of ArrayUtil.find() ?
- * TODO: Is there a version of this that can be plugged into another expression?
- * So we could match:
- * function(name='', value=()=>) {}
- * And it could count the open and close parens to match the whole function?
- *
- *
- * @param {object[]} tokens
- * @param {string | array | object | function} isEnd
- * @param {string | array | object | function} [isIncrement] Accepts the string of tokens and returns the number of tokens consumed.
- * @param {string | array | object | function} [isDecrement]
- * @param {boolean} [includeEnd=false]
- * @returns {object[] | null}
+ * Keep eating tokens until we find a matching close token,
+ * keeping track of how many open and close tokens in between.
+ * If the first token doesn't match isOpen, zero tokens will be munched.
+ * @param isOpen {fregex|function} Any fregex function or nested set of fregex functions.
+ * @param isClose {fregex|function}
  *
  * @example
- * const code = '<?php $var = (function() { return "Apple";})(); // comment';
- * const tokens = PhpFile.tokenize(code);
- * const result = Fregex.munch(tokens, {text: ';'}, {text: '{'}, {text: '}'});
- *
- * // prints  '<?php $var = (function() { return "Apple";})();'
- * result.forEach(token => console.log(Html.encode(token.text))); */
-fregex.munch = (tokens, isEnd, isIncrement = null, isDecrement = null, includeEnd = false) => {
-	isEnd = prepareRule(isEnd);
-	if (isIncrement)
-		isIncrement = prepareRule(isIncrement);
-	if (isDecrement)
-		isDecrement = prepareRule(isDecrement);
+ * let match = fregex.munch({text:'('}, {text:')'})
+ * let len = match(tokens); // If first token is {text:'('}, len will be the number of tokens
+ *     // until we encounter the *matching* close token of {text:')'}
+ */
+fregex.munch = (isOpen, isClose) => {
+	isOpen = prepareRule(isOpen);
+	isClose = prepareRule(isClose);
 
-	let scope = 0;
-	for (let i = 0; i < tokens.length; i++) {
-		const next = tokens.slice(i);
-
-		if (!scope) {
-			const count = isEnd(next);
-			if (count !== false)
-				return tokens.slice(0, includeEnd ? i + count : i);
-		}
-
-		if (isIncrement) {
-			const count = isIncrement(next);
-			if (count !== false) {
-				i += count - 1;
-				scope++;
-			}
-		}
-		if (isDecrement) {
-			const count = isDecrement(next);
-			if (count !== false) {
-				i += count - 1;
+	let result = (tokens, capture=[], index=0) => {
+		let scope = 0;
+		for (let i=0; i<tokens.length; i++) {
+			let nextTokens = tokens.slice(i);
+			let len = 0;
+			if (len = isOpen(nextTokens))
+				scope++
+			else if (len = isClose(nextTokens)) {
 				scope--;
+
+				if (scope === 0)
+					return i + len; // +1 to also include matched close token.
 			}
+
+			if (len !== false)
+				i += len - 1;
+
+			// Didn't start on an open tag.
+			if (scope === 0)
+				return i;
 		}
+		return 0;
 	}
 
-	return null;
+	//#IFDEV
+	if (fregex.debug)
+		result.debug = `munch2(${isOpen.debug || isOpen}, ${isClose.debug || isClose})`;
+	//#ENDIF
+
+	return result;
 }
 
 // Experimental

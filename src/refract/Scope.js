@@ -20,6 +20,7 @@ export class ScopeItem {
 
 
 /**
+ * A Map from variable name to its path and value:
  * @extends {Map<string, ScopeItem>} */
 export default class Scope extends Map {
 
@@ -45,4 +46,9 @@ export default class Scope extends Map {
 			path = [...parentScope.path, ...path.slice(1)];
 		return path;
 	}
+
+	getValues() {
+		return [...this.values()].map(scopeItem => scopeItem.value);
+	}
+
 }
