@@ -462,12 +462,20 @@ export class Compiler {
 	 * @returns {*[]} */
 	static populateArgsFromAttribs(el, argNames) {
 
-		const populateObject = obj => {
-			for (let name in obj)
-				if (obj[name])
-					populateObject(obj[name]);
-				else
-					obj[name] = el.getAttrib_(name);
+		/**
+		 * Handle cases where the arguments are object.  For example:
+		 * function init({name: null, value: null}) {} */
+		const populateObject = (obj, maxDepth=5) => {
+
+			if (maxDepth && obj && (Array.isArray(obj) || typeof obj === 'object') && !(obj instanceof HTMLElement))
+				for (let name in obj)
+					if (obj[name]) {
+						// If this function causes a stack overflow, comment out this line.  That way, we
+						// only populate object arguments one level deep, because sometimes we end up with infinite recursion.
+						populateObject(obj[name], maxDepth-1);
+					}
+					else
+						obj[name] = el.getAttrib_(name);
 			return obj;
 		}
 

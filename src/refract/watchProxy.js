@@ -221,7 +221,6 @@ import Utils, {isObj} from './utils.js';
 				//WatchUtil.proxiesReverse.set(proxy, obj);
 
 				if (Array.isArray(obj)) {
-					//debugger;
 					//Object.setPrototypeOf(proxy, new ProxyArray()); // This seems to work.
 
 					// Because this.proxy_ is a Proxy, we have to replace the functions
@@ -330,8 +329,6 @@ import Utils, {isObj} from './utils.js';
 						}
 						else { // push, sort, reverse
 							for (var i = startIndex; i < array.length; i++) {
-								// if (window.debug)
-								// 	debugger;
 								callback('set', [...parentPath, i + ''], array[i], null, root);
 							}
 							for (i; i<originalLength; i++)

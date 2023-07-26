@@ -37,8 +37,8 @@
  * @param doc {Document} Use this document to create the element. */
 export default function createEl(html, props=false, doc=document) {
 
-	// Create a top level web component.
-	if (html.match(/^<\S+-\S+/)) {
+	// Create a top level web component, or an svg.
+	if (html.match(/^<\S+-\S+/) || html.startsWith('<svg')) {
 		let div = document.createElement('div');
 		div.innerHTML = html;
 		return div.removeChild(div.firstChild);
@@ -74,10 +74,11 @@ export default function createEl(html, props=false, doc=document) {
 			// Assign ids
 			(ids || []).map(id => delete result[id]);
 			ids = [...result.querySelectorAll('[id],[data-id]')].map(el => {
-				if (el.id in result && !(el.id in props)) // allow id's to override our custom props.
-					throw new Error(`Property ${el.id} already exists.`);
-				result[el.id] = el;
-				return [el.id];
+				let id = el.getAttribute('id') || el.getAttribute('data-id');
+				if (id in result && !(id in props)) // allow id's to override our custom props.
+					throw new Error(`Property ${id} already exists.`);
+				result[id] = el;
+				return id;
 			});
 
 			// Bind events

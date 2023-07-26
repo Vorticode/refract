@@ -1,6 +1,8 @@
 var div = document.createElement('div');
 var decodeCache_ = {};
 
+// TODO: Move all of this to StringUtil?
+// Or move createEl here, along with htmlToText and textToHtml?
 export default {
 
 	/**
@@ -24,7 +26,7 @@ export default {
 	},
 
 	encode(text, quotes='"') {
-		text = (text === null || text === undefined ? '' : text+'')
+		text = ((text === null || text === undefined) ? '' : text+'')
 			.replace(/&/g, '&amp;')
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;')

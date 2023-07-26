@@ -1,4 +1,3 @@
-import delve from "../util/delve.js";
 import Utils, {assert} from "./utils.js";
 import Parse from './Parse.js';
 import Watch from "./Watch.js";
@@ -9,6 +8,7 @@ import lexHtmljs from "../parselib/lex-htmljs.js";
 import {Globals} from "./Refract.js";
 import Scope, {ScopeItem} from "./Scope.js";
 import Html from "../util/Html.js";
+import ObjectUtil from "../util/ObjectUtil.js";
 
 
 
@@ -212,7 +212,7 @@ export default class VExpression {
 
 				// Trim required.  B/c if there's a line return after return, the function will return undefined!
 				let body = Html.decode(tokens.map(t => t.text).join(''));
-				if (tokens[0].text !== '{')
+				if (!(tokens[0].text === '{' && tokens[tokens.length-1].text === '}')) // If it doesn't already have braces for a body?
 					body = 'return (' + body.trim() + ')';
 				this.exec_ = this.refr_.constructor.createFunction(...scopeVars, body);
 			}
@@ -231,9 +231,6 @@ export default class VExpression {
 	 * @return {int} Number of elements created. d*/
 	apply_(parent=null, el=null) {
 		this.parent_ = parent || this.parent_;
-
-		// if (window.debug)
-		// 	debugger;
 
 		//#IFDEV
 
@@ -492,7 +489,7 @@ export default class VExpression {
 			let arrayPath = path.slice(0, -1);
 
 			// We can delve watchlessly because we're not modifying the values.
-			let array = delve(root, arrayPath);
+			let array = ObjectUtil.delve(root, arrayPath);
 
 			// If the array is one of our watched paths:
 			// TODO: watchPaths besides 0?  Or only go this way if there's only one watchPath?
@@ -721,11 +718,11 @@ export default class VExpression {
 			else if (scope = this.scope3_.get(path[0])) {
 
 				// Only watch this path if it's an array or object, not a primitive.
-				let obj = delve(root, scope.path.slice(1), delve.dontCreate, true);
+				let obj = ObjectUtil.delve(root, scope.path.slice(1), ObjectUtil.delveDontCreate, true);
 				if (typeof obj !== 'object' && !Array.isArray(obj))
 					continue;
 
-				root = delve(this.refr_, scope.path.slice(1, -1), delve.dontCreate, true);
+				root = ObjectUtil.delve(this.refr_, scope.path.slice(1, -1), ObjectUtil.delveDontCreate, true);
 				path = scope.path.slice(-1);
 			}
 

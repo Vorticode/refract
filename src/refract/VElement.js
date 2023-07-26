@@ -6,8 +6,8 @@ import htmljs from "../parselib/lex-htmljs.js";
 htmljs.allowHashTemplates = true;
 import Html, {div} from "../util/Html.js";
 import Utils, {assert} from "./utils.js";
-import delve from "../util/delve.js";
 import Scope from "./Scope.js";
+import ObjectUtil from "../util/ObjectUtil.js";
 
 /**
  * A virtual representation of an Element.
@@ -305,7 +305,7 @@ export default class VElement {
 			// Id
 			if (name === 'id' || name === 'data-id') {
 				let path = this.el.getAttribute(name).split('.');
-				delve(this.refr_, path, this.el);
+				ObjectUtil.delve(this.refr_, path, this.el);
 			}
 
 			// Events
@@ -317,11 +317,11 @@ export default class VElement {
 
 				let code = this.el.getAttribute(name);
 				this.el.removeAttribute(name); // Prevent original attribute being executed, without `this` and `el` in scope.
-				this.el[name] = event => { // e.g. el.onclick = ...
+				this.el.addEventListener(name.slice(2),  event => { // e.g. el.onclick = ...
 					let args = ['event', 'el', ...Object.keys(this.scope_)];
 					let func = createFunction(...args, code).bind(this.refr_); // Create in same scope as parent class.
 					func(event, this.el, ...Object.values(this.scope_));
-				}
+				});
 			}
 		}
 

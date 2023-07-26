@@ -205,7 +205,8 @@ fregex.oneOrMore = (...rules) => fregex.xOrMore(1, ...rules);
  * @param haystack {array}
  * @param startIndex {int}
  * @return {*[]} A slice of the items in haystack that match.
- *     with an added index property designating the index of the match within the haystack array. */
+ *     With an added index property designating the index of the match within the haystack array.
+ *     And a .capture property if fregex.capture() is used.*/
 fregex.matchFirst = (pattern, haystack, startIndex=0, capture=[]) => {
 	let result = fregex.matchAll(pattern, haystack, 1, startIndex);
 	return result.length ? result[0] : null;
@@ -227,10 +228,16 @@ fregex.matchAll = (pattern, haystack, limit=Infinity, startIndex=0) => {
 }
 
 /**
+ * @deprecated for munch2()
  * Starting with the first token, this function finds all tokens until it encounters the string specified by `isEnd`,
  * but it uses `isIncrement` and `isDecrement` to avoid finding `isEnd` within a scope.
  *
  * TODO: Does this duplicate some of ArrayUtil.find() ?
+ * TODO: Is there a version of this that can be plugged into another expression?
+ * So we could match:
+ * function(name='', value=()=>) {}
+ * And it could count the open and close parens to match the whole function?
+ *
  *
  * @param {object[]} tokens
  * @param {string | array | object | function} isEnd

@@ -281,7 +281,6 @@ var functionize = grammar => {
 				//WatchUtil.proxiesReverse.set(proxy, obj);
 
 				if (Array.isArray(obj)) {
-					//debugger;
 					//Object.setPrototypeOf(proxy, new ProxyArray()); // This seems to work.
 
 					// Because this.proxy_ is a Proxy, we have to replace the functions
@@ -390,8 +389,6 @@ var functionize = grammar => {
 						}
 						else { // push, sort, reverse
 							for (var i = startIndex; i < array.length; i++) {
-								// if (window.debug)
-								// 	debugger;
 								callback('set', [...parentPath, i + ''], array[i], null, root);
 							}
 							for (i; i<originalLength; i++)
@@ -605,65 +602,277 @@ var functionize = grammar => {
 	};
 }
 
-/**
- * Follow a path into a object.
- * @param obj {object}
- * @param path {string[]}
- * @param createVal {*}  If set, non-existant paths will be created and value at path will be set to createVal.
- * @param watchless {boolean}
- * @return The value, or undefined if it can't be reached. */
-function delve(obj, path, createVal=delve.dontCreate, watchless=false) {
-	let create = createVal !== delve.dontCreate;
+var ObjectUtil = {
 
-	if (!obj && !create && path.length)
-		return undefined;
+	/**
+	 * Equivalent of php's array_combine()
+	 * @param keys {string[]}
+	 * @param values {*[]}
+	 * @returns {Object} */
+	combine(keys, values) {
+		let result = {};
+		for (let i=0; i<keys.length; i++)
+			result[keys[i]] = values[i];
+		return result
+	},
 
-	let i = 0;
-	for (let srcProp of path) {
-		let last = i === path.length - 1;
+	/**
+	 * Follow a path into a object.
+	 * @param obj {object}
+	 * @param path {string[]}
+	 * @param createVal {*}  If set, non-existant paths will be created and value at path will be set to createVal.
+	 * @param watchless {boolean}
+	 * @return The value, or undefined if it can't be reached. */
+	delve(obj, path, createVal=ObjectUtil.delveDontCreate, watchless=false) {
+		let create = createVal !== ObjectUtil.delveDontCreate;
 
-		if (watchless) {
-			obj = obj.$removeProxy || obj;
-			if (typeof obj === 'object')
-				obj.$disableWatch = true; // sometimes this causes stack overflow?  Perhaps I need to use Object.getOwnPropertyDescriptor() to see if it's a prop?
+		if (!obj && !create && path.length)
+			return undefined;
+
+		let i = 0;
+		for (let srcProp of path) {
+			let last = i === path.length - 1;
+
+			if (watchless) {
+				obj = obj.$removeProxy || obj;
+				if (typeof obj === 'object')
+					obj.$disableWatch = true; // sometimes this causes stack overflow?  Perhaps I need to use Object.getOwnPropertyDescriptor() to see if it's a prop?
+			}
+
+			// If the path is undefined and we're not to the end yet:
+			if (obj[srcProp] === undefined) {
+
+				// If the next index is an integer or integer string.
+				if (create) {
+					if (!last) {
+						// If next level path is a number, create as an array
+						let isArray = (path[i + 1] + '').match(/^\d+$/);
+						obj[srcProp] = isArray ? [] : {};
+					}
+				} else {
+					delete obj.$disableWatch;
+					return undefined; // can't traverse
+				}
+			}
+
+			// If last item in path
+			if (last && create) {
+				obj[srcProp] = createVal;
+			}
+
+			if (watchless)
+				delete obj.$disableWatch;
+
+			// Traverse deeper along destination object.
+			obj = obj[srcProp];
+			if (watchless) // [below] remove proxy
+				obj = (obj!==null && obj !== undefined) ? (obj.$removeProxy || obj) : null;
+
+			i++;
 		}
 
-		// If the path is undefined and we're not to the end yet:
-		if (obj[srcProp] === undefined) {
+		return obj;
+	},
 
-			// If the next index is an integer or integer string.
-			if (create) {
-				if (!last) {
-					// If next level path is a number, create as an array
-					let isArray = (path[i + 1] + '').match(/^\d+$/);
-					obj[srcProp] = isArray ? [] : {};
+	delveDontCreate: {},
+
+	/**
+	 * @deprecated for isSame(), which should be renamed to equals()
+	 * @param a {Object}
+	 * @param b {Object}
+	 * @return {boolean} */
+	equalsOld(a, b) {
+		for (var name in a)
+			if (!(name in b) || a[name] !== b[name])
+				return false;
+		for (name in b)
+			if (!(name in a) || a[name] !== b[name])
+				return false;
+		return true;
+	},
+
+	/**
+	 * Returns true if x and y are deeply equal.
+	 * https://stackoverflow.com/a/6713782/
+	 * This function also exists in Testimony.js
+	 * @param x
+	 * @param y
+	 * @return {boolean} */
+	equals(x, y) {
+
+		if (x === y)
+			return true; // if both x and y are null or undefined and exactly the same
+
+		if (!(x instanceof Object) || !(y instanceof Object)) // Array is also instanceof Obect.
+			return false; // if they are not strictly equal, they both need to be Objects
+
+		// they must have the exact same prototype chain, the closest we can do is
+		// test their constructor.
+		if (x.constructor !== y.constructor)
+			return false;
+
+		for (var p in x) {
+			if (!x.hasOwnProperty(p))
+				continue; // other properties were tested using x.constructor === y.constructor
+
+			if (!y.hasOwnProperty(p))
+				return false; // allows to compare x[ p ] and y[ p ] when set to undefined
+
+			if (x[p] === y[p])
+				continue; // if they have the same strict value or identity then they are equal
+
+			if (typeof x[p] !== 'object')
+				return false; // Numbers, Strings, Functions, Booleans must be strictly equal
+
+			if (!ObjectUtil.equals(x[p], y[p]))
+				return false; // Objects and Arrays must be tested recursively
+		}
+
+		for (p in y) // allows x[ p ] to be set to undefined
+			if (y.hasOwnProperty(p) && !x.hasOwnProperty(p))
+				return false;
+
+		return true;
+	},
+
+	/**
+	 * Filter an array of objects using an SQL WHERE like data structure.
+	 * @param rows {Object[]}
+	 * @param where
+	 * @param mode {string}
+	 * @returns {Object[]} */
+	findRows(rows, where, mode='AND') {
+
+		// Convert an SQL LIKE expression into a regex.
+		function sqlLike(input, expression) {
+			const pattern = expression
+				.replace(/([.+?^=!:${}()|[\]/\\])/g, '\\$1') // Escape special characters
+				.replace(/%/g, '.*') // Convert % to .*
+				.replace(/_/g, '.'); // Convert _ to .
+			const regex = new RegExp(`^${pattern}$`, 'i'); // Ignore case
+
+			return regex.test(input)
+		}
+
+		function rowMatches(row, where, mode='AND') {
+			if (!where || (Array.isArray(where) && !where.length))
+				return true;
+
+			if (!Array.isArray(where))
+				where = ['id', '=', where];
+
+			if (!Array.isArray(where[0])) {
+				const [name, op, expr] = where;
+				let val = row[name];
+				const validOps = ['=', '!=', '<', '<=', '>', '>=', 'LIKE', 'NOT LIKE', 'IS', 'IS NOT', 'IN', 'NOT IN', /*'GLOB', 'NOT GLOB',*/ 'REGEXP', 'NOT REGEXP'];
+
+				if (!validOps.includes(op.toUpperCase()))
+					throw new Error(`Unsupported op ${op}`);
+
+				switch (op) {
+					case 'IS':
+					case '=': return val == expr;
+					case 'IS NOT':
+					case '!=': return val != expr;
+					case '<': return val < expr;
+					case '<=': return val <= expr;
+					case '>': return val > expr;
+					case '>=': return val >= expr;
+					case 'LIKE': return sqlLike(val, expr);
+					case 'NOT LIKE': return !sqlLike(val, expr);
+					case 'IN': return expr.includes(val);
+					case 'NOT IN': return !expr.includes(val);
+					case 'REGEXP': return expr.match(val);
+					case 'NOT REGEXP': return !expr.match(val);
 				}
+
 			} else {
-				delete obj.$disableWatch;
-				return undefined; // can't traverse
+				mode = mode.toUpperCase() === 'AND' ? 'AND' : 'OR';
+				const subMode = mode === 'AND' ? 'OR' : 'AND';
+
+				if (mode === 'AND') {
+					for (let expr of where)
+						if (!rowMatches(row, expr, subMode))
+							return false;
+					return true;
+				}
+
+				else {
+					for (let expr of where)
+						if (rowMatches(row, expr, subMode))
+							return true;
+					return false;
+				}
 			}
 		}
 
-		// If last item in path
-		if (last && create) {
-			obj[srcProp] = createVal;
+		return rows.filter(row => rowMatches(row, where, mode));
+	},
+
+	/**
+	 * @param obj {Object<string, string>} */
+	invert(obj) {
+		var result = {};
+		for(var key in obj)
+			result[obj[key]] = key;
+		return result;
+	},
+
+	isSimpleObject(o) { // TODO: This function needs to be improved.
+		return (typeof o === 'object') && !o.prototype && !(o instanceof Node) && !Array.isArray(o);
+	},
+
+	/**
+	 * Returns true if larger contains every key and value in smaller.
+	 * At present, only primitive values are understood.
+	 * @param smaller {Object<string, string|number|boolean>}
+	 * @param larger {Object<string, string|number|boolean>}
+	 * @return {boolean} */
+	isSubset(smaller, larger) {
+		for (var name in smaller)
+			if (!(name in larger) || larger[name] !== smaller[name])
+				return false;
+		return true;
+	},
+
+	/**
+	 * Performs a recursive merge when a and b both have an object sub-properties.
+	 * If b has a property set to undefined, it will be removed from the result.
+	 * Does not modify a or b.
+	 * @param a {object}
+	 * @param b {object}
+	 * @return {object}
+	 *
+	 * @example
+	 * To assign to `a` instead of doign a copy:
+	 * Object.assign(a, ObjectUtil.merge(a, b)); */
+	merge(a, b) {
+		const isObject = o => o && typeof o === 'object' && !Array.isArray(o);
+
+		var result = Object.assign({}, a);
+		for (var prop in b) {
+			if (b[prop] === undefined)
+				delete result[prop];
+			else if (isObject(a[prop]) && isObject(b[prop]))
+				result[prop] = this.merge(a[prop], b[prop]);
+			else
+				result[prop] = b[prop];
 		}
+		return result;
+	},
 
-		if (watchless)
-			delete obj.$disableWatch;
-
-			// Traverse deeper along destination object.
-		obj = obj[srcProp];
-		if (watchless) // [below] remove proxy
-			obj = (obj!==null && obj !== undefined) ? (obj.$removeProxy || obj) : null;
-
-		i++;
-	}
-
-	return obj;
-}
-
-delve.dontCreate = {};
+	/**
+	 * @param obj {object}
+	 * @return {object} A copy of the object. */
+	sortByKey(obj) {
+		var keys = Object.keys(obj);
+		keys.sort();
+		var result = {};
+		for (let key of keys)
+			result[key] = obj[key];
+		return result;
+	},
+};
 
 /**
  * Allow subscribing only to specific properties of an object.
@@ -734,14 +943,14 @@ class WatchProperties {
 				result.push([callback, [action, path, value, oldVal, this.obj_]]);
 
 		// Traverse to our current level and downward looking for anything subscribed
-		let newVal = delve(this.obj_, path, delve.dontCreate, true);
+		let newVal = ObjectUtil.delve(this.obj_, path, ObjectUtil.delveDontCreate, true);
 		for (let name in this.subs_)
 			if (name.startsWith(cpath) && name.length > cpath.length) {
 				let subPath = name.slice(cpath.length > 0 ? cpath.length + 1 : cpath.length); // +1 for ','
 				let oldSubPath = JSON.parse('[' + subPath + ']');
 
-				let oldSubVal = utils.removeProxy(delve(oldVal, oldSubPath, delve.dontCreate, true));
-				let newSubVal = utils.removeProxy(delve(newVal, oldSubPath, delve.dontCreate, true));
+				let oldSubVal = utils.removeProxy(ObjectUtil.delve(oldVal, oldSubPath, ObjectUtil.delveDontCreate, true));
+				let newSubVal = utils.removeProxy(ObjectUtil.delve(newVal, oldSubPath, ObjectUtil.delveDontCreate, true));
 
 				if (oldSubVal !== newSubVal) {
 					let callbacks = this.subs_[name];
@@ -1741,7 +1950,8 @@ fregex.oneOrMore = (...rules) => fregex.xOrMore(1, ...rules);
  * @param haystack {array}
  * @param startIndex {int}
  * @return {*[]} A slice of the items in haystack that match.
- *     with an added index property designating the index of the match within the haystack array. */
+ *     With an added index property designating the index of the match within the haystack array.
+ *     And a .capture property if fregex.capture() is used.*/
 fregex.matchFirst = (pattern, haystack, startIndex=0, capture=[]) => {
 	let result = fregex.matchAll(pattern, haystack, 1, startIndex);
 	return result.length ? result[0] : null;
@@ -1763,10 +1973,16 @@ fregex.matchAll = (pattern, haystack, limit=Infinity, startIndex=0) => {
 };
 
 /**
+ * @deprecated for munch2()
  * Starting with the first token, this function finds all tokens until it encounters the string specified by `isEnd`,
  * but it uses `isIncrement` and `isDecrement` to avoid finding `isEnd` within a scope.
  *
  * TODO: Does this duplicate some of ArrayUtil.find() ?
+ * TODO: Is there a version of this that can be plugged into another expression?
+ * So we could match:
+ * function(name='', value=()=>) {}
+ * And it could count the open and close parens to match the whole function?
+ *
  *
  * @param {object[]} tokens
  * @param {string | array | object | function} isEnd
@@ -2608,19 +2824,22 @@ var Parse = {
 	 * Recursively replace #{...} with ${ClassName.htmlEncode(...)}
 	 * @param tokens {Token[]}
 	 * @param mode
-	 * @param className
 	 * @return {Token[]} */
-	replaceHashExpr_(tokens, mode, className) {
+	replaceHashExpr_(tokens, mode) {
+		//#IFDEV
+		// if (!className)
+		// 	throw new Error('Missing className parameter.  Perhaps a minifier removed its value?  Consider using h() instead.');
+		//#ENDIF
 		let result = [];
 		let isHash = false;
 		for (let token of tokens) {
 			// TODO: Completely recreate the original tokens, instead of just string versions of them:
 			if (token.tokens) {
-				let tokens = Parse.replaceHashExpr_(token.tokens, token.mode, className);
+				let tokens = Parse.replaceHashExpr_(token.tokens, token.mode);
 				result.push({text: tokens.map(t=>t.text).join(''), type: token.type, tokens, mode: token.mode});
 			}
 			else if (token.text == '#{' && token.type == 'expr') {
-				result.push(new Token('${'), new Token(className), new Token('.'), new Token('htmlEncode'), new Token('('));
+				result.push(new Token('${'), new Token('refractHtmlEncode'), new Token('('));
 				isHash = true;
 			}
 			else
@@ -2772,6 +2991,8 @@ let property = fregex(
 var div = document.createElement('div');
 var decodeCache_ = {};
 
+// TODO: Move all of this to StringUtil?
+// Or move createEl here, along with htmlToText and textToHtml?
 var Html = {
 
 	/**
@@ -2795,7 +3016,7 @@ var Html = {
 	},
 
 	encode(text, quotes='"') {
-		text = (text === null || text === undefined ? '' : text+'')
+		text = ((text === null || text === undefined) ? '' : text+'')
 			.replace(/&/g, '&amp;')
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;')
@@ -3140,7 +3361,7 @@ class VExpression {
 
 				// Trim required.  B/c if there's a line return after return, the function will return undefined!
 				let body = Html.decode(tokens.map(t => t.text).join(''));
-				if (tokens[0].text !== '{')
+				if (!(tokens[0].text === '{' && tokens[tokens.length-1].text === '}')) // If it doesn't already have braces for a body?
 					body = 'return (' + body.trim() + ')';
 				this.exec_ = this.refr_.constructor.createFunction(...scopeVars, body);
 			}
@@ -3159,9 +3380,6 @@ class VExpression {
 	 * @return {int} Number of elements created. d*/
 	apply_(parent=null, el=null) {
 		this.parent_ = parent || this.parent_;
-
-		// if (window.debug)
-		// 	debugger;
 
 		//#IFDEV
 
@@ -3420,7 +3638,7 @@ class VExpression {
 			let arrayPath = path.slice(0, -1);
 
 			// We can delve watchlessly because we're not modifying the values.
-			let array = delve(root, arrayPath);
+			let array = ObjectUtil.delve(root, arrayPath);
 
 			// If the array is one of our watched paths:
 			// TODO: watchPaths besides 0?  Or only go this way if there's only one watchPath?
@@ -3649,11 +3867,11 @@ class VExpression {
 			else if (scope = this.scope3_.get(path[0])) {
 
 				// Only watch this path if it's an array or object, not a primitive.
-				let obj = delve(root, scope.path.slice(1), delve.dontCreate, true);
+				let obj = ObjectUtil.delve(root, scope.path.slice(1), ObjectUtil.delveDontCreate, true);
 				if (typeof obj !== 'object' && !Array.isArray(obj))
 					continue;
 
-				root = delve(this.refr_, scope.path.slice(1, -1), delve.dontCreate, true);
+				root = ObjectUtil.delve(this.refr_, scope.path.slice(1, -1), ObjectUtil.delveDontCreate, true);
 				path = scope.path.slice(-1);
 			}
 
@@ -3970,7 +4188,7 @@ class VElement {
 			// Id
 			if (name === 'id' || name === 'data-id') {
 				let path = this.el.getAttribute(name).split('.');
-				delve(this.refr_, path, this.el);
+				ObjectUtil.delve(this.refr_, path, this.el);
 			}
 
 			// Events
@@ -3982,11 +4200,11 @@ class VElement {
 
 				let code = this.el.getAttribute(name);
 				this.el.removeAttribute(name); // Prevent original attribute being executed, without `this` and `el` in scope.
-				this.el[name] = event => { // e.g. el.onclick = ...
+				this.el.addEventListener(name.slice(2),  event => { // e.g. el.onclick = ...
 					let args = ['event', 'el', ...Object.keys(this.scope_)];
 					let func = createFunction(...args, code).bind(this.refr_); // Create in same scope as parent class.
 					func(event, this.el, ...Object.values(this.scope_));
-				};
+				});
 			}
 		}
 
@@ -4796,12 +5014,20 @@ class Compiler {
 	 * @returns {*[]} */
 	static populateArgsFromAttribs(el, argNames) {
 
-		const populateObject = obj => {
-			for (let name in obj)
-				if (obj[name])
-					populateObject(obj[name]);
-				else
-					obj[name] = el.getAttrib_(name);
+		/**
+		 * Handle cases where the arguments are object.  For example:
+		 * function init({name: null, value: null}) {} */
+		const populateObject = (obj, maxDepth=5) => {
+
+			if (maxDepth && obj && (Array.isArray(obj) || typeof obj === 'object') && !(obj instanceof HTMLElement))
+				for (let name in obj)
+					if (obj[name]) {
+						// If this function causes a stack overflow, comment out this line.  That way, we
+						// only populate object arguments one level deep, because sometimes we end up with infinite recursion.
+						populateObject(obj[name], maxDepth-1);
+					}
+					else
+						obj[name] = el.getAttrib_(name);
 			return obj;
 		};
 
@@ -4900,6 +5126,8 @@ class Refract extends HTMLElement {
 
 
 	constructor(autoRender=true) {
+
+		// This line will give the error, "Illegal Constructor" if customElements.define() hasn't been called for this class.
 		super();
 
 		// old path from before we used init()
@@ -5005,11 +5233,14 @@ class Refract extends HTMLElement {
 	}
 
 	static getInitArgs_() {
+
+		// Parse init function on first time.
 		if (!this.initArgs && this.prototype.init) {
 			let pf = new ParsedFunction(this.prototype.init, false);
 			this.initArgs = [...pf.getArgNames()];
 		}
-		return this.initArgs || [];
+
+		return this.initArgs ? structuredClone(this.initArgs) : [];
 	}
 
 	//#IFDEV
@@ -5136,8 +5367,9 @@ class Refract extends HTMLElement {
 
 Refract.htmlDecode = Html.decode;
 Refract.htmlEncode = Html.encode;
+window.refractHtmlEncode = Html.encode; // Used by #{} expressions.
 
 var h = (text, quotes=`"'`) => Html.encode(text, quotes);
 
 export default Refract;
-export { Globals, utils as Utils, Watch, delve, fregex, h, lex, lexHtmlJs };
+export { Globals, utils as Utils, Watch, fregex, h, lex, lexHtmlJs };

@@ -89,6 +89,8 @@ export default class Refract extends HTMLElement {
 
 
 	constructor(autoRender=true) {
+
+		// This line will give the error, "Illegal Constructor" if customElements.define() hasn't been called for this class.
 		super();
 
 		// old path from before we used init()
@@ -194,11 +196,14 @@ export default class Refract extends HTMLElement {
 	}
 
 	static getInitArgs_() {
+
+		// Parse init function on first time.
 		if (!this.initArgs && this.prototype.init) {
 			let pf = new ParsedFunction(this.prototype.init, false);
 			this.initArgs = [...pf.getArgNames()];
 		}
-		return this.initArgs || [];
+
+		return this.initArgs ? structuredClone(this.initArgs) : [];
 	}
 
 	//#IFDEV
@@ -325,6 +330,7 @@ export default class Refract extends HTMLElement {
 
 Refract.htmlDecode = Html.decode;
 Refract.htmlEncode = Html.encode;
+window.refractHtmlEncode = Html.encode; // Used by #{} expressions.
 
 var h = (text, quotes=`"'`) => Html.encode(text, quotes);
 export {h};
@@ -333,6 +339,5 @@ export {h};
 export {default as Watch} from './Watch.js';
 export {default as lex} from '../parselib/lex.js';
 export {default as lexHtmlJs} from '../parselib/lex-htmljs.js';
-export {default as delve} from '../util/delve.js';
 export {default as fregex} from '../parselib/fregex.js';
 export {default as Utils} from './utils.js';

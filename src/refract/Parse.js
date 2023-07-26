@@ -193,19 +193,22 @@ var Parse = {
 	 * Recursively replace #{...} with ${ClassName.htmlEncode(...)}
 	 * @param tokens {Token[]}
 	 * @param mode
-	 * @param className
 	 * @return {Token[]} */
-	replaceHashExpr_(tokens, mode, className) {
+	replaceHashExpr_(tokens, mode) {
+		//#IFDEV
+		// if (!className)
+		// 	throw new Error('Missing className parameter.  Perhaps a minifier removed its value?  Consider using h() instead.');
+		//#ENDIF
 		let result = [];
 		let isHash = false;
 		for (let token of tokens) {
 			// TODO: Completely recreate the original tokens, instead of just string versions of them:
 			if (token.tokens) {
-				let tokens = Parse.replaceHashExpr_(token.tokens, token.mode, className);
+				let tokens = Parse.replaceHashExpr_(token.tokens, token.mode);
 				result.push({text: tokens.map(t=>t.text).join(''), type: token.type, tokens, mode: token.mode});
 			}
 			else if (token.text == '#{' && token.type == 'expr') {
-				result.push(new Token('${'), new Token(className), new Token('.'), new Token('htmlEncode'), new Token('('));
+				result.push(new Token('${'), new Token('refractHtmlEncode'), new Token('('));
 				isHash = true;
 			}
 			else
