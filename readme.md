@@ -1,5 +1,7 @@
 # Refract
 
+**Refact is now deprcated.  Use [Solarite.js](https://github.com/Vorticode/solarite) instead.  It's faster, easier to use, and has less bugs.**
+
 Refract is a fast, lightweight, "reactive" JavaScript library for creating user interface components to use in regular html pages.
 
 ```html
